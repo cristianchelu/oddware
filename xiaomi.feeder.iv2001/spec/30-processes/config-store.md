@@ -1,0 +1,81 @@
+# Configuration store
+
+serves:
+  - ../20-stories/connectivity.md
+  - ../20-stories/provisioning.md
+  - ../20-stories/scheduling.md
+
+## Storage backend
+
+MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash store.
+
+## Namespace / key table
+
+| Namespace | Key | Type | Default | Description |
+|-----------|-----|------|---------|-------------|
+| wifi | ssid | string | — | Wi-Fi SSID |
+| wifi | pass | string | — | Wi-Fi password |
+| mqtt | host | string | — | Broker hostname / IP |
+| mqtt | port | uint16 | 1883 | Broker port |
+| mqtt | user | string | "" | Username (empty = anonymous) |
+| mqtt | pass | string | "" | Password |
+| mqtt | device_id | string | MAC-derived | MQTT topic device ID |
+| mqtt | tls | bool | false | Enable TLS |
+| feed | mode | enum | open_loop | Dispense mode: open_loop / compensated |
+| feed | default_g | uint8 | 10 | Manual button portion grams |
+| feed | child_lock | bool | false | Physical controls locked |
+| display | mode | enum | weight | Display mode: weight / eaten_today / off |
+| display | brightness | uint8 | 4 | TM1637 brightness (1–4, maps to `0x88`–`0x8B`) |
+| schedule | slots | blob | [] | Serialized schedule array (up to 32 slots) |
+| time | tz_rule | blob | UTC default | Packed DST rule struct (see `scheduler-engine.md`) |
+| time | tz_label | string | "" | IANA name for display only; not used by scheduler |
+| calib | tare | int32 | 0 | Load cell tare offset |
+| calib | span | int32 | 1000 | Load cell span factor |
+| power | battery_wifi | enum | on | Wi-Fi on battery: on / off / scheduled_only |
+| system | boot_count | uint32 | 0 | Incremented each boot (OTA rollback detection) |
+| system | last_reset | enum | — | Reason for last reset (watchdog / ota / user / power) |
+
+## Access pattern
+
+| Phase | Behavior |
+|-------|----------|
+| Boot | Read all keys → populate runtime config struct |
+| Runtime | Write on change (from MQTT `cmd/config`, provisioning, calibration, schedule update) |
+| Write discipline | Minimize write frequency — flash has limited erase cycles. Batch writes where possible. |
+
+Keys that rarely change (wifi, mqtt, calib) are written only on explicit user action.
+Keys that change periodically (schedule/slots, system/boot_count) tolerate
+moderate write frequency.
+
+## Factory reset
+
+1. Erase all NVDM namespaces (wifi, mqtt, feed, display, schedule, time,
+   calib, power, system).
+2. Reboot.
+3. Device enters first-boot AP provisioning mode (no stored Wi-Fi credentials).
+
+Triggered by: pin-hole long press (7 s) or MQTT `cmd/reboot` with
+`{"factory_reset": true}`. `[design]`
+
+## Storage budget
+
+Total flash: 2 MB. Partition layout is our choice (custom bootloader). `[design]`
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **SDK NVDM API** | Simple, proven, SDK-managed wear leveling | Fixed sector allocation, limited metadata |
+| **Filesystem (littlefs)** | Flexible, supports logs / calibration history | More code, own wear leveling |
+| **Hybrid** | NVDM for small critical config; littlefs for bulk data (schedules, logs) | Two subsystems to maintain |
+
+Allocate whatever the application and OTA strategy leave free. Exact
+partition sizes defined in `../10-hardware/flash.md`. `[design]`
+
+## MQTT sync
+
+| Topic | Direction | Content |
+|-------|-----------|---------|
+| `.../config` | State (retained) | Full config object after any change |
+| `.../cmd/config` | Command | Subset of writable settings (user-facing only) |
+
+Not writable via MQTT: `wifi/*` (requires reprovisioning), `calib/*` (requires
+calibration action), `system/*` (internal bookkeeping).

@@ -1,0 +1,24 @@
+# Third-party and trademark notices
+
+## Trademarks
+
+- "Xiaomi", "Mijia", "Mi Home", and "MIoT" are trademarks of Xiaomi Inc.
+- "MediaTek" is a trademark of MediaTek Inc.
+- "Airoha" is a trademark of Airoha Technology Corp.
+- "Home Assistant" is a trademark of Nabu Casa, Inc.
+- "Homey" is a trademark of Athom B.V.
+
+These names are used in this project **solely for descriptive/interoperability
+purposes** under nominative fair use. This project is not affiliated with or
+endorsed by any of the above entities.
+
+## Airoha IoT SDK
+
+This project builds against the Airoha IoT SDK for MT7682 (not included in this
+repository). The SDK is fetched externally at build time from a public GitHub
+mirror. No license grant is implied by availability of that mirror — the SDK
+remains the property of its respective copyright holders.
+
+## Open-source dependencies
+
+(To be listed as firmware implementation matures.)

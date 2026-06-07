@@ -1,0 +1,30 @@
+# External SDK (fetched, never committed)
+external/
+
+# Session summaries (local memory, not committed)
+summaries/
+
+# Build output
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.d
+*.dis
+build/
+out/
+
+# KiCad backups
+*-backups/
+*.kicad_prl
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db

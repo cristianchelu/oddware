@@ -1,0 +1,83 @@
+# Dispense cycle
+
+serves:
+  - ../20-stories/feeding.md
+
+## Burst planning
+
+A dispense request carries a **target_grams** value (clamped to 5–150 g).
+
+- `bursts_planned = target_grams / 10` (integer division, minimum 1). `[design]`
+- Each burst is sized to deliver approximately 10 g. `[tune]`
+
+### Modes
+
+| Mode | Behavior | Selection |
+|------|----------|-----------|
+| **Open-loop** | Run all planned bursts, check bowl changed, done | Default (`feed/mode = open_loop`) |
+| **Compensated** | After each batch, compare bowl delta to target; compute extra bursts if under | Opt-in via MQTT (`feed/mode = compensated`) |
+
+## Motor sequencing per burst
+
+Motor is controlled through AW9523B (I2C @ 0x58) driving SGM42507.
+
+| Step | Action | Pin | Timing |
+|------|--------|-----|--------|
+| 1 | Assert PH = forward | P0.0 high | — |
+| 2 | Wait direction-setup delay | — | `[tune]` 100 ms `[ds:SGM42507]` |
+| 3 | Assert EN = run | P0.1 high | — |
+| 4 | Motor runs until burst duration elapsed **or** index pulse count reached | P0.7 falling edges | `[tune]` burst duration 2 s |
+| 5 | De-assert EN (coast) | P0.1 low | — |
+| 6 | If more bursts remain, repeat from step 1 | — | — |
+
+Hard safety cutoff: motor must not run continuously beyond `[tune]` 8 s.
+
+## Index pulse tracking during burst
+
+- Motor-index IR LED enabled on P0.6 at burst start, disabled at burst end.
+- Detector on P0.7 (IRQ-capable): falling-edge = beam restored after hole passes.
+- Index disk has 2 holes at 180° → 2 pulses per revolution. `[probe]`
+- Burst can terminate on pulse count target instead of fixed duration (whichever first).
+
+## Index parking (moisture seal)
+
+After all bursts complete (no more queued), the auger must park at the IR-beam
+alignment position for moisture seal:
+
+1. Assert PH forward, EN run — motor runs **continuously** at low speed (single
+   run, not burst pulses).
+2. Stop when P0.7 detector reads beam-open (index hole aligned with beam path) —
+   parking position per index slot.
+3. If alignment not achieved within `[tune]` 4 index pulses, accept current
+   position and de-assert EN.
+
+Dispense bursts use the same forward direction and index feedback; each burst
+runs EN uninterrupted until its duration or pulse target. Parking is the
+final continuous run after the last burst, stopping only on the slot condition.
+
+## Dispense queue
+
+- Only one dispense job executes at a time.
+- Additional requests (schedule, MQTT, button) enter a FIFO queue.
+- Maximum queue depth: `[tune]` 4 entries.
+- Queued requests are serviced in order after current job completes.
+- Queue overflow: reject with `aborted` status.
+
+## Dispense progress reporting
+
+Publish 0–100 % to MQTT `.../dispense/progress` while active:
+
+- Weight-based: `grams_delivered / target_grams × 100`
+- Motor-based: `bursts_completed / bursts_planned × 100`
+- Publish whichever is greater (capped at 100 %).
+- Update interval: `[tune]` 1000 ms during active dispense.
+
+## Completion outcomes
+
+| Outcome | Condition |
+|---------|-----------|
+| `success` | Target met (compensated) or all bursts ran (open-loop) |
+| `underfill` | Compensated mode measured delivery below target after retries |
+| `stuck` | Anti-jam retries exhausted (see `jam-detection.md`) |
+| `empty_hopper` | Motor ran, bowl delta ≈ 0, hopper IR confirms low (see `hopper-sensing.md`) |
+| `aborted` | Queue overflow, policy rejection, or user cancel via MQTT |
