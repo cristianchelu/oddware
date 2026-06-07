@@ -26,6 +26,13 @@ linker script, flash-download config, and SDK patch files are in git.
 You are responsible for compliance with whatever license terms apply to your
 SDK copy.
 
+## MediaTek IoT Flash Tool (setup-time extract)
+
+The **IoT Flash Tool** (`FlashTool.exe`, `coda.exe`, download agent binaries)
+is **not** committed. `tools/setup-flashtool.sh` unpacks it from the LinkIt
+SDK archive `tools/PC_tool.zip` into gitignored `external/iot-flash-tool/`
+and runs it under Wine via `tools/iot-flash.sh`.
+
 ## Open-source dependencies
 
 ### Unity (host unit tests)

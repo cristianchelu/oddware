@@ -35,9 +35,9 @@ assignments: [pinmap.md](pinmap.md).
 
 | Ref | Type           | Function                 | Provenance | Notes           |
 | --- | -------------- | ------------------------ | ---------- | --------------- |
-| SW1 | Tactile switch | BOOT module strap        | `[probe]`  | **Unpopulated** |
+| SW1 | Tactile switch | BOOT module strap        | `[probe]`  | **Unpopulated**; test pad **TP14** |
 | SW2 | Tactile switch | Manual feed press button | `[probe]`  | AW9523B P1.0    |
-| SW3 | Tactile switch | RESET module strap       | `[probe]`  | **Unpopulated** |
+| SW3 | Tactile switch | RESET module strap       | `[probe]`  | **Unpopulated**; test pad **TP15** (CHIP_EN net) |
 
 
 ## Test points (TP)
@@ -49,8 +49,8 @@ rows are placeholders for bench follow-up.
 
 | Ref  | Signal / net                          | Provenance | Notes                                                                |
 | ---- | ------------------------------------- | ---------- | -------------------------------------------------------------------- |
-| TP1  | U1 UART0 TX (MT7682 GPIO21)           | `[probe]`  | Boot ROM / flash tool; use with TP2, TP27 (GND); see [flash.md](flash.md) |
-| TP2  | U1 UART0 RX (MT7682 GPIO22)           | `[probe]`  | Boot ROM / flash tool; use with TP1, TP27 (GND); see [flash.md](flash.md) |
+| TP1  | U1 UART0 TX (MT7682 GPIO21)           | `[probe]`  | Boot ROM / flash tool; use with TP2, TP27; see [flash.md](flash.md) |
+| TP2  | U1 UART0 RX (MT7682 GPIO22)           | `[probe]`  | Boot ROM / flash tool; use with TP1, TP27; see [flash.md](flash.md) |
 | TP3  | —                                     | —          |                                                                      |
 | TP4  | U1 pin 31, GPIO3                      | `[probe]`  | Unused                                                               |
 | TP5  | U1 pin 30, GPIO2                      | `[probe]`  | Unused                                                               |
@@ -62,8 +62,8 @@ rows are placeholders for bench follow-up.
 | TP11 | —                                     | —          |                                                                      |
 | TP12 | —                                     | —          |                                                                      |
 | TP13 | —                                     | —          |                                                                      |
-| TP14 | —                                     | —          |                                                                      |
-| TP15 | —                                     | —          |                                                                      |
+| TP14 | SW1 BOOT module strap                 | `[probe]`  | Unpopulated **SW1**; BOOT strap net — not required for UART0 BROM flash |
+| TP15 | SW3 RESET module strap (CHIP_EN)      | `[probe]`  | Unpopulated **SW3**; manual reset during flash — see [flash.md](flash.md) |
 | TP16 | —                                     | —          |                                                                      |
 | TP17 | —                                     | —          |                                                                      |
 | TP18 | J3 hopper full IR (black LED −)       | `[probe]`  | Adjacent **J3**; emitter vs photodiode TBD                           |

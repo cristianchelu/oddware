@@ -199,6 +199,18 @@ Read `spec/40-architecture/build-integration.md` and
 6. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 
+## Bench flashing
+
+Linux UART tooling (`tools/iot-flash.sh`, `tools/uart-console.sh`) requires
+the user's USB-serial adapter, bench wiring, and manual reset during download.
+Agents cannot access that hardware directly.
+
+When a task needs a firmware image on the board — smoke test after a build,
+BROM probe, boot-log capture, or reflash — **ask the user** to run the
+commands. Reference `README.md` (Flashing) and `spec/10-hardware/flash.md`.
+Download starts CODA first; the user resets the feeder (power-cycle or TP15)
+within the timed prompt.
+
 ## Ports and adapters (layering)
 
 Application and orchestration code (`firmware/src/`, CLI handlers, credential

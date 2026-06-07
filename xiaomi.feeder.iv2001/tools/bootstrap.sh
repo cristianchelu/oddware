@@ -10,14 +10,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOST_ONLY=0
+WITH_FLASH_TOOL=0
 
 for arg in "$@"; do
     case "$arg" in
         --host-only) HOST_ONLY=1 ;;
+        --with-flash-tool) WITH_FLASH_TOOL=1 ;;
         -h|--help)
-            echo "Usage: $0 [--host-only]"
+            echo "Usage: $0 [--host-only] [--with-flash-tool]"
             echo ""
-            echo "  --host-only   Run host unit tests only; skip SDK fetch and build-env."
+            echo "  --host-only        Run host unit tests only; skip SDK fetch and build-env."
+            echo "  --with-flash-tool  After SDK fetch, set up Wine IoT Flash Tool (Linux UART flash)."
             exit 0
             ;;
         *)
@@ -63,6 +66,12 @@ echo ""
 echo "==> Checking target toolchain"
 "$SCRIPT_DIR/check-prereqs.sh" target
 
+if [ "$WITH_FLASH_TOOL" -eq 1 ]; then
+    echo ""
+    echo "==> Setting up IoT Flash Tool (Wine)"
+    "$SCRIPT_DIR/setup-flashtool.sh"
+fi
+
 echo ""
 echo "Setup complete."
 echo ""
@@ -70,5 +79,10 @@ echo "Next steps:"
 echo "  make test-host                  # re-run host tests anytime"
 echo "  source tools/build-env.sh       # per-shell ARM toolchain PATH"
 echo "  ./tools/build-firmware.sh       # once GCC/Makefile exists (Step 1)"
+if [ "$WITH_FLASH_TOOL" -eq 1 ]; then
+    echo "  ./tools/iot-flash.sh download /dev/ttyUSB0   # UART flash (manual reset prompt)"
+else
+    echo "  ./tools/bootstrap.sh --with-flash-tool         # optional Linux UART flash tooling"
+fi
 echo ""
 echo "Read AGENTS.md for spec-driven TDD workflow."

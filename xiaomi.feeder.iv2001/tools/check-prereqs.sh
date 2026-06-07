@@ -31,8 +31,13 @@ case "$mode" in
             missing+=("arm-none-eabi newlib headers (stdio.h in sysroot)")
         fi
         ;;
+    flash)
+        require_cmd wine
+        require_cmd wineserver
+        require_cmd unzip
+        ;;
     *)
-        echo "Usage: $0 {host|sdk|target}" >&2
+        echo "Usage: $0 {host|sdk|target|flash}" >&2
         exit 2
         ;;
 esac
@@ -56,6 +61,11 @@ if [ "${#missing[@]}" -gt 0 ]; then
             echo "Install the ARM GCC toolchain for firmware builds." >&2
             echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs arm-none-eabi-gcc-cs-c++ arm-none-eabi-newlib" >&2
             echo "  Debian:  sudo apt install gcc-arm-none-eabi" >&2
+            ;;
+        flash)
+            echo "Install Wine and helpers for Linux UART flashing." >&2
+            echo "  Fedora:  sudo dnf install wine wineserver unzip" >&2
+            echo "  Debian:  sudo apt install wine unzip" >&2
             ;;
     esac
     exit 1

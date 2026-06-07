@@ -1,33 +1,26 @@
 # @oddware/xiaomi.feeder.iv2001
 
-Open-source replacement firmware for the **Xiaomi Smart Pet Food Feeder 2** hardware
-(retail model XMWSQ02, cloud model `xiaomi.feeder.iv2001`).
+Open-source replacement firmware for the **Xiaomi Smart Pet Food Feeder 2**
+(retail XMWSQ02, cloud model `xiaomi.feeder.iv2001`).
 
-Local-only MQTT control for Home Assistant, Homey, or any MQTT broker. No cloud,
-no MIoT, no phone-home.
-
-## Status
-
-Early development. Specifications and build tooling target LinkIt SDK 4.6 on
-MT7682 (no PSRAM). Application firmware is not yet complete.
+Local-only MQTT control for Home Assistant, Homey, or any MQTT broker. No
+cloud, no MIoT, no phone-home.
 
 ## Quick start
 
-From this directory (`xiaomi.feeder.iv2001/`):
+From this directory:
 
 ```bash
 ./tools/bootstrap.sh
 ```
 
-Checks prerequisites, runs host unit tests, fetches the LinkIt SDK into
-gitignored `external/`, and runs `build-env.sh`.
-
-Host tests only (no SDK fetch):
+Fetches the LinkIt SDK into gitignored `external/`, runs host unit tests, and
+sources `build-env.sh`.
 
 ```bash
-./tools/bootstrap.sh --host-only
-# or
-make test-host
+./tools/bootstrap.sh --with-flash-tool   # also extracts MediaTek IoT Flash Tool
+./tools/bootstrap.sh --host-only         # host tests only, no SDK fetch
+make test-host                           # re-run host tests
 ```
 
 ### Prerequisites
@@ -37,8 +30,7 @@ make test-host
 | `git`, `make`, `gcc` | Host tests | `dnf install git make gcc` | `apt install git make gcc` |
 | `patch` | SDK patches | `dnf install patch` | `apt install patch` |
 | `arm-none-eabi-gcc` + newlib | Board firmware | `dnf install arm-none-eabi-gcc-cs arm-none-eabi-gcc-cs-c++ arm-none-eabi-newlib` | `apt install gcc-arm-none-eabi` |
-
-The SDK clone is large; use `--host-only` when working on specs or host tests only.
+| `wine`, `unzip` | Linux UART flash | `dnf install wine unzip` | `apt install wine unzip` |
 
 ### Firmware build
 
@@ -47,32 +39,58 @@ source tools/build-env.sh
 ./tools/build-firmware.sh
 ```
 
-Requires `firmware/GCC/Makefile` and related scaffold (see `firmware/README.md`).
+See `firmware/README.md` for the GCC scaffold layout.
 
-## Non-affiliation disclaimer
+### Flashing (Linux, UART)
 
-This project is **not** affiliated with, endorsed by, or associated with Xiaomi,
-Mijia, or MediaTek in any way. Product names are used **descriptively** to
-identify compatible hardware only.
+Harness: 3.3 V USB-TTL, **TX→TP2**, **RX→TP1**, **GND→TP27**. Details in
+`spec/10-hardware/flash.md`.
 
-The firmware is an independent work. It does not contain, redistribute, or
-derive from proprietary Xiaomi or MediaTek firmware binaries.
+```bash
+./tools/setup-flashtool.sh              # once, after bootstrap
+source tools/build-env.sh && ./tools/build-firmware.sh
+./tools/iot-flash.sh download /dev/ttyUSB0
+```
+
+The script starts CODA under Wine, maps the tty to `COM3`, then waits for a
+manual reset (power-cycle or pulse TP15) within `IOT_FLASH_RESET_WAIT_SEC`
+(default 30, in `tools/iot-flash.env`). Stable paths such as
+`/dev/serial/by-id/usb-...` work.
+
+| Command | Purpose |
+|---------|---------|
+| `iot-flash.sh download DEVICE` | Headless flash (CODA CLI) |
+| `iot-flash.sh probe DEVICE` | BROM sync test (`0xA0` / `0x5F`) |
+| `iot-flash.sh gui DEVICE` | Qt Flash Tool GUI |
+| `uart-console.sh DEVICE` | Boot log (`UART_CONSOLE_SECS=N`) or picocom |
+
+Headless full-chip readback via CODA is not supported under Wine; use the
+Windows IoT Flash Tool. Reference INI: `firmware/flash/coda_readback_2mb.ini`.
+
+Optional: `tools/udev/99-ch341-ignore-modemmanager.rules` prevents ModemManager
+from claiming CH340/CH341 adapters.
 
 ## Repository layout
 
 ```
-spec/           Specifications (hardware + design — source of truth)
-firmware/       Oddware C/FreeRTOS implementation (committed)
-tools/          bootstrap, fetch-sdk, build-env, build-firmware
-external/       Gitignored — LinkIt SDK fetched here
+spec/           Specifications (source of truth)
+firmware/       Application source and board overlay
+tools/          Bootstrap, SDK fetch, build, flash helpers
+external/       Gitignored — LinkIt SDK and Wine flash tool
 ```
 
-Only `firmware/`, `spec/`, `tools/`, and vendored Unity test sources are committed.
-The SDK is not part of the repository.
+Committed tree: `firmware/`, `spec/`, `tools/`, Unity test sources. The SDK is
+not vendored.
 
 ## Safety
 
-Read [SAFETY.md](SAFETY.md) before flashing. UART0 recovery @ GPIO21/22.
+See [SAFETY.md](SAFETY.md). UART0 recovery on GPIO21/22.
+
+## Non-affiliation
+
+Not affiliated with Xiaomi, Mijia, or MediaTek. Product names identify
+compatible hardware only. Independent firmware; no proprietary Xiaomi or
+MediaTek binaries are redistributed.
 
 ## License
 
