@@ -30,6 +30,23 @@ Spec files are **living reference documents**. They describe the system as
 it is today — like a wiki page, not a design diary. Write in present tense;
 state facts and behaviors directly.
 
+The same rule applies to committed `firmware/README.md`, `tools/`, and other
+repo docs: **no step checkpoints, bring-up diaries, or plan progress notes.**
+Those belong in gitignored agent plans (`.cursor/plans/`) or, only when
+there is a durable lesson worth keeping, in gitignored `summaries/` — not in
+the tree contributors are expected to read.
+
+**Do not commit:**
+
+- "Step N checkpoint" walkthroughs with expected UART transcripts
+- "After this change, run X then look for Y" iteration notes from a session
+- Duplicates of plan todos or acceptance criteria already in a plan file
+
+**Do commit:**
+
+- Timeless setup and build commands (what exists, how to invoke it)
+- Facts that belong in `spec/` — put them there, not in README padding
+
 **Do:**
 
 - "The feeder uses A/B application partitions for OTA."

@@ -1,4 +1,4 @@
-# petfeeder — IV2001 board bring-up (Step 1)
+# petfeeder — IV2001 firmware (Step 2: dual-image boot)
 # SDK scaffold files are referenced by path, not copied. See build-integration.md.
 
 SOURCE_DIR  = ../../../../..
@@ -19,6 +19,14 @@ include $(SOURCE_DIR)/kernel/rtos/FreeRTOS/module.mk
 include $(SOURCE_DIR)/kernel/service/module.mk
 include $(SOURCE_DIR)/driver/board/iv2001/util/module.mk
 
+ifeq ($(MTK_MINICLI_ENABLE),y)
+include $(SOURCE_DIR)/middleware/MTK/minicli/module.mk
+endif
+
+ifeq ($(MTK_FOTA_ENABLE),y)
+include $(SOURCE_DIR)/middleware/MTK/fota/module.mk
+endif
+
 DEBUG           = 0
 FLOAT_TYPE      = hard
 BUILD_DIR       = $(PWD)/build
@@ -33,6 +41,9 @@ APP_PATH_SRC    = $(APP_PATH)/src
 MINICLI         = project/mt7682_hdk/apps/minicli
 
 APP_FILES      += $(APP_PATH_SRC)/main.c
+APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
+APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c
+APP_FILES      += $(APP_PATH_SRC)/boot_bank_cli.c
 APP_FILES      += $(APP_PATH_SRC)/ept_gpio_var.c
 APP_FILES      += $(APP_PATH_SRC)/ept_eint_var.c
 APP_FILES      += $(MINICLI)/src/regions_init.c

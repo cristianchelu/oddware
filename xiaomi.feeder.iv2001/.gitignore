@@ -21,6 +21,7 @@ out/
 *.kicad_prl
 
 # Editor/IDE
+.cursor/
 .vscode/
 .idea/
 *.swp

@@ -1,0 +1,76 @@
+diff --git a/project/mt7682_hdk/apps/bootloader/GCC/Makefile b/project/mt7682_hdk/apps/bootloader/GCC/Makefile
+index 8d2c4315..f9a1a349 100644
+--- a/project/mt7682_hdk/apps/bootloader/GCC/Makefile
++++ b/project/mt7682_hdk/apps/bootloader/GCC/Makefile
+@@ -74,6 +74,12 @@ C_FILES += $(APP_PATH)/src/bl_dbgprint.c
+ C_FILES += $(APP_PATH)/src/custom_blconfig.c
+ C_FILES += $(APP_PATH)/src/main.c
+ 
++ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE),y)
++CFLAGS += -DMTK_FOTA_DUAL_IMAGE_ENABLE
++C_FILES += $(APP_PATH)/src/bl_dual_image.c
++C_FILES += $(APP_PATH)/src/boot_bank.c
++endif
++
+ ifeq ($(MTK_FOTA_ENABLE),y)
+ ifeq ($(MTK_BL_FOTA_CUST_ENABLE),y)
+ C_FILES += $(APP_PATH)/src/custom_fota.c
+@@ -141,7 +147,7 @@ endif
+ # CC Flags
+ ALLFLAGS = -g -Os
+ ALLFLAGS += -Wall -mlittle-endian -mthumb -mcpu=cortex-m4
+-CFLAGS += $(ALLFLAGS) -flto -ffunction-sections -fdata-sections -fno-builtin
++CFLAGS += $(ALLFLAGS) -ffunction-sections -fdata-sections -fno-builtin
+ 
+ ifeq ($(FLOAT_TYPE), hard)
+ FPUFLAGS = -fsingle-precision-constant -Wdouble-promotion
+diff --git a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
+index f56b00b9..ce3ddeb1 100644
+--- a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
++++ b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
+@@ -1,5 +1,5 @@
+ IC_CONFIG                   = mt7682
+-BOARD_CONFIG                = mt7682_hdk
++BOARD_CONFIG                = iv2001
+ MTK_BL_LOAD_ENABLE          = y
+ 
+ #can modify
+@@ -8,6 +8,7 @@ MTK_BL_DEBUG_ENABLE         = y
+ MTK_FOTA_ENABLE             = y
+ MTK_FOTA_FS_ENABLE          = n
+ MTK_USER_FAST_TX_ENABLE     = n
++MTK_FOTA_DUAL_IMAGE_ENABLE  = y
+ 
+ #internal use
+ MTK_BL_FPGA_LOAD_ENABLE     = n
+diff --git a/project/mt7682_hdk/apps/bootloader/src/main.c b/project/mt7682_hdk/apps/bootloader/src/main.c
+index 90e77ea2..965336dc 100644
+--- a/project/mt7682_hdk/apps/bootloader/src/main.c
++++ b/project/mt7682_hdk/apps/bootloader/src/main.c
+@@ -36,6 +36,10 @@
+ #include "bl_fota.h"
+ #include "hal_uart.h"
+ #include "hal_flash.h"
++#ifdef MTK_FOTA_DUAL_IMAGE_ENABLE
++#include "bl_dual_image.h"
++#include "memory_map.h"
++#endif
+ #include "core_cm4.h"
+ #include "hal_emi.h"
+ #include "hal_clock_internal.h"
+@@ -118,7 +122,14 @@ void bl_hardware_init()
+ 
+ void bl_start_user_code()
+ {
+-    uint32_t targetAddr = bl_custom_cm4_start_address();
++    uint32_t targetAddr;
++#ifdef MTK_FOTA_DUAL_IMAGE_ENABLE
++    targetAddr = bl_dual_image_boot_addr();
++    bl_print(LOG_INFO, "dual boot bank %c\n\r",
++             (targetAddr == BANK_B_BASE) ? 'B' : 'A');
++#else
++    targetAddr = bl_custom_cm4_start_address();
++#endif
+ 
+ #if defined(MTK_SECURE_BOOT_ENABLE) && defined(__GNUC__)
+     uint32_t hdrAddr = bl_custom_header_start_address();

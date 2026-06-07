@@ -8,6 +8,7 @@ BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
 UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
+HOST_SRCS := ../src/boot_bank.c
 
 .PHONY: all test-host clean
 
@@ -16,8 +17,8 @@ all: test-host
 test-host: $(BUILD)/test_host
 	./$(BUILD)/test_host
 
-$(BUILD)/test_host: $(RUNNER) $(TEST_SRCS) $(UNITY_SRC) Makefile | $(BUILD)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(RUNNER) $(TEST_SRCS) $(UNITY_SRC) $(LDFLAGS)
+$(BUILD)/test_host: $(RUNNER) $(TEST_SRCS) $(HOST_SRCS) $(UNITY_SRC) Makefile | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(RUNNER) $(TEST_SRCS) $(HOST_SRCS) $(UNITY_SRC) $(LDFLAGS)
 
 $(RUNNER): $(TEST_SRCS) Makefile | $(BUILD)
 	@echo '#include "unity.h"' > $@

@@ -1,0 +1,27 @@
+diff --git a/middleware/MTK/fota/module.mk b/middleware/MTK/fota/module.mk
+index 03b4dc72..5c9dd3b3 100644
+--- a/middleware/MTK/fota/module.mk
++++ b/middleware/MTK/fota/module.mk
+@@ -41,6 +41,12 @@ endif
+ endif
+ endif
+ 
++ifeq ($(IC_CONFIG), $(filter $(IC_CONFIG),mt7682 mt7686))
++ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE), y)
++CFLAGS += -DMTK_FOTA_DUAL_IMAGE_ENABLE
++endif
++endif
++
+ #################################################################################
+ # source files
+ #################################################################################
+@@ -56,7 +62,9 @@ endif
+ ifeq ($(IC_CONFIG), $(filter $(IC_CONFIG),mt7687 mt7697 mt7682 mt7686))
+ C_FILES  += $(FOTA_SRC)/src/internal/fota_cli.c
+ ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE),y)
++ifneq ($(MTK_FOTA_DUAL_IMAGE_SWITCH_ONLY),y)
+ C_FILES  += $(FOTA_SRC)/src/internal/fota_dual_image.c
++endif
+ else
+ C_FILES  += $(FOTA_SRC)/src/internal/fota_download_interface.c
+ endif

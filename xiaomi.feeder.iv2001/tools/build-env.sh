@@ -54,6 +54,16 @@ ln -sfn "$SDK_ROOT/driver/board/mt7682_hdk/util" "$IV2001_DRIVER_BOARD/util"
 ln -sfn "$SDK_ROOT/driver/board/mt7686_hdk/ept" "$IV2001_DRIVER_BOARD/ept"
 echo "Board config: iv2001 (pinmux in firmware/, BSP via mt7682_hdk/mt7686_hdk)"
 
+# Bootloader uses IV2001 memory_map + dual-image flash_map from firmware/
+BOOTLOADER_INC="$SDK_ROOT/project/mt7682_hdk/apps/bootloader/inc"
+mkdir -p "$BOOTLOADER_INC"
+ln -sfn "$FIRMWARE_DIR/inc/memory_map.h" "$BOOTLOADER_INC/memory_map.h"
+ln -sfn "$FIRMWARE_DIR/inc/flash_map.h" "$BOOTLOADER_INC/flash_map.h"
+ln -sfn "$FIRMWARE_DIR/inc/bl_dual_image.h" "$BOOTLOADER_INC/bl_dual_image.h"
+ln -sfn "$FIRMWARE_DIR/inc/boot_bank.h" "$BOOTLOADER_INC/boot_bank.h"
+ln -sfn "$FIRMWARE_DIR/src/bl_dual_image.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/bl_dual_image.c"
+ln -sfn "$FIRMWARE_DIR/src/boot_bank.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/boot_bank.c"
+
 # copy_firmware.sh reads tools/config/iv2001/download/default/flash_download.cfg
 IV2001_DOWNLOAD_CFG="$SDK_ROOT/tools/config/iv2001/download/default"
 mkdir -p "$IV2001_DOWNLOAD_CFG"

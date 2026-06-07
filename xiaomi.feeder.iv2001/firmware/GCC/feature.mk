@@ -12,5 +12,9 @@ MTK_MEMORY_WITHOUT_PSRAM_FLASH      = n
 MTK_HAL_LOWPOWER_ENABLE             = n
 MTK_HIF_GDMA_ENABLE                 = y
 
-# Step 1 bring-up: no WiFi / FOTA / CLI yet
-MTK_MINICLI_ENABLE                  = n
+# Step 2: dual-image FOTA + UART CLI bank switch
+MTK_FOTA_ENABLE                     = y
+MTK_FOTA_DUAL_IMAGE_ENABLE          = y
+MTK_FOTA_DUAL_IMAGE_SWITCH_ONLY     = y
+MTK_FOTA_CLI_ENABLE                 = n
+MTK_MINICLI_ENABLE                  = y

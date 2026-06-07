@@ -7,6 +7,10 @@
 
 #define ROM_BASE 0x08000000
 
+/* Bootloader custom_blconfig.c */
+#define RAM_BASE    0x00000000
+#define RAM_LENGTH  0x00400000
+
 #define HEAD_1_BASE    0x08000000
 #define HEAD_1_LENGTH  0x00001000  /* 4 KB */
 
@@ -23,6 +27,10 @@
 /* Bank B — inactive / OTA target */
 #define BANK_B_BASE    0x08100000
 #define BANK_B_LENGTH  0x000EE000  /* 952 KB */
+
+/* Bootloader bl_fota.c compatibility (staging = inactive bank) */
+#define FOTA_RESERVED_BASE    BANK_B_BASE
+#define FOTA_RESERVED_LENGTH  BANK_B_LENGTH
 
 /* A/B control block (inside bootloader region) */
 #define DUAL_IMAGE_CTRL_BASE  0x08008000
