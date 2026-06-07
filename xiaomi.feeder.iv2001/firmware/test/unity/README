@@ -1,0 +1,14 @@
+Unity test framework (MIT)
+https://github.com/ThrowTheSwitch/Unity
+
+Vendored in this directory: unity.c, unity.h, unity_internals.h (from upstream src/)
+
+Provenance
+----------
+  Tag:        v2.6.1
+  Commit:     cbcd08fa7de711053a3deec6339ee89cad5d2697
+  Fetched:    2026-06-07
+  Source:     git clone --depth 1 --branch v2.6.1 \
+                https://github.com/ThrowTheSwitch/Unity.git
+
+See NOTICE in the repository root for license attribution.

@@ -8,8 +8,54 @@ no MIoT, no phone-home.
 
 ## Status
 
-**Early specification phase.** No runnable firmware yet — we are writing the hardware
-and behavioral specs first, then implementing from those specs.
+**Firmware foundation in progress.** Specs are written; host unit tests and build
+scaffolding exist. Target firmware build (Step 1) is next.
+
+## Quick start (new clone)
+
+From this directory (`xiaomi.feeder.iv2001/`):
+
+```bash
+./tools/bootstrap.sh
+```
+
+That checks prerequisites, runs host unit tests, clones the Airoha SDK into
+`external/`, and configures the SDK symlink plus patches.
+
+**Host tests only** (no SDK clone — fast sanity check):
+
+```bash
+./tools/bootstrap.sh --host-only
+# or
+make test-host
+```
+
+### Prerequisites
+
+
+| Tool                 | Needed for                   | Fedora                             | Debian/Ubuntu                   |
+| -------------------- | ---------------------------- | ---------------------------------- | ------------------------------- |
+| `git`, `make`, `gcc` | Host tests                   | `dnf install git make gcc`         | `apt install git make gcc`      |
+| `patch`              | Full bootstrap (SDK patches) | `dnf install patch`                | `apt install patch`             |
+| `arm-none-eabi-gcc`  | Board firmware (Step 1+)     | `dnf install arm-none-eabi-gcc-cs` | `apt install gcc-arm-none-eabi` |
+
+
+Host development needs only the first row. The SDK clone is large (~1 GB);
+skip it with `--host-only` if you are only working on specs or host-tested logic.
+
+### After bootstrap
+
+```bash
+make test-host                  # re-run unit tests anytime
+source tools/build-env.sh       # per-shell ARM toolchain PATH
+```
+
+Target build (once `firmware/GCC/Makefile` exists):
+
+```bash
+cd external/airoha-iot-sdk
+./build.sh aw7698_evk petfeeder bl
+```
 
 ## Non-affiliation disclaimer
 
@@ -20,28 +66,12 @@ compatible hardware only — no ownership or sponsorship is implied.
 The firmware produced here is an independent work. It does not contain, redistribute,
 or derive from any proprietary Xiaomi or MediaTek firmware binary.
 
-## Building
-
-The firmware builds against the Airoha IoT SDK (MT7682 support). The SDK is **not**
-included in this repository. Fetch it once:
-
-```bash
-./tools/fetch-sdk.sh
-```
-
-This clones the SDK into `external/airoha-iot-sdk/` (gitignored). Then:
-
-```bash
-source tools/build-env.sh
-# (build instructions TBD once firmware skeleton exists)
-```
-
 ## Repository layout
 
 ```
 spec/           Specification documents (hardware facts + our design)
 firmware/       Implementation source (C / FreeRTOS), built against $SDK_ROOT
-tools/          Build helpers, SDK fetch
+tools/          bootstrap.sh, fetch-sdk.sh, build-env.sh
 external/       Gitignored: fetched SDK lives here at build time
 ```
 

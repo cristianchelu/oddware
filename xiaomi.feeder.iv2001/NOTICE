@@ -21,4 +21,12 @@ remains the property of its respective copyright holders.
 
 ## Open-source dependencies
 
-(To be listed as firmware implementation matures.)
+### Unity (host unit tests)
+
+- **Component:** Unity test framework for C
+- **Copyright:** Mike Karlesky, Mark VanderVoord, Greg Williams (ThrowTheSwitch.org)
+- **License:** MIT (SPDX-License-Identifier: MIT)
+- **Source:** https://github.com/ThrowTheSwitch/Unity
+- **Version:** v2.6.1 (`cbcd08fa7de711053a3deec6339ee89cad5d2697`)
+- **Vendored:** 2026-06-07 into `firmware/test/unity/` (`unity.c`, `unity.h`,
+  `unity_internals.h` from upstream `src/`)

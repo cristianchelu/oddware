@@ -13,6 +13,7 @@ summaries/
 *.d
 *.dis
 build/
+build-host/
 out/
 
 # KiCad backups

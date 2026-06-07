@@ -3,28 +3,44 @@
 Implementation source for the pet feeder firmware. Built from the
 specifications in `spec/` — never from proprietary sources.
 
-## Status
-
-**Not yet implemented.** Directory structure prepared for when specs reach
-`stable` status.
-
-## Planned layout
+## Directory layout
 
 ```
 firmware/
-├── apps/              # Application entry point, main task creation
-├── board/iv2001/      # Board-specific config (pinmux, flash combo override)
-├── src/               # Application modules (dispense, weigh, mqtt, etc.)
-└── GCC/               # Makefile, linker script, startup
+  GCC/                    # Makefile, linker script, feature.mk
+  inc/                    # FreeRTOS config, task_def.h, memory_map.h
+  src/                    # Application modules
+  src/fota_dual/          # Adapted fota_dual_image from houndify SDK
+  ports/                  # Port interface headers
+  adapters/               # SDK adapter implementations
+  test/                   # Host-side unit tests (Unity)
+  test/fakes/             # Fake port implementations for host tests
+  patches/                # SDK patches (flash combo W25Q16DW)
 ```
 
-## Building
-
-Requires the Airoha IoT SDK at `$SDK_ROOT`. Fetch it first:
+## Prerequisites
 
 ```bash
 ./tools/fetch-sdk.sh
 source tools/build-env.sh
 ```
 
-Build commands TBD once implementation begins.
+`build-env.sh` creates the SDK symlink (`apps/petfeeder` → this tree)
+and applies patches from `patches/`.
+
+## Host tests
+
+Fast TDD loop — no hardware required:
+
+```bash
+make -C firmware/test test-host
+```
+
+## Target build
+
+Once `GCC/Makefile` exists (Step 1):
+
+```bash
+cd external/airoha-iot-sdk
+./build.sh aw7698_evk petfeeder bl
+```

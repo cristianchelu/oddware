@@ -13,11 +13,28 @@ SDK tree. A symlink bridges the two:
 
 ```
 external/airoha-iot-sdk/project/aw7698_evk/apps/petfeeder
-  -> ../../../../firmware/
+  -> <repo>/firmware/    (absolute path; created by build-env.sh)
 ```
 
-The symlink is created by `tools/build-env.sh` and gitignored in the SDK
-tree. `[design]`
+The symlink is created by `tools/build-env.sh` and lives under `external/`
+(gitignored). `[design]`
+
+## Onboarding (new clone)
+
+From `xiaomi.feeder.iv2001/`:
+
+```
+./tools/bootstrap.sh
+```
+
+Steps performed:
+
+1. Verify host tools (`git`, `make`, `gcc`); `patch` for full bootstrap.
+2. Run `make test-host` — proves the vendored Unity harness works.
+3. Clone the SDK via `tools/fetch-sdk.sh` (skipped with `--host-only`).
+4. Run `tools/build-env.sh` — symlink + patch application.
+
+Host tests do not require the SDK.
 
 ### Build command
 
@@ -72,7 +89,7 @@ All firmware development follows strict red/green/refactor TDD. `[design]`
 ### Host tests (`make test-host`)
 
 Compiled with host gcc/clang. Test application logic through fake port
-implementations. Fast, runs locally and in CI.
+implementations. Fast, runs locally via `make test-host`.
 
 - **Framework:** [Unity](https://github.com/ThrowTheSwitch/Unity) (C-only,
   zero dependencies, ~3 source files).
