@@ -5,13 +5,17 @@ process descriptions for the open-source pet feeder firmware. Implementation
 (`firmware/`) is written exclusively from these specs — never from
 disassembly or proprietary sources.
 
-## Three-tier model
+## Four-tier model
 
 | Tier | Path | What it contains |
 |------|------|------------------|
 | 1 | [10-hardware/](10-hardware/) | Hardware invariants — the physical PCB, its components, pins, and constraints |
 | 2 | [20-stories/](20-stories/) | User-facing goals — what the device should do, written as stories/epics |
 | 3 | [30-processes/](30-processes/) | Process descriptions — detailed mechanisms, testable assertions, `[tune]` values |
+| 4 | [40-architecture/](40-architecture/) | Firmware architecture — task model, flash layout, port contracts, SDK integration, build system |
+
+Tiers 1–3 describe **what** the system does. Tier 4 describes **how** the
+firmware organizes itself to implement Tiers 1–3.
 
 ## Reading order
 
@@ -19,6 +23,7 @@ disassembly or proprietary sources.
 2. **Tier 1 (hardware)** — immovable constraints from the PCB.
 3. **Tier 2 (stories)** — what the user wants the device to do.
 4. **Tier 3 (processes)** — how to achieve each goal in engineering detail.
+5. **Tier 4 (architecture)** — software structure that serves the processes.
 
 Tier 3 files include a `serves:` field (immediately after the title) linking
 back to the Tier 2 stories they implement. This is many-to-many — a single

@@ -35,12 +35,13 @@ HTTPS: supported if `mqtt/tls` is enabled and mbedTLS RAM budget permits.
 
 After full download:
 
-1. Read image header (first N bytes) containing integrity field.
-2. Compute CRC32 (minimum) or SHA256 (preferred, if crypto library available)
-   over image body.
-3. Compare against header value.
-4. On mismatch: abort, publish error `"verify_failed"`, do not write to
-   application partition.
+1. Read the A/B control block's expected hash (see
+   [partition-layout.md](../40-architecture/partition-layout.md#ab-control-block)).
+2. Compute SHA-512 over the written bank contents. The houndify SDK's
+   dual-image FOTA uses SHA-512 for image integrity; we retain this
+   algorithm. `[design]`
+3. Compare against the expected hash from the OTA manifest.
+4. On mismatch: abort, publish error `"verify_failed"`, do not swap banks.
 
 No signature verification in v1 (no PKI infrastructure). `[design]`
 

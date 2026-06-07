@@ -54,10 +54,11 @@ The spec tree is organized in three tiers:
 - **Tier 3 (`30-processes/`)** — process descriptions: detailed engineering
   mechanisms with testable assertions and `[tune]` parameters.
 
-These tiers define **what** the firmware must do and **how** at a process
-level — but not the software architecture. The firmware's task model, module
-boundaries, and priorities are intentionally deferred to a fresh derivation
-from these specs, free from factory-firmware influence.
+Tiers 1–3 define **what** the firmware must do and **how** at a process
+level. **Tier 4 (`40-architecture/`)** defines the firmware's software
+architecture: task model, flash partition layout, port contracts, SDK
+integration, and build system. All architecture decisions derive from Tiers
+1–3, free from factory-firmware influence.
 
 Behavioral changes are tracked as git diffs on spec files. There is no
 separate changelog.
