@@ -35,6 +35,8 @@ fi
 mkdir -p "$PETFEEDER_APP/GCC"
 ln -sfn "$FIRMWARE_DIR/src" "$PETFEEDER_APP/src"
 ln -sfn "$FIRMWARE_DIR/inc" "$PETFEEDER_APP/inc"
+ln -sfn "$FIRMWARE_DIR/ports" "$PETFEEDER_APP/ports"
+ln -sfn "$FIRMWARE_DIR/adapters" "$PETFEEDER_APP/adapters"
 ln -sfn "$FIRMWARE_DIR/flash" "$PETFEEDER_APP/flash"
 for gcc_file in Makefile feature.mk mt7682_flash.ld; do
     if [ -f "$FIRMWARE_DIR/GCC/$gcc_file" ]; then
@@ -63,6 +65,10 @@ ln -sfn "$FIRMWARE_DIR/inc/bl_dual_image.h" "$BOOTLOADER_INC/bl_dual_image.h"
 ln -sfn "$FIRMWARE_DIR/inc/boot_bank.h" "$BOOTLOADER_INC/boot_bank.h"
 ln -sfn "$FIRMWARE_DIR/src/bl_dual_image.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/bl_dual_image.c"
 ln -sfn "$FIRMWARE_DIR/src/boot_bank.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/boot_bank.c"
+
+MQTT_CLIENT_INC="$SDK_ROOT/project/mt7682_hdk/apps/mqtt_client/inc"
+mkdir -p "$MQTT_CLIENT_INC"
+ln -sfn "$FIRMWARE_DIR/inc/memory_map.h" "$MQTT_CLIENT_INC/memory_map.h"
 
 # copy_firmware.sh reads tools/config/iv2001/download/default/flash_download.cfg
 IV2001_DOWNLOAD_CFG="$SDK_ROOT/tools/config/iv2001/download/default"

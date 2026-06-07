@@ -2,13 +2,15 @@
 
 CC       ?= gcc
 CFLAGS   ?= -Wall -Wextra -std=c11 -pedantic
-CPPFLAGS := -I. -I../inc -I../ports -Iunity
+CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Iunity
 LDFLAGS  :=
 BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
 UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
-HOST_SRCS := ../src/boot_bank.c
+HOST_SRCS := ../src/boot_bank.c \
+             ../src/wifi_cred.c \
+             fakes/fake_config_port.c
 
 .PHONY: all test-host clean
 

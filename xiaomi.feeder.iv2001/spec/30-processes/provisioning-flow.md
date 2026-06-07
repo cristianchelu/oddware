@@ -30,7 +30,7 @@ Minimal HTTP server at 192.168.4.1 serving a single-page form:
 | Field | Type | Required | Default |
 |-------|------|----------|---------|
 | Wi-Fi SSID | text | yes | — |
-| Wi-Fi password | password | yes | — |
+| Wi-Fi password | password | no | (empty = open network; validation: [uart-console.md](uart-console.md#wi-fi-credential-rules)) |
 | MQTT broker host | text | yes | — |
 | MQTT broker port | number | no | 1883 |
 | MQTT username | text | no | (empty = anonymous) |
@@ -46,7 +46,7 @@ On form submit:
 
 | Step | Action | On failure |
 |------|--------|------------|
-| 1 | Validate inputs (non-empty SSID, valid port range) | Show validation error on form |
+| 1 | Validate inputs (Wi-Fi SSID/password per [uart-console.md](uart-console.md#wi-fi-credential-rules); MQTT port 1–65535) | Show validation error on form |
 | 2 | Attempt STA connection to provided Wi-Fi (timeout `[tune]` 15 s) | Show "Connection failed" on portal, remain in AP |
 | 3 | On STA success: attempt MQTT connect (timeout `[tune]` 10 s) | Store Wi-Fi anyway, show MQTT warning, allow retry |
 | 4 | Store all config to NVDM (`wifi/*`, `mqtt/*`) | — |

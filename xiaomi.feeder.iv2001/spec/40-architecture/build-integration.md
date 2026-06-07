@@ -98,6 +98,15 @@ combo headers. Without it, `hal_flash_init()` fails on IV2001 hardware.
 Maintained as `firmware/patches/flash_combo_w25q16dw.patch`, applied by
 `build-env.sh` (idempotent).
 
+### Wi-Fi NVDM namespaces
+
+The SDK `wifi_nvdm_config` module seeds its own NVDM groups (`STA`, `AP`,
+`common`, …) for radio defaults. Application Wi-Fi credentials use a
+separate `wifi` group (`ssid`, `pass`) per
+[config-store.md](../30-processes/config-store.md). `sta_auto_connect` is
+disabled in `wifi_adapter_stack_init()` so the SDK profile is not used for
+association; the connect task reads only the `wifi` group.
+
 ## `tools/build-env.sh`
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.
@@ -120,5 +129,6 @@ No FreeRTOS dependency.
 
 ### On-target tests
 
-Cross-compiled; triggered via UART CLI or MQTT. Validate adapters against
-real HAL.
+Cross-compiled; triggered via UART CLI (see
+[uart-console.md](../30-processes/uart-console.md)) or MQTT. Validate
+adapters against real HAL.

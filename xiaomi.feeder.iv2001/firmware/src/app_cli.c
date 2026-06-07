@@ -1,5 +1,5 @@
 /*
- * UART CLI: show / switch A/B boot bank (Step 2 checkpoint).
+ * UART console — spec/30-processes/uart-console.md
  */
 
 #include <stdio.h>
@@ -16,6 +16,7 @@
 #include "hal_sys.h"
 
 #include "boot_bank_target.h"
+#include "app_wifi_cli.h"
 
 #define CLI_HISTORY_LINES   20
 #define CLI_HISTORY_LINE    128
@@ -25,7 +26,7 @@ static char *s_history_ptrs[CLI_HISTORY_LINES];
 static char s_history_input[CLI_HISTORY_LINE];
 static char s_history_parse_token[CLI_HISTORY_LINE];
 
-static uint8_t boot_bank_cli_show(uint8_t argc, char *argv[])
+static uint8_t app_cli_bank_show(uint8_t argc, char *argv[])
 {
     (void)argc;
     (void)argv;
@@ -36,7 +37,7 @@ static uint8_t boot_bank_cli_show(uint8_t argc, char *argv[])
     return 0;
 }
 
-static uint8_t boot_bank_cli_switch(uint8_t argc, char *argv[])
+static uint8_t app_cli_bank_switch(uint8_t argc, char *argv[])
 {
     (void)argc;
     (void)argv;
@@ -54,14 +55,15 @@ static uint8_t boot_bank_cli_switch(uint8_t argc, char *argv[])
     return 0;
 }
 
-static cmd_t boot_bank_subcmds[] = {
-    { "show",   "show active bank",   boot_bank_cli_show,   NULL },
-    { "switch", "toggle A/B and reboot", boot_bank_cli_switch, NULL },
+static cmd_t app_cli_bank_subcmds[] = {
+    { "show",   "show active bank",        app_cli_bank_show,   NULL },
+    { "switch", "toggle A/B and reboot",   app_cli_bank_switch, NULL },
     { NULL, NULL, NULL, NULL },
 };
 
-static cmd_t boot_bank_cmds[] = {
-    { "bank", "bank show|switch", NULL, boot_bank_subcmds },
+static cmd_t app_cli_cmds[] = {
+    { "bank", "bank show|switch",      NULL, app_cli_bank_subcmds },
+    { "wifi", "wifi show|set|connect", NULL, wifi_cli_subcmds },
     { NULL, NULL, NULL, NULL },
 };
 
@@ -70,10 +72,10 @@ static cli_t s_cli = {
     .echo  = 0,
     .get   = __io_getchar,
     .put   = __io_putchar,
-    .cmd   = boot_bank_cmds,
+    .cmd   = app_cli_cmds,
 };
 
-static void boot_bank_cli_task(void *param)
+static void app_cli_task(void *param)
 {
     cli_history_t *hist = &s_cli.history;
     int i;
@@ -100,10 +102,10 @@ static void boot_bank_cli_task(void *param)
     }
 }
 
-void boot_bank_cli_start(void)
+void app_cli_start(void)
 {
-    xTaskCreate(boot_bank_cli_task,
-                "bank_cli",
+    xTaskCreate(app_cli_task,
+                "app_cli",
                 APP_TASK_STACKSIZE / sizeof(portSTACK_TYPE),
                 NULL,
                 APP_TASK_PRIO,

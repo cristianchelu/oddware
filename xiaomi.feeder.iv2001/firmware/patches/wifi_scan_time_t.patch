@@ -1,0 +1,16 @@
+--- a/middleware/MTK/wifi_service/combo/inc/wifi_scan.h
++++ b/middleware/MTK/wifi_service/combo/inc/wifi_scan.h
+@@ -64,11 +64,9 @@ extern const unsigned char RSN_OUI[];
+ extern const unsigned char WPS_OUI[];
+ extern const unsigned char ZeroMAC[];
+ 
+-typedef long __time_t;
+-
+ struct __time {
+-    __time_t sec;
+-    __time_t usec;
++    int32_t sec;
++    int32_t usec;
+ };
+ 
+ 

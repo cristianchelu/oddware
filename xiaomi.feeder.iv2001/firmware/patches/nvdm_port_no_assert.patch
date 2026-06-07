@@ -1,0 +1,38 @@
+--- a/middleware/MTK/nvdm/src/nvdm_port.c
++++ b/middleware/MTK/nvdm/src/nvdm_port.c
+@@ -66,7 +66,6 @@ void nvdm_port_log_error(const char *message, ...)
+     vprint_module_log(&log_control_block_common, __FUNCTION__, __LINE__, PRINT_LEVEL_ERROR, message, ap);
+     va_end(ap);
+ 
+-    assert(0);
+ }
+ #else
+ void nvdm_port_log_notice(const char *message, ...)
+@@ -75,12 +74,24 @@ void nvdm_port_log_info(const char *message, ...)
+ void nvdm_port_log_error(const char *message, ...)
+ {
+-    assert(0);
+ }
+ #endif
+@@ -92,11 +103,23 @@ void nvdm_port_flash_write(uint32_t address, const uint8_t *buffer, uint32_t le
+ {
+     hal_flash_status_t status;
+ 
+-    status = hal_flash_write(address, buffer, length);
+-    if (status != HAL_FLASH_STATUS_OK) {
+-        nvdm_port_log_error("hal_flash_write: address = 0x%08x, buffer = 0x%08x, length = %d, status = %d", address, (uint32_t)buffer, length, status);
++    while (length > 0) {
++        uint32_t page_remain = 256 - (address & 0xff);
++        uint32_t chunk = (length < page_remain) ? length : page_remain;
++
++        status = hal_flash_write(address, buffer, chunk);
++        if (status != HAL_FLASH_STATUS_OK) {
++            nvdm_port_log_error("hal_flash_write: address = 0x%08x, buffer = 0x%08x, length = %d, status = %d", address, (uint32_t)buffer, chunk, status);
++            return;
++        }
++
++        address += chunk;
++        buffer += chunk;
++        length -= chunk;
+     }
+ }

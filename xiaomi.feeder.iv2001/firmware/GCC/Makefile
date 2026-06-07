@@ -1,4 +1,4 @@
-# petfeeder — IV2001 firmware (Step 2: dual-image boot)
+# petfeeder — IV2001 firmware
 # SDK scaffold files are referenced by path, not copied. See build-integration.md.
 
 SOURCE_DIR  = ../../../../..
@@ -23,9 +23,28 @@ ifeq ($(MTK_MINICLI_ENABLE),y)
 include $(SOURCE_DIR)/middleware/MTK/minicli/module.mk
 endif
 
+ifeq ($(MTK_NVDM_ENABLE),y)
+include $(SOURCE_DIR)/middleware/MTK/nvdm/module.mk
+endif
+
 ifeq ($(MTK_FOTA_ENABLE),y)
 include $(SOURCE_DIR)/middleware/MTK/fota/module.mk
 endif
+
+ifeq ($(MTK_CM4_WIFI_TASK_ENABLE),y)
+ifeq ($(MTK_WIFI_ROM_ENABLE),y)
+ifneq ($(wildcard $(strip $(SOURCE_DIR))/middleware/MTK/wifi_stack),)
+include $(SOURCE_DIR)/middleware/MTK/wifi_stack/module.mk
+else
+include $(SOURCE_DIR)/prebuilt/middleware/MTK/wifi_stack/module.mk
+endif
+endif
+endif
+
+include $(SOURCE_DIR)/middleware/MTK/connsys/module.mk
+include $(SOURCE_DIR)/middleware/third_party/lwip/module.mk
+include $(SOURCE_DIR)/middleware/MTK/dhcpd/module.mk
+include $(SOURCE_DIR)/middleware/MTK/wifi_service/combo/module.mk
 
 DEBUG           = 0
 FLOAT_TYPE      = hard
@@ -36,18 +55,31 @@ OUTPATH         = $(PWD)/build
 
 APP_PATH        = $(patsubst $(SDK_PATH)/%,%,$(abspath $(dir $(PWD))))
 APP_PATH_SRC    = $(APP_PATH)/src
+APP_PATH_ADAPT  = $(APP_PATH)/adapters
 
-# LinkIt minicli example — scaffold only, not committed
 MINICLI         = project/mt7682_hdk/apps/minicli
+MQTT_CLIENT     = project/mt7682_hdk/apps/mqtt_client
 
 APP_FILES      += $(APP_PATH_SRC)/main.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c
-APP_FILES      += $(APP_PATH_SRC)/boot_bank_cli.c
+APP_FILES      += $(APP_PATH_SRC)/app_cli.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
+APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
+APP_FILES      += $(APP_PATH_SRC)/nvdm_boot.c
+APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
 APP_FILES      += $(APP_PATH_SRC)/ept_gpio_var.c
 APP_FILES      += $(APP_PATH_SRC)/ept_eint_var.c
 APP_FILES      += $(MINICLI)/src/regions_init.c
-APP_FILES      += $(MINICLI)/src/sys_init.c
+APP_FILES      += $(MQTT_CLIENT)/src/sys_init.c
+APP_FILES      += $(MQTT_CLIENT)/src/mem_layout_info.c
+APP_FILES      += $(MQTT_CLIENT)/src/wifi_lwip_helper.c
+APP_FILES      += $(MQTT_CLIENT)/src/network_default_config.c
+APP_FILES      += $(MQTT_CLIENT)/src/nvdm_config.c
+APP_FILES      += $(MQTT_CLIENT)/src/wifi_nvdm_config.c
 APP_FILES      += $(MINICLI)/GCC/syscalls.c
 
 SYS_FILES      += $(MINICLI)/src/system_mt7682.c
@@ -55,16 +87,21 @@ SYS_FILES      += $(MINICLI)/src/system_mt7682.c
 C_FILES        += $(APP_FILES) $(SYS_FILES)
 S_FILES        += $(MINICLI)/GCC/startup_mt7682.s
 
+CFLAGS := -I$(SOURCE_DIR)/$(APP_PATH)/inc $(CFLAGS)
+
 C_OBJS          = $(C_FILES:%.c=$(BUILD_DIR)/%.o)
 S_OBJS          = $(S_FILES:%.s=$(BUILD_DIR)/%.o)
 
-CFLAGS += -I$(SOURCE_DIR)/$(APP_PATH)/inc
+CFLAGS += -I$(SOURCE_DIR)/$(APP_PATH)/ports
+CFLAGS += -I$(SOURCE_DIR)/$(APP_PATH)/adapters
 CFLAGS += -I$(SOURCE_DIR)/$(MINICLI)/inc
+CFLAGS += -I$(SOURCE_DIR)/$(MQTT_CLIENT)/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/chip/mt7686/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/chip/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/board/mt7686_hdk/ept/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/CMSIS/Device/MTK/mt7682/Include
 CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/nvdm/inc
+CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/wifi_service/combo/inc
 
 LDFLAGS += $(ALLFLAGS) $(FPUFLAGS) --specs=nano.specs -lnosys -nostartfiles
 LDFLAGS += -Wl,-wrap=malloc -Wl,-wrap=calloc -Wl,-wrap=realloc -Wl,-wrap=free
@@ -87,7 +124,7 @@ $(MODULE_PATH):
 
 proj: $(OUTPATH)/$(PROJ_NAME).elf
 
-$(OUTPATH)/$(PROJ_NAME).elf: $(C_OBJS) $(S_OBJS) $(LIBS)
+$(OUTPATH)/$(PROJ_NAME).elf: $(C_OBJS) $(S_OBJS) $(LIBS) $(WIFI_ROM_SYM)
 	@echo Linking...
 	@if [ -e "$@" ]; then rm -f "$@"; fi
 	@if [ -e "$(OUTPATH)/$(PROJ_NAME).map" ]; then rm -f "$(OUTPATH)/$(PROJ_NAME).map"; fi

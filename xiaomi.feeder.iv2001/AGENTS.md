@@ -87,7 +87,10 @@ no `[tune]` values. Think acceptance criteria.
 
 **Tier 3 (processes):** Engineering-level mechanism descriptions. References
 specific pins (P0.0, GPIO17), includes `[tune]` parameters with starting
-values, describes sequencing and state transitions. Detailed enough to write
+values, describes sequencing and state transitions. Includes every
+user-visible or testable interface detail: UART CLI commands and response
+strings, MQTT topics and payload fields, captive-portal form fields,
+validation rules, timeouts, and state transitions. Detailed enough to write
 code and test assertions from — but no function signatures, task names, or
 module boundaries.
 
@@ -119,6 +122,10 @@ restates that fact** — not just the one you were editing.
 | User-visible MQTT fields | `mqtt-protocol.md` | Example JSON payloads, HA discovery table |
 | Flash addresses and partition sizes | `40-architecture/partition-layout.md` | `memory_map.h`, linker script, bootloader code |
 | Port function signatures | `40-architecture/ports.md` | Port header files in `firmware/ports/` |
+| UART CLI commands and responses | Tier 3 `uart-console.md` | UART CLI handler source |
+| Wi-Fi credential validation limits | Tier 3 `uart-console.md` | `wifi_cred.c`, captive portal validation |
+| Optional NVDM keys and display states | Tier 3 process for that mechanism (e.g. `uart-console.md` for `pass: (open)`) | `wifi_cred.c`, CLI handlers, provisioning forms |
+| SDK vs application NVDM namespaces | `40-architecture/build-integration.md` | `feature.mk`, adapters (do not reuse SDK `STA`/`AP` groups for app config) |
 | Task priorities and event types | `40-architecture/task-model.md` | `task_def.h`, event enum in source |
 
 Derived copies must match the canonical source. When restating a limit or
@@ -192,6 +199,29 @@ Read `spec/40-architecture/build-integration.md` and
 6. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 
+## Ports and adapters (layering)
+
+Application and orchestration code (`firmware/src/`, CLI handlers, credential
+logic) depends on **ports** and **port fakes** only — never on LinkIt SDK
+headers (`wifi_api.h`, `nvdm.h`, etc.).
+
+| Layer | Location | May include SDK headers? |
+|-------|----------|------------------------|
+| Port contract | `firmware/ports/` | No |
+| Port fake | `firmware/test/fakes/` | No |
+| Application logic | `firmware/src/` (e.g. `wifi_cred.c`, `app_wifi_cli.c`) | No |
+| Adapter | `firmware/adapters/` | Yes — sole SDK binding site |
+| Scaffold reference | SDK paths in `GCC/Makefile` (`sys_init.c`, helpers) | Compiled in; not edited in-tree |
+
+Adapters implement `ports.md` and own stack bring-up for their domain (e.g.
+`wifi_adapter_stack_init()`). `main.c` wires modules together; it does not
+call SDK Wi-Fi/NVDM APIs directly.
+
+When the SDK ships its own NVDM groups (e.g. `STA` radio profile from
+`wifi_nvdm_config`), treat them as HAL defaults. Application config uses
+the namespaces in `config-store.md` (`wifi`, `mqtt`, …). See
+`build-integration.md` — Wi-Fi NVDM namespaces.
+
 ## Test-driven development (mandatory)
 
 All firmware code follows strict **red/green/refactor** TDD. This is not
@@ -200,7 +230,9 @@ optional — it is a hard constraint on every implementation task.
 ### The rule
 
 1. **Read the spec.** Identify the testable assertions in the relevant
-   Tier 3 process and Tier 4 port contract.
+   Tier 3 process and Tier 4 port contract. If the behavior is not
+   described in a process file yet, **write or extend the process spec
+   first** — including CLI syntax, response strings, and validation rules.
 2. **Write the test first (red).** The test calls port functions, asserts
    expected behavior, and fails because the code does not exist yet.
 3. **Write the minimal code to pass (green).** No more, no less.
@@ -210,6 +242,26 @@ optional — it is a hard constraint on every implementation task.
 
 Do not write application code without a failing test that demands it.
 Do not write a test after the fact to cover code that already exists.
+Do not write firmware for a behavior that exists only in source or in an
+agent plan — Tier 3 is the authority.
+
+### Corner cases and optional config
+
+Validation-only tests are not enough when storage semantics matter. For each
+Tier 3 rule, ask:
+
+1. **Missing key** — NVDM key absent (not just empty string).
+2. **Partial write** — user set one field but not another (CLI sets SSID
+   before pass).
+3. **Display vs connect** — `show` / `is_stored` / `load` may disagree;
+   spec must define each (example: open Wi-Fi — SSID alone is enough to
+   connect; `pass: (open)` vs `pass: (unset)`).
+4. **Shared validation** — UART CLI, captive portal, and MQTT-facing paths
+   must use the same limits; canonical rules live in one Tier 3 file, others
+   link to it.
+
+Write host tests that exercise the **same API the firmware uses** (e.g.
+`wifi_cred_load` through `fake_config_port`), not only validators.
 
 ### What to test where
 
@@ -242,3 +294,39 @@ Integration tests assert Tier 2 story outcomes. When a process changes,
 update the spec first, then the tests, then the code — the git diff on
 the spec file is the changelog entry. When the architecture changes (new
 port, new task, new event), update the Tier 4 spec first.
+
+### No behavior without a process spec
+
+Every testable behavior belongs in a Tier 3 file before tests or code.
+This includes UART CLI commands, console response strings, validation
+limits, MQTT payload fields, and provisioning form rules — not only
+“business logic” modules.
+
+| If you are adding… | Spec home (Tier 3) |
+|--------------------|--------------------|
+| UART CLI command | `uart-console.md` |
+| MQTT topic or field | `mqtt-protocol.md` |
+| Captive-portal form field | `provisioning-flow.md` |
+| NVDM key or default | `config-store.md` |
+| OTA / bank / flash step | `ota-flow.md`, `partition-layout.md` (Tier 4 for addresses) |
+
+**Spec debt:** When code landed without a matching process file, reverse-
+document the current behavior into the appropriate Tier 3 spec, then align
+tests and implementation to that spec. Never leave behavior defined only in
+`firmware/` or agent plans.
+
+**Agent plans** (`.cursor/plans/`) are checklists and session notes — not
+substitutes for `spec/`. A plan step like “CLI bank switch” still requires
+`uart-console.md` (or equivalent) to describe the command before the
+handler is written.
+
+## Before finishing a firmware change
+
+1. **Spec** — Tier 3 lists every user-visible string, error path, and
+   optional-key behavior; grep `spec/` for stale copies of changed facts.
+2. **Tests** — `make test-host` green; new assertions for corner cases above.
+3. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
+4. **Comments** — no plan step numbers or checkpoint diaries in committed
+   `firmware/` or `spec/` (grep `Step [0-9]` and “checkpoint”).
+5. **Build** — `source tools/build-env.sh` then `./build.sh mt7682_hdk petfeeder`
+   when touching adapters, `GCC/`, or patches.

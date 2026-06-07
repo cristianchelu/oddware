@@ -13,8 +13,8 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 
 | Namespace | Key | Type | Default | Description |
 |-----------|-----|------|---------|-------------|
-| wifi | ssid | string | — | Wi-Fi SSID |
-| wifi | pass | string | — | Wi-Fi password |
+| wifi | ssid | string | — | Wi-Fi SSID (validation: [uart-console.md](uart-console.md#wi-fi-credential-rules)) |
+| wifi | pass | string | — | Wi-Fi password; key optional for open networks (validation: [uart-console.md](uart-console.md#wi-fi-credential-rules)) |
 | mqtt | host | string | — | Broker hostname / IP |
 | mqtt | port | uint16 | 1883 | Broker port |
 | mqtt | user | string | "" | Username (empty = anonymous) |

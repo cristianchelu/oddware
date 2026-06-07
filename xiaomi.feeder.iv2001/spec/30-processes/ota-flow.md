@@ -82,6 +82,8 @@ On boot after OTA:
 ## UART0 recovery (last resort)
 
 - UART0 (GPIO21 TX, GPIO22 RX) always available for serial flash programming.
+- Application CLI commands (`bank`, `wifi`) are defined in
+  [uart-console.md](uart-console.md).
 - MAC is in efuse; Wi-Fi config set at runtime — fully corrupted flash is
   recoverable without losing device identity.
 - Not an OTA path; requires physical access to module pads.
