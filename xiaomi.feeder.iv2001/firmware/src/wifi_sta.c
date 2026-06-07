@@ -13,6 +13,7 @@
 #include "wifi_port.h"
 #include "task_def.h"
 #include "wifi_adapter.h"
+#include "mqtt_client.h"
 #include "wifi_sta.h"
 
 log_create_module(wifi_sta, PRINT_LEVEL_INFO);
@@ -38,6 +39,7 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 
         if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
             LOG_I(wifi_sta, "STA ready, IP %s", ip);
+            mqtt_client_notify_wifi_ready();
         }
     }
 }

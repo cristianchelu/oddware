@@ -2,7 +2,7 @@
 
 CC       ?= gcc
 CFLAGS   ?= -Wall -Wextra -std=c11 -pedantic
-CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Iunity
+CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity
 LDFLAGS  :=
 BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
@@ -10,7 +10,18 @@ UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
 HOST_SRCS := ../src/boot_bank.c \
              ../src/wifi_cred.c \
-             fakes/fake_config_port.c
+             ../src/mqtt_cred.c \
+             ../src/mqtt_backoff.c \
+             ../src/mqtt_topics.c \
+             ../src/mqtt_route.c \
+             ../src/mqtt_client.c \
+             fakes/fake_config_port.c \
+             fakes/fake_mqtt_port.c \
+             fakes/fake_wifi_port.c \
+             fakes/fake_time.c \
+             fakes/freertos_shim.c \
+             fakes/host_stubs.c \
+             fakes/port_providers_host.c
 
 .PHONY: all test-host clean
 

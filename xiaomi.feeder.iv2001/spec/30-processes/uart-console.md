@@ -28,6 +28,14 @@ wifi show
 wifi set ssid <name>
 wifi set pass <password>
 wifi connect
+mqtt show
+mqtt set host <hostname>
+mqtt set port <port>
+mqtt set user <username>
+mqtt set pass <password>
+mqtt set device_id <id>
+mqtt connect
+mqtt disconnect
 ```
 
 Command matching is case-sensitive. Extra arguments after the required
@@ -160,3 +168,163 @@ with the CLI prompt):
 | Boot | Initialize Wi-Fi stack in STA-only mode with auto-connect **disabled** |
 | `wifi/ssid` stored in NVDM at boot | Automatically queue `wifi connect` equivalent |
 | No stored SSID | Remain idle until `wifi connect` or future provisioning |
+
+## MQTT broker rules
+
+Canonical validation for `mqtt/*` NVDM keys (see
+[config-store.md](config-store.md)). The same rules apply to captive-portal
+submission in [provisioning-flow.md](provisioning-flow.md).
+
+| Field | Rule | On violation |
+|-------|------|--------------|
+| Host | Non-empty; length 1–253 bytes | Reject with validation error |
+| Port | Integer 1–65535; default 1883 when key missing | Reject with validation error |
+| Username | Empty allowed (anonymous broker login) | — |
+| Password | Empty allowed | — |
+| Device ID | Empty allowed (MAC-derived at runtime); if non-empty, length 1–32 bytes, characters `[A-Za-z0-9_-]` only | Reject with validation error |
+| TLS | Boolean; default false when key missing | Reject invalid value |
+
+`mqtt_cred_is_stored` is true when NVDM `mqtt/host` exists and is non-empty.
+A stored host is required for `mqtt connect` but does **not** arm or start the
+client by itself (port defaults to 1883 when `mqtt/port` is missing).
+
+## `mqtt` commands
+
+Commands read and write NVDM group `mqtt` (`host`, `port`, `user`, `pass`,
+`device_id`, `tls`). They do not start AP provisioning mode.
+
+### `mqtt show`
+
+Displays stored MQTT broker settings. Password is never printed in cleartext.
+
+| Outcome | UART response |
+|---------|---------------|
+| Host unset | `host: (unset)` |
+| Host set | `host: <value>` |
+| Port unset | `port: 1883` (default) |
+| Port set | `port: <value>` |
+| User unset or empty | `user: (anonymous)` |
+| User set | `user: <value>` |
+| Password unset or empty | `pass: (empty)` |
+| Password set | `pass: ********` |
+| Device ID unset | `device_id: (mac)` |
+| Device ID set | `device_id: <value>` |
+| TLS unset | `tls: false` |
+| TLS set | `tls: true` or `tls: false` |
+
+### `mqtt set host <hostname>`
+
+Validates and writes `mqtt/host` to NVDM. Does not connect.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `host saved` |
+| Missing argument | `usage: mqtt set host <hostname>` |
+| Validation failure | `invalid host` |
+| NVDM write failure | `nvdm write failed` |
+
+### `mqtt set port <port>`
+
+Validates and writes `mqtt/port` to NVDM. Does not connect.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `port saved` |
+| Missing argument | `usage: mqtt set port <port>` |
+| Validation failure | `invalid port` |
+| NVDM write failure | `nvdm write failed` |
+
+### `mqtt set user <username>`
+
+Writes `mqtt/user` to NVDM (empty string allowed).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `user saved` |
+| Missing argument | `usage: mqtt set user <username>` |
+| NVDM write failure | `nvdm write failed` |
+
+### `mqtt set pass <password>`
+
+Writes `mqtt/pass` to NVDM (empty string allowed).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `password saved` |
+| Missing argument | `usage: mqtt set pass <password>` |
+| NVDM write failure | `nvdm write failed` |
+
+### `mqtt set device_id <id>`
+
+Validates and writes `mqtt/device_id` to NVDM. Empty string clears the key
+(MAC-derived ID used at runtime).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `device_id saved` |
+| Missing argument | `usage: mqtt set device_id <id>` |
+| Validation failure | `invalid device_id` |
+| NVDM write failure | `nvdm write failed` |
+
+### `mqtt set` (invalid subcommand)
+
+| Outcome | UART response |
+|---------|---------------|
+| Missing or unknown subcommand | `usage: mqtt set host|port|user|pass|device_id <value>` |
+
+### `mqtt connect`
+
+Loads broker settings from NVDM, validates, and starts MQTT connect when Wi-Fi
+STA has a DHCP address. Runs in the MQTT client task (not the CLI task).
+
+| Precondition | Behavior |
+|--------------|----------|
+| `mqtt/host` not stored | Reject without connecting |
+| Host stored | Queue connect; LWT on `.../state`; publish `{"online": true}` on success |
+
+| Outcome | UART response |
+|---------|---------------|
+| Host not stored | `set host first` |
+| Connect queued | `connecting...` |
+| Connect already in progress | `connect already in progress` |
+| Wi-Fi not ready | `wifi not ready` |
+
+On successful broker connect, syslog prints (not necessarily inline with the
+CLI prompt):
+
+- `mqtt connecting to <host>:<port>` (once per connect attempt burst)
+- `mqtt connected` (once per successful session)
+
+While connected, the client does not log per-message or disconnect/reconnect
+chatter on UART. LinkIt MQTT SDK debug (`[MQTT_CLIENT]: …`) is disabled in
+the default build (`MTK_MQTT_DEBUG_ENABLE = n` in `feature.mk`) because the
+SDK logs inside every `MQTTYield` loop and would flood the console.
+
+| Failure | Log / behavior |
+|---------|----------------|
+| Missing or invalid NVDM settings | `no valid mqtt config in NVDM` (client task) |
+| TCP or MQTT connect failure | `mqtt connect failed` (client task, once per attempt burst); exponential backoff reconnect while armed per [mqtt-protocol.md](mqtt-protocol.md) |
+| TLS enabled in NVDM (`mqtt/tls` true) | `mqtt_cred_load` fails; connect does not proceed |
+
+### `mqtt disconnect`
+
+Stops the MQTT client: disconnects if connected, cancels reconnect backoff, and
+does not retry until the next `mqtt connect`. NVDM settings are unchanged.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `mqtt stopped` |
+
+Saving `mqtt set host` (or other keys) alone does **not** start connecting.
+Only `mqtt connect` arms the client; `mqtt disconnect` disarms it.
+
+## Boot behavior (MQTT)
+
+| Condition | Action |
+|-----------|--------|
+| Boot | Start `mqtt_io` task; remain disarmed until `mqtt connect` |
+| `mqtt/host` in NVDM | Does not auto-connect (finish `user`/`pass`, then `mqtt connect`) |
+| After successful `mqtt connect` | Stay armed; reconnect with backoff if the session drops |
+
+Subscription scope, online/LWT behavior, and command routing are defined in
+[mqtt-protocol.md](mqtt-protocol.md#session-lifecycle).

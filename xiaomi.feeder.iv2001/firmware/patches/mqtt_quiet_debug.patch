@@ -1,0 +1,17 @@
+--- a/middleware/third_party/mqtt/MQTTClient-C/src/mediatek/MQTTMediatek.h
++++ b/middleware/third_party/mqtt/MQTTClient-C/src/mediatek/MQTTMediatek.h
+@@ -149,11 +149,13 @@ void InitTimer(Timer *timer);
+ 
+ /** Define 0 to disable logging, define 1 to enable logging. */
++#ifndef MTK_MQTT_DEBUG
+ #ifndef MTK_DEBUG_LEVEL_NONE
+ #define MTK_MQTT_DEBUG 1
+ #else
+ #define MTK_MQTT_DEBUG 0
+ #endif
++#endif
+ 
+ #if MTK_MQTT_DEBUG
+ #define MQTT_DBG(fmt,arg...)  LOG_I(MQTT_CLIENT, "[MQTT_CLIENT]: "fmt,##arg)
+ #define MQTT_WARN(fmt,arg...) LOG_W(MQTT_CLIENT, "[MQTT_CLIENT]: "fmt,##arg)
+ #define MQTT_ERR(fmt,arg...)  LOG_E(MQTT_CLIENT ,"[MQTT_CLIENT]: "fmt,##arg)

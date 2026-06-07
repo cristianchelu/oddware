@@ -19,8 +19,8 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | mqtt | port | uint16 | 1883 | Broker port |
 | mqtt | user | string | "" | Username (empty = anonymous) |
 | mqtt | pass | string | "" | Password |
-| mqtt | device_id | string | MAC-derived | MQTT topic device ID |
-| mqtt | tls | bool | false | Enable TLS |
+| mqtt | device_id | string | (empty) | MQTT topic device ID; empty = last 6 hex chars of STA MAC (see [mqtt-protocol.md](mqtt-protocol.md)) |
+| mqtt | tls | bool | false | Enable TLS; `true` rejected at `mqtt_cred_load` until TLS adapter exists |
 | feed | mode | enum | open_loop | Dispense mode: open_loop / compensated |
 | feed | default_g | uint8 | 10 | Manual button portion grams |
 | feed | child_lock | bool | false | Physical controls locked |

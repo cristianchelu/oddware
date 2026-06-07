@@ -171,7 +171,15 @@ resolve_tty_device() {
     printf '%s\n' "$resolved"
 }
 
+# Optional arg: CODA log file — countdown ends early only after a successful Done.
+flash_log_flash_succeeded() {
+    local log_file="${1:-}"
+
+    [ -n "$log_file" ] && [ -f "$log_file" ] && grep -qF "Done." "$log_file"
+}
+
 flash_reset_prompt() {
+    local log_file="${1:-}"
     local sec="${IOT_FLASH_RESET_WAIT_SEC:-30}"
     local remaining="$sec"
 
@@ -185,13 +193,21 @@ flash_reset_prompt() {
     printf '─%.0s' {1..60}
     echo ""
     while [ "$remaining" -gt 0 ]; do
+        if flash_log_flash_succeeded "$log_file"; then
+            echo ""
+            echo "  Flash completed."
+            return 0
+        fi
         printf '\r  %2ds remaining… ' "$remaining"
         sleep 1
         remaining=$((remaining - 1))
     done
     echo ""
-    echo "  Continuing (tool still running)…"
-    echo ""
+    if flash_log_flash_succeeded "$log_file"; then
+        echo "  Flash completed."
+    else
+        echo "  Reset window ended."
+    fi
 }
 
 # Start Wine/CODA, prompt for manual reset, wait for completion.
@@ -199,7 +215,7 @@ run_with_manual_reset() {
     local uart="$1"
     shift
     local listen_ms="${IOT_FLASH_LISTEN_MS:-2000}"
-    local pid status=0
+    local log pid status=0
 
     resolve_paths
     ensure_flashtool_extracted
@@ -207,11 +223,20 @@ run_with_manual_reset() {
     ensure_wine_prefix
     map_com_port "$uart"
 
-    (cd "$FT_WIN" && "$@") &
+    log="$(mktemp "${TMPDIR:-/tmp}/iot-flash.XXXXXX")"
+    trap "rm -f '$log'" RETURN
+
+    (cd "$FT_WIN" && "$@") 2>&1 | tee "$log" &
     pid=$!
     sleep "$(awk "BEGIN { printf \"%.3f\", $listen_ms / 1000 }")"
-    flash_reset_prompt
-    wait "$pid" || status=$?
+    flash_reset_prompt "$log"
+
+    if kill -0 "$pid" 2>/dev/null; then
+        echo "  Waiting for flash tool to finish..."
+        wait "$pid" || status=$?
+    else
+        wait "$pid" 2>/dev/null || status=$?
+    fi
 
     stop_wineserver
     return "$status"

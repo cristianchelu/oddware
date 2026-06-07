@@ -11,6 +11,7 @@
 #include "app_cli.h"
 #include "boot_bank_target.h"
 #include "wifi_sta.h"
+#include "mqtt_client.h"
 
 log_create_module(petfeeder, PRINT_LEVEL_INFO);
 
@@ -23,6 +24,7 @@ int main(void)
 
     app_cli_start();
     wifi_sta_start();
+    mqtt_client_start();
 
     SysInitStatus_Set();
     vTaskStartScheduler();

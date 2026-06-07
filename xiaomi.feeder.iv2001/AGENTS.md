@@ -75,6 +75,10 @@ When starting work on a feature or fix:
 5. Read `spec/40-architecture/` — the task model, port contracts, and build
    integration that your code must conform to.
 
+If step 4 does not yet describe the behavior you are about to implement,
+**stop here and write the Tier 3 spec before anything else** — not after
+code, not “before commit,” not as a summary of what you built.
+
 ## What belongs at each tier
 
 **Tier 1 (hardware):** Physical facts about the PCB. Pin maps, component
@@ -236,26 +240,70 @@ the namespaces in `config-store.md` (`wifi`, `mqtt`, …). See
 
 ## Test-driven development (mandatory)
 
-All firmware code follows strict **red/green/refactor** TDD. This is not
-optional — it is a hard constraint on every implementation task.
+All firmware code follows strict **spec → red → green → refactor**. This
+applies to features, bugfixes, bench discoveries, and plan-driven tasks.
+There is no alternate path.
 
-### The rule
+### The conga (only valid order)
 
-1. **Read the spec.** Identify the testable assertions in the relevant
-   Tier 3 process and Tier 4 port contract. If the behavior is not
-   described in a process file yet, **write or extend the process spec
-   first** — including CLI syntax, response strings, and validation rules.
-2. **Write the test first (red).** The test calls port functions, asserts
-   expected behavior, and fails because the code does not exist yet.
-3. **Write the minimal code to pass (green).** No more, no less.
-4. **Refactor.** Clean up duplication, naming, structure — tests must
-   still pass.
-5. **Repeat** for the next assertion.
+For **each** testable behavior (one assertion or tightly related group):
 
-Do not write application code without a failing test that demands it.
-Do not write a test after the fact to cover code that already exists.
-Do not write firmware for a behavior that exists only in source or in an
-agent plan — Tier 3 is the authority.
+1. **Spec** — Tier 3 (and Tier 4 if ports/architecture change) states the
+   behavior: CLI strings, MQTT topics, state transitions, error paths,
+   logging expectations, NVDM semantics. Commit or stage the spec delta
+   **before** the test and code that implement it.
+2. **Red** — host test fails against the spec.
+3. **Green** — minimal `firmware/` change to pass.
+4. **Refactor** — cleanup; tests still pass.
+
+Then the next behavior. Do not batch “implement the whole plan” in code and
+spec/tests later.
+
+### Hard stops (no escape hatches)
+
+| Forbidden | Do instead |
+|-----------|------------|
+| Implement from `.cursor/plans/` or chat acceptance criteria alone | Translate the plan step into Tier 3 spec text first |
+| “Reverse-document” / backfill spec from code before commit | Stop; write spec first, then test, then code (revert or redo if already coded) |
+| Write tests after code to “cover” what was built | Delete the backward test or treat it as step 2 of the conga on a **new** behavior only after spec exists |
+| Bench-debug → patch → flash → spec at end | Observe on bench → **spec delta** → failing test → fix → flash |
+| Partial spec (“CLI is documented, lifecycle isn’t”) as permission to code | List missing assertions; write them in the canonical Tier 3 file, then conga |
+| `#ifdef UNIT_TEST` or duplicate logic to make tests pass | Port fakes and shims (see below) |
+
+If a spec gap blocks you, **stop and report it** — or write the spec
+yourself in the same session **before** any application code. Guessing from
+OEM behavior, plan wording, or “what we did last time on the bench” is not
+allowed.
+
+### Agent plans
+
+`.cursor/plans/` are session checklists — **not** Tier 3. A plan step like
+“MQTT + LWT” or “Step 4” is a reminder to edit `mqtt-protocol.md`,
+`uart-console.md`, `config-store.md`, etc. **first**.
+
+**Plan-driven workflow:**
+
+1. Read the plan step and map it to Tier 3 files (use the table in
+   [No behavior without a process spec](#no-behavior-without-a-process-spec)).
+2. Draft or extend those process specs until a reviewer could write tests
+   from them alone.
+3. Run the conga per behavior group.
+4. Use the plan only to tick progress — never as the behavior definition.
+
+### Bench and flash loops
+
+When the user is at the hardware (UART spam, flash failure, reconnect bug):
+
+1. **Diagnose** — capture evidence (log snippet, repro steps).
+2. **Spec** — if the correct behavior is not already in Tier 3, add it now
+   (e.g. “idle yield does not drop session”, “countdown ends on `Done.` only”).
+3. **Red** — host test that fails with the bug (or documents the invariant).
+4. **Green** — fix in `firmware/` or `tools/`.
+5. **Flash** — ask the user to flash when a target image is needed.
+
+Skipping step 2 because “we’ll fix spec before commit” is the same violation
+as backfill. The commit must not be the first time Tier 3 mentions the
+behavior.
 
 ### Corner cases and optional config
 
@@ -274,6 +322,29 @@ Tier 3 rule, ask:
 
 Write host tests that exercise the **same API the firmware uses** (e.g.
 `wifi_cred_load` through `fake_config_port`), not only validators.
+
+### Host tests: same code, faked boundaries
+
+Host tests must compile and run the **same** `firmware/src/*.c` logic the
+device ships. Swap **adapters** for **fakes** at the link boundary — not
+`#ifdef UNIT_TEST`, `TEST`, or feature flags that change behavior inside
+the module under test.
+
+| Do | Don't |
+|----|-------|
+| `fakes/port_providers_host.c` implements `config_port_get`, `mqtt_port_get`, `wifi_port_get` | `#ifdef UNIT_TEST` branches in `mqtt_client.c` (or any app module) |
+| FreeRTOS/syslog shims in `firmware/test/fakes/shim/` | Copy-paste “test versions” of business logic |
+| Extract one iteration (`mqtt_client_step`) and call it from the real task **and** tests | Stub out `mqtt_client_do_connect` only on host |
+| Test-only helpers (`mqtt_client_test_reset`) that are never called from firmware | Test-only helpers guarded by macros that also wrap production paths |
+
+Test setup helpers may live in `firmware/src/` if they only reset state or
+register callbacks; they must not alter connect/arm/backoff logic. Prefer
+driving state through the public API (`mqtt_client_request_connect`,
+`mqtt_client_stop`, fake port state) before adding new helpers.
+
+If you think you need `#ifdef` for host tests, you almost certainly need a
+port fake, a shim header under `test/fakes/shim/`, or a smaller extracted
+function — not a second build of the module.
 
 ### What to test where
 
@@ -300,45 +371,47 @@ directory layout, and build commands.
 
 ## Deriving code from specs
 
-Implementation in `firmware/` is written exclusively from these specs.
-Unit tests assert Tier 3 process behaviors through Tier 4 port contracts.
-Integration tests assert Tier 2 story outcomes. When a process changes,
-update the spec first, then the tests, then the code — the git diff on
-the spec file is the changelog entry. When the architecture changes (new
-port, new task, new event), update the Tier 4 spec first.
+Implementation in `firmware/` is written exclusively from Tier 3 process
+specs and Tier 4 port contracts. The git diff on the **spec file must
+precede** (or land in the same commit before) the test and code diffs that
+implement it — spec is the changelog entry, not an afterword.
+
+When architecture changes (new port, task, event), update Tier 4 first, then
+Tier 3 behavior that uses it, then conga.
 
 ### No behavior without a process spec
 
-Every testable behavior belongs in a Tier 3 file before tests or code.
+Every testable behavior belongs in a Tier 3 file **before** tests and code.
 This includes UART CLI commands, console response strings, validation
-limits, MQTT payload fields, and provisioning form rules — not only
-“business logic” modules.
+limits, MQTT payload fields, session lifecycle, logging policy, and
+provisioning form rules — not only “business logic” modules.
 
 | If you are adding… | Spec home (Tier 3) |
 |--------------------|--------------------|
 | UART CLI command | `uart-console.md` |
-| MQTT topic or field | `mqtt-protocol.md` |
+| MQTT topic, session rule, or field | `mqtt-protocol.md` |
 | Captive-portal form field | `provisioning-flow.md` |
 | NVDM key or default | `config-store.md` |
 | OTA / bank / flash step | `ota-flow.md`, `partition-layout.md` (Tier 4 for addresses) |
+| Flash/download tooling behavior | `10-hardware/flash.md` |
 
-**Spec debt:** When code landed without a matching process file, reverse-
-document the current behavior into the appropriate Tier 3 spec, then align
-tests and implementation to that spec. Never leave behavior defined only in
-`firmware/` or agent plans.
-
-**Agent plans** (`.cursor/plans/`) are checklists and session notes — not
-substitutes for `spec/`. A plan step like “CLI bank switch” still requires
-`uart-console.md` (or equivalent) to describe the command before the
-handler is written.
+There is **no** “spec debt” or “reverse-document later” path. If code exists
+without Tier 3 text, the recovery is: write the spec to match the **intended**
+behavior (not a paste of the code), add failing tests, then change code until
+tests and spec align — not “document what shipped and call it done.”
 
 ## Before finishing a firmware change
 
-1. **Spec** — Tier 3 lists every user-visible string, error path, and
-   optional-key behavior; grep `spec/` for stale copies of changed facts.
-2. **Tests** — `make test-host` green; new assertions for corner cases above.
+Verify the conga actually happened — do not use this list to backfill:
+
+1. **Spec first** — Tier 3 already describes every new/changed behavior;
+   grep `spec/` for stale copies; **no** `Step N` or plan-only wording in
+   committed `spec/` or `firmware/`.
+2. **Tests** — `make test-host` green; new tests existed **before** or
+   alongside the code they assert (not a post-hoc coverage pass).
 3. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
-4. **Comments** — no plan step numbers or checkpoint diaries in committed
-   `firmware/` or `spec/` (grep `Step [0-9]` and “checkpoint”).
-5. **Build** — `source tools/build-env.sh` then `./build.sh mt7682_hdk petfeeder`
+4. **Build** — `source tools/build-env.sh` then `./build.sh mt7682_hdk petfeeder`
    when touching adapters, `GCC/`, or patches.
+
+If spec and code diverged during the session, **fix order in the branch**:
+spec commit (or hunk) before test/code hunks, or split into spec-first PR.

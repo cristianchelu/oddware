@@ -9,4 +9,12 @@
 #define CONFIG_KEY_WIFI_SSID "ssid"
 #define CONFIG_KEY_WIFI_PASS "pass"
 
+#define CONFIG_GROUP_MQTT          "mqtt"
+#define CONFIG_KEY_MQTT_HOST       "host"
+#define CONFIG_KEY_MQTT_PORT       "port"
+#define CONFIG_KEY_MQTT_USER       "user"
+#define CONFIG_KEY_MQTT_PASS       "pass"
+#define CONFIG_KEY_MQTT_DEVICE_ID  "device_id"
+#define CONFIG_KEY_MQTT_TLS        "tls"
+
 #endif /* CONFIG_KEYS_H */

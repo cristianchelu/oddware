@@ -17,6 +17,7 @@
 
 #include "boot_bank_target.h"
 #include "app_wifi_cli.h"
+#include "app_mqtt_cli.h"
 
 #define CLI_HISTORY_LINES   20
 #define CLI_HISTORY_LINE    128
@@ -64,6 +65,7 @@ static cmd_t app_cli_bank_subcmds[] = {
 static cmd_t app_cli_cmds[] = {
     { "bank", "bank show|switch",      NULL, app_cli_bank_subcmds },
     { "wifi", "wifi show|set|connect", NULL, wifi_cli_subcmds },
+    { "mqtt", "mqtt show|set|connect", NULL, mqtt_cli_subcmds },
     { NULL, NULL, NULL, NULL },
 };
 

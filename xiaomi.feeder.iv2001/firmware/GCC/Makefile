@@ -45,6 +45,8 @@ include $(SOURCE_DIR)/middleware/MTK/connsys/module.mk
 include $(SOURCE_DIR)/middleware/third_party/lwip/module.mk
 include $(SOURCE_DIR)/middleware/MTK/dhcpd/module.mk
 include $(SOURCE_DIR)/middleware/MTK/wifi_service/combo/module.mk
+include $(SOURCE_DIR)/middleware/third_party/mbedtls/module.mk
+include $(SOURCE_DIR)/middleware/third_party/mqtt/module.mk
 
 DEBUG           = 0
 FLOAT_TYPE      = hard
@@ -68,9 +70,16 @@ APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
 APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_cred.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_backoff.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_topics.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_route.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_client.c
+APP_FILES      += $(APP_PATH_SRC)/app_mqtt_cli.c
 APP_FILES      += $(APP_PATH_SRC)/nvdm_boot.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/mqtt_adapter.c
 APP_FILES      += $(APP_PATH_SRC)/ept_gpio_var.c
 APP_FILES      += $(APP_PATH_SRC)/ept_eint_var.c
 APP_FILES      += $(MINICLI)/src/regions_init.c
@@ -102,6 +111,10 @@ CFLAGS += -I$(SOURCE_DIR)/driver/board/mt7686_hdk/ept/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/CMSIS/Device/MTK/mt7682/Include
 CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/nvdm/inc
 CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/wifi_service/combo/inc
+
+ifneq ($(MTK_MQTT_DEBUG_ENABLE),y)
+CFLAGS += -DMTK_MQTT_DEBUG=0
+endif
 
 LDFLAGS += $(ALLFLAGS) $(FPUFLAGS) --specs=nano.specs -lnosys -nostartfiles
 LDFLAGS += -Wl,-wrap=malloc -Wl,-wrap=calloc -Wl,-wrap=realloc -Wl,-wrap=free

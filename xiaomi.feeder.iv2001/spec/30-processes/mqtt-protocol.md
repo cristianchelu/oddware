@@ -78,8 +78,32 @@ Each discovery message includes a `device` block with `identifiers`,
 | Broker port | NVDM `mqtt/port` (default 1883) |
 | Username | NVDM `mqtt/user` (empty = anonymous) |
 | Password | NVDM `mqtt/pass` |
-| TLS | NVDM `mqtt/tls` (default false); depends on available RAM for mbedTLS |
+| TLS | NVDM `mqtt/tls` (default false); `true` is rejected at load until a TLS adapter exists |
 | Client ID | `petfeeder_<device_id>` |
+| Device ID | NVDM `mqtt/device_id` when set; otherwise last 6 hex chars of STA MAC |
+
+### Session lifecycle
+
+Bench and runtime behavior (UART details in
+[uart-console.md](uart-console.md#mqtt-commands)):
+
+| Phase | Behavior |
+|-------|----------|
+| Boot | `mqtt_io` task starts **disarmed** — no connect attempt |
+| `mqtt connect` (or provisioning success) | Arm client; connect when Wi-Fi STA has DHCP |
+| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `{"online": true}` on `.../state`; install LWT per table above |
+| Connected idle | Process inbound commands via `MQTTYield`; route known `cmd/*` topics silently (handlers `[design]`) |
+| Session loss while armed | Exponential backoff reconnect (see below) |
+| `mqtt disconnect` | Disarm; disconnect if connected; cancel backoff; NVDM unchanged |
+
+Subscription is a single wildcard `.../cmd/#` covering the nine command topics
+below — not `#`, not other devices' namespaces.
+
+**Implemented now:** connect/LWT/online state, subscribe, reconnect backoff,
+command topic classification (no handlers yet).
+
+**Not implemented yet:** Home Assistant discovery, other retained state topics,
+command handlers, rate limiting.
 
 ### Reconnect strategy
 

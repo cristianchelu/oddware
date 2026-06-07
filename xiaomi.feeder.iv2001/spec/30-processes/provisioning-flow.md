@@ -48,7 +48,7 @@ On form submit:
 |------|--------|------------|
 | 1 | Validate inputs (Wi-Fi SSID/password per [uart-console.md](uart-console.md#wi-fi-credential-rules); MQTT port 1–65535) | Show validation error on form |
 | 2 | Attempt STA connection to provided Wi-Fi (timeout `[tune]` 15 s) | Show "Connection failed" on portal, remain in AP |
-| 3 | On STA success: attempt MQTT connect (timeout `[tune]` 10 s) | Store Wi-Fi anyway, show MQTT warning, allow retry |
+| 3 | On STA success: store `mqtt/*`, arm MQTT client, and attempt connect (timeout `[tune]` 10 s) — same session rules as [mqtt-protocol.md](mqtt-protocol.md#session-lifecycle) | Store Wi-Fi anyway, show MQTT warning, allow retry |
 | 4 | Store all config to NVDM (`wifi/*`, `mqtt/*`) | — |
 | 5 | Show success page with 3 s countdown | — |
 | 6 | Reboot into normal mode | — |
