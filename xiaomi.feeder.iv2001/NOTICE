@@ -4,20 +4,27 @@
 
 - "Xiaomi", "Mijia", "Mi Home", and "MIoT" are trademarks of Xiaomi Inc.
 - "MediaTek" is a trademark of MediaTek Inc.
-- "Airoha" is a trademark of Airoha Technology Corp.
 - "Home Assistant" is a trademark of Nabu Casa, Inc.
 - "Homey" is a trademark of Athom B.V.
 
-These names are used in this project **solely for descriptive/interoperability
-purposes** under nominative fair use. This project is not affiliated with or
-endorsed by any of the above entities.
+These names are used **solely for descriptive/interoperability purposes**.
+This project is not affiliated with or endorsed by any of the above entities.
 
-## Airoha IoT SDK
+## MediaTek LinkIt SDK
 
-This project builds against the Airoha IoT SDK for MT7682 (not included in this
-repository). The SDK is fetched externally at build time from a public GitHub
-mirror. No license grant is implied by availability of that mirror — the SDK
-remains the property of its respective copyright holders.
+Firmware builds against **LinkIt SDK v4.6.2** for MT7682. The SDK is **not**
+included in this repository. It is fetched into gitignored
+`external/linkit-sdk-v4.6.2-houndify/` by `tools/fetch-sdk.sh`.
+
+Builds reference SDK example sources **by path** from the local fetched tree
+(e.g. `project/mt7682_hdk/apps/fota_over_wifi/` as read-only scaffold). No SDK
+source files are vendored or committed under `firmware/`.
+
+Only application code, IV2001 board overlay, partition layout,
+linker script, flash-download config, and SDK patch files are in git.
+
+You are responsible for compliance with whatever license terms apply to your
+SDK copy.
 
 ## Open-source dependencies
 
@@ -27,6 +34,5 @@ remains the property of its respective copyright holders.
 - **Copyright:** Mike Karlesky, Mark VanderVoord, Greg Williams (ThrowTheSwitch.org)
 - **License:** MIT (SPDX-License-Identifier: MIT)
 - **Source:** https://github.com/ThrowTheSwitch/Unity
-- **Version:** v2.6.1 (`cbcd08fa7de711053a3deec6339ee89cad5d2697`)
-- **Vendored:** 2026-06-07 into `firmware/test/unity/` (`unity.c`, `unity.h`,
-  `unity_internals.h` from upstream `src/`)
+- **Version:** v2.6.1
+- **Vendored:** `firmware/test/unity/`

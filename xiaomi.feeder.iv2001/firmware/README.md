@@ -1,36 +1,32 @@
 # Firmware
 
 Implementation source for the pet feeder firmware. Built from the
-specifications in `spec/` — never from proprietary sources.
+specifications in `spec/`.
 
 ## Directory layout
 
 ```
 firmware/
   GCC/                    # Makefile, linker script, feature.mk
-  inc/                    # FreeRTOS config, task_def.h, memory_map.h
+  inc/                    # memory_map.h, ept_gpio_drv.h, FreeRTOS config
   src/                    # Application modules
-  src/fota_dual/          # Adapted fota_dual_image from houndify SDK
-  ports/                  # Port interface headers
-  adapters/               # SDK adapter implementations
-  test/                   # Host-side unit tests (Unity)
-  test/fakes/             # Fake port implementations for host tests
-  patches/                # SDK patches (flash combo W25Q16DW)
+  board/iv2001/           # BOARD_CONFIG=iv2001
+  flash/                  # IV2001 flash_download.cfg (2 MB layout)
+  patches/                # SDK patches (W25Q16DW flash combo, copy_firmware)
+  test/                   # Host unit tests (Unity)
 ```
 
-## Prerequisites
+## Setup
 
 ```bash
 ./tools/fetch-sdk.sh
 source tools/build-env.sh
 ```
 
-`build-env.sh` creates the SDK symlink (`apps/petfeeder` → this tree)
-and applies patches from `patches/`.
+`build-env.sh` creates the SDK app bridge under `project/mt7682_hdk/apps/petfeeder/`,
+wires `BOARD_CONFIG=iv2001`, and applies patches from `patches/`.
 
 ## Host tests
-
-Fast TDD loop — no hardware required:
 
 ```bash
 make -C firmware/test test-host
@@ -38,9 +34,17 @@ make -C firmware/test test-host
 
 ## Target build
 
-Once `GCC/Makefile` exists (Step 1):
+```bash
+./tools/build-firmware.sh
+```
+
+Or:
 
 ```bash
-cd external/airoha-iot-sdk
-./build.sh aw7698_evk petfeeder bl
+source tools/build-env.sh
+cd external/linkit-sdk-v4.6.2-houndify
+./build.sh mt7682_hdk petfeeder bl
 ```
+
+Output: `out/mt7682_hdk/petfeeder/` (`petfeeder.bin`, `mt7682_bootloader.bin`,
+`flash_download.cfg` with IV2001 addresses).

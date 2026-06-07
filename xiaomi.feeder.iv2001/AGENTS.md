@@ -150,6 +150,31 @@ When writing firmware:
 
 Provenance tags in specs are for traceability; see `spec/README.md`.
 
+## Build and SDK constraints
+
+Read `spec/40-architecture/build-integration.md` and
+`spec/40-architecture/sdk-reference.md` before touching `firmware/GCC/` or
+`tools/`.
+
+1. **No SDK in git.** The MediaTek LinkIt SDK lives only in gitignored
+   `external/linkit-sdk-v4.6.2-houndify/`, fetched by `tools/fetch-sdk.sh`.
+   Do not commit SDK sources, prebuilt `.a`/`.bin`, or copy example apps into
+   the repo. Unity (test harness) is the only third-party C code committed under
+   `firmware/`.
+2. **MT7682, no PSRAM.** IV2001 module is MHCW05P-B. Build with
+   `IC_CONFIG=mt7682`, `PRODUCT_VERSION=7682`, `MTK_NO_PSRAM_ENABLE=y`.
+   Linker uses SYSRAM/TCM — not PSRAM regions.
+3. **IV2001 board config is ours.** `BOARD_CONFIG=iv2001`. Pinmux in committed
+   `firmware/inc/ept_gpio_drv.h` and `firmware/src/ept_gpio_var.c` per
+   `spec/10-hardware/pinmap.md`. UART0 console @ GPIO21/22. Never use EVK
+   pinmux on feeder hardware.
+4. **Scaffold by path.** Reference SDK example files from the fetched tree at
+   compile time (`fota_over_wifi` for `sys_init.c`, etc.). Our tree supplies
+   `main.c`, `memory_map.h`, linker script, board overlay, patches.
+5. **Single SDK.** LinkIt v4.6.2 houndify tree only.
+6. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
+   bundled with LinkIt on Linux.
+
 ## Test-driven development (mandatory)
 
 All firmware code follows strict **red/green/refactor** TDD. This is not

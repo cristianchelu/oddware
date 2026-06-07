@@ -3,7 +3,8 @@
 ## Summary
 
 Single-chip ARM Cortex-M4F with integrated 802.11 b/g/n (2.4 GHz), flash
-controller, PMU, and peripherals. Runs FreeRTOS via the Airoha IoT SDK.
+controller, PMU, and peripherals. Application firmware targets this chip via
+LinkIt SDK 4.6 (`PRODUCT_VERSION=7682`).
 Packaged inside the MHCW05P-B module on this board.
 
 ## Key specs
@@ -32,15 +33,14 @@ Packaged inside the MHCW05P-B module on this board.
 
 ## Flash chip
 
-The module uses a **Winbond W25Q16DW** (JEDEC: 0xEF 0x60 0x15) — 16 Mbit /
-2 MB, fully populated and entirely available for our use (we build our own
-bootloader). The stock SDK flash-combo tables do not include this part — a
-custom combo entry is required. `[bootlog]` `[probe]`
+The module uses a **Winbond W25Q16DW** (JEDEC: 0xEF 0x60 0x15), 16 Mbit / 2 MB.
+The stock SDK flash-combo tables omit this part; a custom combo entry is
+required. `[bootlog]` `[probe]`
 
 ## Application notes
 
-- We build our own bootloader (SDK provides source) — full flash is ours.
+- Bootloader is built from the SDK `bootloader` example.
 - MAC address sourced from **efuse** (hardware OTP), not flash. `[bootlog]`
 - No dedicated RF calibration partition — country/region set at runtime.
 - Full 2 MB available for bootloader + app + OTA + config storage.
-- The SDK provides HAL drivers for all peripherals; we build against them.
+- HAL drivers come from the LinkIt SDK.

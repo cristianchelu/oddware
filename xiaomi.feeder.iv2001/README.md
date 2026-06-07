@@ -8,10 +8,10 @@ no MIoT, no phone-home.
 
 ## Status
 
-**Firmware foundation in progress.** Specs are written; host unit tests and build
-scaffolding exist. Target firmware build (Step 1) is next.
+Early development. Specifications and build tooling target LinkIt SDK 4.6 on
+MT7682 (no PSRAM). Application firmware is not yet complete.
 
-## Quick start (new clone)
+## Quick start
 
 From this directory (`xiaomi.feeder.iv2001/`):
 
@@ -19,10 +19,10 @@ From this directory (`xiaomi.feeder.iv2001/`):
 ./tools/bootstrap.sh
 ```
 
-That checks prerequisites, runs host unit tests, clones the Airoha SDK into
-`external/`, and configures the SDK symlink plus patches.
+Checks prerequisites, runs host unit tests, fetches the LinkIt SDK into
+gitignored `external/`, and runs `build-env.sh`.
 
-**Host tests only** (no SDK clone — fast sanity check):
+Host tests only (no SDK fetch):
 
 ```bash
 ./tools/bootstrap.sh --host-only
@@ -32,55 +32,48 @@ make test-host
 
 ### Prerequisites
 
+| Tool | Needed for | Fedora | Debian/Ubuntu |
+|------|------------|--------|---------------|
+| `git`, `make`, `gcc` | Host tests | `dnf install git make gcc` | `apt install git make gcc` |
+| `patch` | SDK patches | `dnf install patch` | `apt install patch` |
+| `arm-none-eabi-gcc` | Board firmware | `dnf install arm-none-eabi-gcc-cs` | `apt install gcc-arm-none-eabi` |
 
-| Tool                 | Needed for                   | Fedora                             | Debian/Ubuntu                   |
-| -------------------- | ---------------------------- | ---------------------------------- | ------------------------------- |
-| `git`, `make`, `gcc` | Host tests                   | `dnf install git make gcc`         | `apt install git make gcc`      |
-| `patch`              | Full bootstrap (SDK patches) | `dnf install patch`                | `apt install patch`             |
-| `arm-none-eabi-gcc`  | Board firmware (Step 1+)     | `dnf install arm-none-eabi-gcc-cs` | `apt install gcc-arm-none-eabi` |
+The SDK clone is large; use `--host-only` when working on specs or host tests only.
 
-
-Host development needs only the first row. The SDK clone is large (~1 GB);
-skip it with `--host-only` if you are only working on specs or host-tested logic.
-
-### After bootstrap
+### Firmware build
 
 ```bash
-make test-host                  # re-run unit tests anytime
-source tools/build-env.sh       # per-shell ARM toolchain PATH
+source tools/build-env.sh
+./tools/build-firmware.sh
 ```
 
-Target build (once `firmware/GCC/Makefile` exists):
-
-```bash
-cd external/airoha-iot-sdk
-./build.sh aw7698_evk petfeeder bl
-```
+Requires `firmware/GCC/Makefile` and related scaffold (see `firmware/README.md`).
 
 ## Non-affiliation disclaimer
 
-This project is **not** affiliated with, endorsed by, or associated with Xiaomi, Mijia,
-MediaTek, or Airoha in any way. Product names are used **descriptively** to identify
-compatible hardware only — no ownership or sponsorship is implied.
+This project is **not** affiliated with, endorsed by, or associated with Xiaomi,
+Mijia, or MediaTek in any way. Product names are used **descriptively** to
+identify compatible hardware only.
 
-The firmware produced here is an independent work. It does not contain, redistribute,
-or derive from any proprietary Xiaomi or MediaTek firmware binary.
+The firmware is an independent work. It does not contain, redistribute, or
+derive from proprietary Xiaomi or MediaTek firmware binaries.
 
 ## Repository layout
 
 ```
-spec/           Specification documents (hardware facts + our design)
-firmware/       Implementation source (C / FreeRTOS), built against $SDK_ROOT
-tools/          bootstrap.sh, fetch-sdk.sh, build-env.sh
-external/       Gitignored: fetched SDK lives here at build time
+spec/           Specifications (hardware + design — source of truth)
+firmware/       Oddware C/FreeRTOS implementation (committed)
+tools/          bootstrap, fetch-sdk, build-env, build-firmware
+external/       Gitignored — LinkIt SDK fetched here
 ```
+
+Only `firmware/`, `spec/`, `tools/`, and vendored Unity test sources are committed.
+The SDK is not part of the repository.
 
 ## Safety
 
-Flashing custom firmware can **brick your device** or create **fire/electrical hazards**
-if done incorrectly. Read [SAFETY.md](SAFETY.md) before you begin. Do not sell
-pre-flashed devices.
+Read [SAFETY.md](SAFETY.md) before flashing. UART0 recovery @ GPIO21/22.
 
 ## License
 
-See the repository root LICENSE (oddware monorepo). Third-party notices in [NOTICE](NOTICE).
+See repository root LICENSE. Third-party notices in [NOTICE](NOTICE).

@@ -50,7 +50,7 @@ if [ "${#missing[@]}" -gt 0 ]; then
             echo "Install the ARM GCC toolchain for firmware builds (Step 1+)." >&2
             echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs" >&2
             echo "  Debian:  sudo apt install gcc-arm-none-eabi" >&2
-            echo "Or use the toolchain bundled with the Airoha SDK, if present." >&2
+            echo "LinkIt SDK does not bundle a Linux GCC; use your distro package." >&2
             ;;
     esac
     exit 1

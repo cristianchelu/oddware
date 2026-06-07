@@ -1,0 +1,13 @@
+diff --git a/tools/scripts/build/copy_firmware.sh b/tools/scripts/build/copy_firmware.sh
+index 34a2812f..2d20318c 100644
+--- a/tools/scripts/build/copy_firmware.sh
++++ b/tools/scripts/build/copy_firmware.sh
+@@ -247,7 +247,7 @@ elif [ "$BOARD_CONFIG" == "mt7687_hdk" ]; then
+         cp $SOURCE_DIR/project/$BOARD_CONFIG/apps/bootloader/GCC/bootloader.bin $OUTPUT/$IC_CONFIG'_bootloader.bin'
+         echo "${OUTPUT}/${IC_CONFIG}_bootloader.bin doesn't exist. copy default bootloader done."
+     fi
+-elif [ "$BOARD_CONFIG" == "mt7686_hdk" ] || [ "$BOARD_CONFIG" == "mt7682_hdk" ] || [ "$BOARD_CONFIG" == "mt5932_hdk" ]; then
++elif [ "$BOARD_CONFIG" == "mt7686_hdk" ] || [ "$BOARD_CONFIG" == "mt7682_hdk" ] || [ "$BOARD_CONFIG" == "mt5932_hdk" ] || [ "$BOARD_CONFIG" == "iv2001" ]; then
+     # copy prebuilt files
+     cp -f $SOURCE_DIR/prebuilt/driver/chip/mt7686/mt768x_default_PerRate_TxPwr.bin $OUTPUT/
+     # copy download config file

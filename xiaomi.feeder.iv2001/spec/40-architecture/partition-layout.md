@@ -43,8 +43,8 @@ leaving headroom for application features. `[design]`
 ## A/B control block
 
 Located at flash offset `0x8000` (absolute `0x08008000`), inside the
-bootloader region. Format adapted from the LinkIt SDK dual-image FOTA
-implementation (see [sdk-reference.md](sdk-reference.md)):
+bootloader region. Format matches LinkIt SDK dual-image FOTA (see
+[sdk-reference.md](sdk-reference.md)):
 
 | Field | Offset | Size | Value |
 |-------|--------|------|-------|
@@ -70,9 +70,8 @@ build tools during image generation. Not modified by application code.
 
 ### Bootloader
 
-Custom bootloader based on the SDK `bootloader` example. Reads the A/B
-control block and jumps to the active bank. Contains the boot selector
-logic adapted from the houndify SDK's `fota_dual_image` module.
+Custom bootloader based on the LinkIt SDK `bootloader` example. Reads the
+A/B control block and jumps to the active bank via `fota_dual_image`.
 
 ### Bank A / Bank B
 
@@ -93,8 +92,6 @@ initial setup. Referenced by the WiFi driver at boot.
 
 ## Flash combo table
 
-Neither SDK includes the W25Q16DW in its flash combo table. The JEDEC ID
-`0xEF, 0x60, 0x15` must be added to
-`driver/chip/aw7698/src/hal_flash_combo_nor.c` via a patch file applied
-during build setup. Without this entry, the SDK refuses to initialize
-flash. See [build-integration.md](build-integration.md). `[design]`
+The stock flash combo table omits W25Q16DW (JEDEC `0xEF, 0x60, 0x15`). Add it
+via `firmware/patches/flash_combo_w25q16dw.patch` during build setup. See
+[build-integration.md](build-integration.md). `[design]`

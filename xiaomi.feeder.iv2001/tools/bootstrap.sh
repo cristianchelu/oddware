@@ -49,12 +49,11 @@ echo "==> Checking SDK prerequisites"
 "$SCRIPT_DIR/check-prereqs.sh" sdk
 
 echo ""
-echo "==> Fetching Airoha IoT SDK (large clone, one-time)"
+echo "==> Fetching LinkIt SDK v4.6.2 (large clone, one-time)"
 "$SCRIPT_DIR/fetch-sdk.sh"
 
 echo ""
-echo "==> Configuring SDK symlink and patches"
-# Subshell: apply side effects without requiring the caller to source.
+echo "==> Configuring SDK app bridge, board symlinks, and patches"
 (
     # shellcheck disable=SC1091
     source "$SCRIPT_DIR/build-env.sh"
@@ -75,7 +74,6 @@ echo ""
 echo "Next steps:"
 echo "  make test-host                  # re-run host tests anytime"
 echo "  source tools/build-env.sh       # per-shell ARM toolchain PATH"
-echo "  cd external/airoha-iot-sdk"
-echo "  ./build.sh aw7698_evk petfeeder bl   # once GCC/Makefile exists (Step 1)"
+echo "  ./tools/build-firmware.sh       # once GCC/Makefile exists (Step 1)"
 echo ""
 echo "Read AGENTS.md for spec-driven TDD workflow."

@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FIRMWARE_DIR="$REPO_ROOT/firmware"
 PATCHES_DIR="$FIRMWARE_DIR/patches"
 
-export SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/airoha-iot-sdk}"
+export SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
 
 if [ ! -d "$SDK_ROOT" ]; then
     echo "ERROR: SDK not found at $SDK_ROOT"
@@ -15,22 +15,49 @@ if [ ! -d "$SDK_ROOT" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# --- SDK app symlink (firmware/ -> project/aw7698_evk/apps/petfeeder) ---
-PETFEEDER_LINK="$SDK_ROOT/project/aw7698_evk/apps/petfeeder"
-
-if [ -L "$PETFEEDER_LINK" ]; then
-    current_target="$(readlink -f "$PETFEEDER_LINK")"
-    if [ "$current_target" != "$(readlink -f "$FIRMWARE_DIR")" ]; then
-        echo "Updating petfeeder symlink -> $FIRMWARE_DIR"
-        ln -sfn "$FIRMWARE_DIR" "$PETFEEDER_LINK"
-    fi
-elif [ -e "$PETFEEDER_LINK" ]; then
-    echo "ERROR: $PETFEEDER_LINK exists and is not a symlink"
-    return 1 2>/dev/null || exit 1
-else
-    echo "Creating petfeeder symlink -> $FIRMWARE_DIR"
-    ln -sfn "$FIRMWARE_DIR" "$PETFEEDER_LINK"
+# Shallow git clones often drop the executable bit on SDK helper scripts.
+if [ ! -x "$SDK_ROOT/build.sh" ]; then
+    echo "Fixing execute permission on SDK build scripts"
+    chmod +x "$SDK_ROOT/build.sh" 2>/dev/null || true
+    find "$SDK_ROOT/middleware" "$SDK_ROOT/tools" "$SDK_ROOT/driver" -name '*.sh' -type f ! -perm -111 \
+        -exec chmod +x {} + 2>/dev/null || true
 fi
+
+# --- SDK app bridge (project/mt7682_hdk/apps/petfeeder) ---
+# build.sh discovers projects via `find project | grep GCC/Makefile` which does
+# not descend into a symlinked app directory. Use a real petfeeder/ stub with
+# symlinks into firmware/ instead.
+PETFEEDER_APP="$SDK_ROOT/project/mt7682_hdk/apps/petfeeder"
+
+if [ -L "$PETFEEDER_APP" ]; then
+    rm -f "$PETFEEDER_APP"
+fi
+mkdir -p "$PETFEEDER_APP/GCC"
+ln -sfn "$FIRMWARE_DIR/src" "$PETFEEDER_APP/src"
+ln -sfn "$FIRMWARE_DIR/inc" "$PETFEEDER_APP/inc"
+ln -sfn "$FIRMWARE_DIR/flash" "$PETFEEDER_APP/flash"
+for gcc_file in Makefile feature.mk mt7682_flash.ld; do
+    if [ -f "$FIRMWARE_DIR/GCC/$gcc_file" ]; then
+        ln -sfn "$FIRMWARE_DIR/GCC/$gcc_file" "$PETFEEDER_APP/GCC/$gcc_file"
+    fi
+done
+echo "SDK app bridge: $PETFEEDER_APP -> $FIRMWARE_DIR"
+
+# --- IV2001 board config (config/board + driver/board symlinks into SDK) ---
+IV2001_BOARD_CFG="$SDK_ROOT/config/board/iv2001"
+mkdir -p "$(dirname "$IV2001_BOARD_CFG")"
+ln -sfn "$FIRMWARE_DIR/board/iv2001" "$IV2001_BOARD_CFG"
+
+IV2001_DRIVER_BOARD="$SDK_ROOT/driver/board/iv2001"
+mkdir -p "$IV2001_DRIVER_BOARD"
+ln -sfn "$SDK_ROOT/driver/board/mt7682_hdk/util" "$IV2001_DRIVER_BOARD/util"
+ln -sfn "$SDK_ROOT/driver/board/mt7686_hdk/ept" "$IV2001_DRIVER_BOARD/ept"
+echo "Board config: iv2001 (pinmux in firmware/, BSP via mt7682_hdk/mt7686_hdk)"
+
+# copy_firmware.sh expects tools/config/iv2001/download/default/flash_download.cfg
+IV2001_TOOLS_CFG="$SDK_ROOT/tools/config/iv2001"
+mkdir -p "$(dirname "$IV2001_TOOLS_CFG")"
+ln -sfn "$SDK_ROOT/tools/config/mt7682_hdk" "$IV2001_TOOLS_CFG"
 
 # --- Apply SDK patches (idempotent) ---
 if [ -d "$PATCHES_DIR" ]; then
@@ -42,23 +69,36 @@ if [ -d "$PATCHES_DIR" ]; then
         echo "Applying SDK patches from $PATCHES_DIR ..."
         for patch_file in "${patches[@]}"; do
             echo "  $(basename "$patch_file")"
-            if patch -p1 --forward --dry-run -d "$SDK_ROOT" -i "$patch_file" >/dev/null 2>&1; then
-                patch -p1 --forward -d "$SDK_ROOT" -i "$patch_file"
-            else
+            applied=0
+            if command -v patch >/dev/null 2>&1; then
+                if patch -p1 --forward --dry-run -d "$SDK_ROOT" -i "$patch_file" >/dev/null 2>&1; then
+                    patch -p1 --forward -d "$SDK_ROOT" -i "$patch_file"
+                    applied=1
+                fi
+            elif git -C "$SDK_ROOT" apply --check "$patch_file" >/dev/null 2>&1; then
+                git -C "$SDK_ROOT" apply "$patch_file"
+                applied=1
+            fi
+            if [ "$applied" -eq 0 ]; then
                 echo "    already applied or not applicable — skipping"
             fi
         done
     fi
 fi
 
-# --- Toolchain ---
-GCC_DIR="$SDK_ROOT/tools/gcc/linux/gcc-arm-none-eabi"
-if [ -d "$GCC_DIR/bin" ]; then
-    export PATH="$GCC_DIR/bin:$PATH"
-    echo "GCC toolchain added to PATH from SDK"
+# --- Toolchain (LinkIt does not bundle Linux GCC) ---
+if command -v arm-none-eabi-gcc >/dev/null 2>&1; then
+    export ARM_GCC_BIN="$(dirname "$(command -v arm-none-eabi-gcc)")"
+    export PATH="$ARM_GCC_BIN:$PATH"
+    echo "Using arm-none-eabi-gcc from $ARM_GCC_BIN"
+    # SDK Makefiles expect this layout.
+    mkdir -p "$SDK_ROOT/tools/gcc/linux" "$SDK_ROOT/tools/gcc"
+    ln -sfn "$ARM_GCC_BIN/.." "$SDK_ROOT/tools/gcc/linux/gcc-arm-none-eabi"
+    ln -sfn "$ARM_GCC_BIN/.." "$SDK_ROOT/tools/gcc/gcc-arm-none-eabi"
 else
-    echo "WARNING: GCC toolchain not found at $GCC_DIR/bin"
-    echo "You may need to install arm-none-eabi-gcc separately."
+    echo "WARNING: arm-none-eabi-gcc not found on PATH"
+    echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs"
+    echo "  Debian:  sudo apt install gcc-arm-none-eabi"
 fi
 
 echo "SDK_ROOT=$SDK_ROOT"

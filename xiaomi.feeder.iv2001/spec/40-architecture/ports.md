@@ -24,7 +24,7 @@ logic depends only on port interfaces, never on SDK headers directly.
                 +------------------------------+
                       |
                 +------------------------------+
-                |     Airoha IoT SDK / HAL      |
+                |     LinkIt SDK / MT7682 HAL   |
                 +------------------------------+
 ```
 

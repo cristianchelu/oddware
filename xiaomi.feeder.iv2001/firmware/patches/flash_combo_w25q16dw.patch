@@ -1,0 +1,102 @@
+--- a/driver/chip/mt7686/inc/hal_flash_combo_id.h
++++ b/driver/chip/mt7686/inc/hal_flash_combo_id.h
+@@ -63,6 +63,12 @@
+         CMEM_TYPE_SERIAL_NOR_FLASH,
+         3,  // Valid ID length
+         {0xEF, 0x40, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00}  // Flash ID
++    },
++    {
++        // W25Q16DW (Winbond 2 MB, IV2001)
++        CMEM_TYPE_SERIAL_NOR_FLASH,
++        3,
++        {0xEF, 0x60, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00}
+     }
+ 
+     COMBO_MEM_STRUCT_FOOT
+--- a/driver/chip/mt7686/inc/hal_flash_combo_config.h
++++ b/driver/chip/mt7686/inc/hal_flash_combo_config.h
+@@ -180,6 +180,32 @@
+             EndBankInfo,
+             EndBankInfo
+         }  // BankInfo End
++    },
++    {
++        // W25Q16DW (Winbond 2 MB, IV2001)
++        CMEM_FDM_NOR_DEFAULT,
++        256,
++        (4 | 32 | 64),
++        {
++            {0x0, 0x1000},
++            EndRegionInfo,
++            EndRegionInfo,
++            EndRegionInfo,
++            EndRegionInfo,
++            EndRegionInfo,
++            EndRegionInfo,
++            EndRegionInfo
++        },
++        {
++            {0x200000, 1},
++            EndBankInfo,
++            EndBankInfo,
++            EndBankInfo,
++            EndBankInfo,
++            EndBankInfo,
++            EndBankInfo,
++            EndBankInfo
++        }
+     }
+ 
+     COMBO_MEM_STRUCT_FOOT
+--- a/driver/chip/mt7686/inc/hal_flash_combo_sfi_defs.h
++++ b/driver/chip/mt7686/inc/hal_flash_combo_sfi_defs.h
+@@ -46,7 +46,7 @@
+ #define _SFI_SIP_SerialFlash
+ 
+ #if defined(_SFI_SIP_SerialFlash)
+-#define SFI_COMBO_COUNT    5
++#define SFI_COMBO_COUNT    6
+ #elif defined(__COMBO_MEMORY_SUPPORT__)
+ #if !defined(__DUAL_SERIAL_FLASH_SUPPORT__)
+ #define SFI_COMBO_COUNT    COMBO_MEM_ENTRY_COUNT
+--- a/driver/chip/mt7686/inc/hal_flash_combo_sfi_config.h
++++ b/driver/chip/mt7686/inc/hal_flash_combo_sfi_config.h
+@@ -206,6 +206,38 @@
+                 0                 // Reserved
+             }   // HW config End
+         }
++        ,
++        {
++            // W25Q16DW (Winbond 2 MB, IV2001)
++            {
++                0x00010000,
++                0x0C0B7771,
++                0x52F80310,
++                0x00000001,
++                0x0,
++                0x14051405,
++                0x00200200,
++                0,
++                0,
++                0
++            },
++            {
++                SPI, 1, 0x50, SPI, 3, 0x01, 0x02, 0x02,
++                SPI, 8, 0x01, 0x02, 0x01, 0x02, 0x00, 0x00,
++                0x00, 0x40, SF_UNDEF, 0, 0, 0, 0, 0,
++                0, 0, 0, 0, 0, 0, 0, 0
++            },
++            {
++                0x00010000,
++                0x0C0B7771,
++                0x52F80300,
++                0x00000001,
++                0x0,
++                0x0,
++                0x0,
++                0
++            }
++        }
+ 
+     }
+ };

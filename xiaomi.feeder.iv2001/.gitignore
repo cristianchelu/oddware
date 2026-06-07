@@ -1,4 +1,4 @@
-# External SDK (fetched, never committed)
+# LinkIt SDK — fetched by tools/fetch-sdk.sh, never committed to git
 external/
 
 # Session summaries (local memory, not committed)

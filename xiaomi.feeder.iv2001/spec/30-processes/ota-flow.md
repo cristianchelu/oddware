@@ -37,9 +37,8 @@ After full download:
 
 1. Read the A/B control block's expected hash (see
    [partition-layout.md](../40-architecture/partition-layout.md#ab-control-block)).
-2. Compute SHA-512 over the written bank contents. The houndify SDK's
-   dual-image FOTA uses SHA-512 for image integrity; we retain this
-   algorithm. `[design]`
+2. Compute SHA-512 over the written bank contents (LinkIt dual-image FOTA
+   format). `[design]`
 3. Compare against the expected hash from the OTA manifest.
 4. On mismatch: abort, publish error `"verify_failed"`, do not swap banks.
 

@@ -1,82 +1,86 @@
 # SDK reference
 
-Both SDKs are under `external/`, fetched by `tools/fetch-sdk.sh`.
+## Silicon and SDK
 
-## SDK inventory
+IV2001 uses **MT7682** in the Xiaomi MHCW05P-B module. There is no external
+PSRAM on this module.
 
-| SDK | Path | Version | FreeRTOS | Chip config | Role |
-|-----|------|---------|----------|-------------|------|
-| **Airoha IoT SDK** | `external/airoha-iot-sdk/` | V4.9.0 | 10.1.1 | `aw7698` (`PRODUCT_VERSION=7698`) | **Primary build SDK** |
-| **LinkIt SDK (houndify)** | `external/linkit-sdk-v4.6.2-houndify/` | V4.6.2 | 8.2.0 | `mt7682` (`PRODUCT_VERSION=7682`) | **Read-only reference** |
+All firmware builds use **LinkIt SDK v4.6.2** (houndify tree):
 
-Both target the same silicon family: AW7698 is an Airoha rebrand of
-MT7682/MT7686.
+| Property | Value |
+|----------|-------|
+| Path | `external/linkit-sdk-v4.6.2-houndify/` (gitignored, fetched locally) |
+| Board family | `mt7682_hdk` |
+| `IC_CONFIG` | `mt7682` |
+| `PRODUCT_VERSION` | `7682` (via `config/chip/mt7682/chip.mk`) |
+| Chip HAL module | `driver/chip/mt7686/module.mk` |
+| FreeRTOS | 8.2.0 (version is not architecturally significant) |
 
-## Airoha IoT SDK (primary)
+The SDK is not committed to this repository. See
+[build-integration.md](build-integration.md).
 
-All builds run against this tree. It provides:
+## Module memory profile
 
-- Linux GCC toolchain (ARM cross-compiler)
-- AW7698-specific HAL drivers
-- Prebuilt WiFi stack (`libwifi_aw7698_ram.a`, also ships `libwifi_mt7682_ram.a`)
-- FreeRTOS 10.1.1
-- Middleware: MQTT client, HTTP client/server, NVDM, mbedTLS, FOTA
+LinkIt `fota_over_wifi` is the reference app profile for this hardware:
 
-### Reference applications
+```
+MTK_NO_PSRAM_ENABLE                 = y
+MTK_MEMORY_WITHOUT_PSRAM            = y
+MTK_MEMORY_WITH_PSRAM_FLASH         = n
+```
 
-| App | Path | Relevance |
-|-----|------|-----------|
-| `bootloader` | `project/aw7698_evk/apps/bootloader/` | Bootloader base, copy-down FOTA model |
-| `fota_over_wifi` | `project/aw7698_evk/apps/fota_over_wifi/` | FOTA example, feature.mk template, memory_map.h reference |
-| `mqtt_client` | `project/aw7698_evk/apps/mqtt_client/` | MQTT client usage pattern |
-| `wifi_demo` | `project/aw7698_evk/apps/wifi_demo/` | WiFi STA/AP mode, CLI config pattern |
-| `httpd` | `project/aw7698_evk/apps/httpd/` | HTTP server for captive portal |
+Linker script must place `.data`/`.bss` in SYSRAM/TCM — not PSRAM `RAM`/`VRAM`
+regions. Our `firmware/GCC/mt7682_flash.ld` extends the SDK no-PSRAM template
+with the IV2001 2 MB flash bank layout.
 
-### FOTA model limitation
+## What the SDK provides
 
-The airoha SDK implements only a **copy-down** FOTA model for AW7698: a
-single application slot plus a staging area. The bootloader copies the
-staged image over the active slot on boot. This does not provide true A/B
-redundancy. `[design]`
+- MT7682 HAL and drivers (`driver/chip/mt7686/`)
+- Prebuilt WiFi: `libwifi_mt7682_ram.a`
+- Middleware: NVDM, MQTT, HTTP client, mbedTLS, **dual-image FOTA**
+- Example apps under `project/mt7682_hdk/apps/`
 
-## LinkIt SDK v4.6.2 (houndify, read-only reference)
+### Reference applications (read-only scaffold — not committed)
 
-Not used for building. Provides reference code and MT7682-specific
-configurations:
+| App | Path | Use |
+|-----|------|-----|
+| `bootloader` | `project/mt7682_hdk/apps/bootloader/` | Boot + dual-image jump |
+| `fota_over_wifi` | `project/mt7682_hdk/apps/fota_over_wifi/` | `feature.mk`, `Makefile`, `sys_init.c` template |
+| `mqtt_client` | `project/mt7682_hdk/apps/mqtt_client/` | MQTT patterns |
+| `wifi_demo` | `project/mt7682_hdk/apps/wifi_demo/` | WiFi STA / CLI NVDM |
 
-- `mt7682_hdk` board project with MT7682-specific configs
-- Flash download configuration for MT7682 (`flash_download.cfg`)
-- Dual-image FOTA implementation with A/B bank switching
+The application `Makefile` compiles oddware sources plus **paths into** these
+examples (e.g. `sys_init.c`, `startup_mt7682.s`). Example sources are not
+copied into git.
 
-### Key reference files
+## Dual-image FOTA
 
-| File | Path | What we take from it |
-|------|------|----------------------|
-| `fota_dual_image.c` | `middleware/MTK/fota/src/internal/` | A/B control block logic, bank switching, SHA-512 verification |
-| `fota_dual_image.h` | `middleware/MTK/fota/inc/internal/` | Control block struct, API signatures |
-| `flash_map_dual.h` | `middleware/MTK/fota/inc/internal/` | Partition address definitions (adapted to our 2 MB layout) |
-| `bl_fota.c` | `project/mt7682_hdk/apps/bootloader/src/` | Bootloader FOTA integration example |
+LinkIt ships `middleware/MTK/fota/src/internal/fota_dual_image.c` and
+`flash_map_dual.h`. Enable `MTK_FOTA_DUAL_IMAGE_ENABLE` in `feature.mk`.
 
-### Dual-image FOTA adaptation
+Adapt partition addresses in `flash_map_dual.h` (or a local override) to match
+[partition-layout.md](partition-layout.md) — 2 MB, Bank A/B, control block at
+`0x08008000`.
 
-The three dual-image files (~300 lines total) are **copied and adapted**
-into `firmware/src/fota_dual/` rather than cross-included at build time.
+## Toolchain
 
-Reason: `fota_dual_image.c` depends on `fota_internal.h` whose struct
-layouts differ between the houndify SDK (MT7682-era) and the airoha SDK
-(AW7698-era). Mixing include paths from two SDKs risks silent ABI
-mismatches. By copying the source and replacing `fota_internal.h` calls
-with direct `hal_flash_*` calls from the airoha SDK, we get a
-self-contained, auditable module. `[design]`
+LinkIt does not bundle a Linux `arm-none-eabi-gcc`. Use a distro package
+(`gcc-arm-none-eabi`, `arm-none-eabi-gcc-cs`) or a standalone ARM GNU Toolchain
+install. `build-env.sh` puts it on PATH and symlinks
+`tools/gcc/linux/gcc-arm-none-eabi` inside the SDK tree (expected by Makefiles).
 
-The adaptation changes:
+## IV2001 overlays (committed in `firmware/`)
 
-- Flash addresses in `flash_map_dual.h` updated to the 2 MB layout (see
-  [partition-layout.md](partition-layout.md)).
-- Internal flash read/write/erase calls replaced with airoha SDK
-  `hal_flash_*` equivalents.
-- SHA-512 verification retained; the houndify code has separate N9/CM4 hash
-  fields, but AW7698 uses a combined single image, so one hash field covers
-  the full bank contents.
-- Control block format preserved: magic `0x4455414C` ("DUAL"), active flag
-  `FOTA_IMAGE_A_MARK` = `0xABCDDCBA`, `FOTA_IMAGE_B_MARK` = `~0xABCDDCBA`.
+| File | Purpose |
+|------|---------|
+| `board/iv2001/board.mk` | `BOARD_CONFIG=iv2001` |
+| `inc/ept_gpio_drv.h`, `src/ept_gpio_var.c` | IV2001 pinmux |
+| `inc/memory_map.h` | 2 MB partition constants |
+| `GCC/mt7682_flash.ld` | No-PSRAM linker + 2 MB banks |
+| `flash/flash_download.cfg` | MediaTek Flash Tool, 2 MB addresses |
+| `patches/flash_combo_w25q16dw.patch` | W25Q16DW in `driver/chip/mt7686/` |
+
+## UART
+
+Console, flash tool, and recovery: **UART0 @ GPIO21/22**, 115200 8N1.
+UART1 (GPIO2/3) is factory-only — leave disabled in application firmware.

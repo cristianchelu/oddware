@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SDK_DIR="$REPO_ROOT/external/airoha-iot-sdk"
+SDK_DIR="$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify"
 
-SDK_REPO="https://github.com/Kamwing1992/SDK_For_MT5932-MT7682-MT7686-MT7687-MT7697-AW7698.git"
+SDK_REPO="https://github.com/luvinland/linkit-sdk-v4.6.2-houndify.git"
 SDK_BRANCH="main"
 
 if [ -d "$SDK_DIR/.git" ]; then
@@ -14,7 +14,7 @@ if [ -d "$SDK_DIR/.git" ]; then
     exit 0
 fi
 
-echo "Cloning Airoha IoT SDK into $SDK_DIR ..."
+echo "Cloning LinkIt SDK v4.6.2 into $SDK_DIR ..."
 echo "  repo:   $SDK_REPO"
 echo "  branch: $SDK_BRANCH"
 echo ""
@@ -25,6 +25,6 @@ echo ""
 echo "Done. SDK available at: $SDK_DIR"
 echo ""
 echo "Next:"
-echo "  source tools/build-env.sh    # symlink + patches + toolchain PATH"
+echo "  source tools/build-env.sh"
 echo "Or run full setup:"
 echo "  ./tools/bootstrap.sh"
