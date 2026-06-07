@@ -46,5 +46,7 @@ cd external/linkit-sdk-v4.6.2-houndify
 ./build.sh mt7682_hdk petfeeder bl
 ```
 
-Output: `out/mt7682_hdk/petfeeder/` (`petfeeder.bin`, `mt7682_bootloader.bin`,
-`flash_download.cfg` with IV2001 addresses).
+Build artifacts land in `external/.../out/mt7682_hdk/petfeeder/`.
+`build-firmware.sh` also symlinks the `.bin` files into `firmware/flash/` next
+to `flash_download.cfg` — the Flash Tool resolves ROM paths relative to that
+config file, so open **`firmware/flash/flash_download.cfg`** after each build.

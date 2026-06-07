@@ -1,0 +1,11 @@
+--- a/project/mt7682_hdk/apps/bootloader/GCC/Makefile
++++ b/project/mt7682_hdk/apps/bootloader/GCC/Makefile
+@@ -141,7 +141,7 @@ endif
+ # CC Flags
+ ALLFLAGS = -g -Os
+ ALLFLAGS += -Wall -mlittle-endian -mthumb -mcpu=cortex-m4
+-CFLAGS += $(ALLFLAGS) -flto -ffunction-sections -fdata-sections -fno-builtin
++CFLAGS += $(ALLFLAGS) -ffunction-sections -fdata-sections -fno-builtin
+ 
+ ifeq ($(FLOAT_TYPE), hard)
+ FPUFLAGS = -fsingle-precision-constant -Wdouble-promotion

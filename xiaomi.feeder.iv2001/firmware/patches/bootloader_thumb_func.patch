@@ -1,0 +1,12 @@
+--- a/project/mt7682_hdk/apps/bootloader/GCC/startup_bootloader.s
++++ b/project/mt7682_hdk/apps/bootloader/GCC/startup_bootloader.s
+@@ -97,7 +97,9 @@ end_bootloader:
+   bl end_bootloader
+ 
+ /*utility function*/
++.section .text
+ .globl JumpCmd
++.thumb_func
+ JumpCmd:
+   ORR  r0, #0x01
+   BX  r0

@@ -60,13 +60,8 @@ echo "==> Configuring SDK app bridge, board symlinks, and patches"
 )
 
 echo ""
-echo "==> Checking target toolchain (optional until Step 1)"
-if "$SCRIPT_DIR/check-prereqs.sh" target; then
-  :
-else
-    echo "WARNING: target toolchain not found — host development still works."
-    echo "Install arm-none-eabi-gcc before building firmware for the board."
-fi
+echo "==> Checking target toolchain"
+"$SCRIPT_DIR/check-prereqs.sh" target
 
 echo ""
 echo "Setup complete."

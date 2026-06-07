@@ -24,6 +24,12 @@ case "$mode" in
         ;;
     target)
         require_cmd arm-none-eabi-gcc
+        require_cmd arm-none-eabi-g++
+        require_cmd arm-none-eabi-objcopy
+        sysroot="$(arm-none-eabi-gcc -print-sysroot 2>/dev/null || true)"
+        if [ -z "$sysroot" ] || [ ! -f "$sysroot/include/stdio.h" ]; then
+            missing+=("arm-none-eabi newlib headers (stdio.h in sysroot)")
+        fi
         ;;
     *)
         echo "Usage: $0 {host|sdk|target}" >&2
@@ -47,10 +53,9 @@ if [ "${#missing[@]}" -gt 0 ]; then
             echo "  Debian:  sudo apt install patch" >&2
             ;;
         target)
-            echo "Install the ARM GCC toolchain for firmware builds (Step 1+)." >&2
-            echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs" >&2
+            echo "Install the ARM GCC toolchain for firmware builds." >&2
+            echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs arm-none-eabi-gcc-cs-c++ arm-none-eabi-newlib" >&2
             echo "  Debian:  sudo apt install gcc-arm-none-eabi" >&2
-            echo "LinkIt SDK does not bundle a Linux GCC; use your distro package." >&2
             ;;
     esac
     exit 1

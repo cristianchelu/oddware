@@ -36,7 +36,7 @@ make test-host
 |------|------------|--------|---------------|
 | `git`, `make`, `gcc` | Host tests | `dnf install git make gcc` | `apt install git make gcc` |
 | `patch` | SDK patches | `dnf install patch` | `apt install patch` |
-| `arm-none-eabi-gcc` | Board firmware | `dnf install arm-none-eabi-gcc-cs` | `apt install gcc-arm-none-eabi` |
+| `arm-none-eabi-gcc` + newlib | Board firmware | `dnf install arm-none-eabi-gcc-cs arm-none-eabi-gcc-cs-c++ arm-none-eabi-newlib` | `apt install gcc-arm-none-eabi` |
 
 The SDK clone is large; use `--host-only` when working on specs or host tests only.
 

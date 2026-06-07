@@ -54,10 +54,10 @@ ln -sfn "$SDK_ROOT/driver/board/mt7682_hdk/util" "$IV2001_DRIVER_BOARD/util"
 ln -sfn "$SDK_ROOT/driver/board/mt7686_hdk/ept" "$IV2001_DRIVER_BOARD/ept"
 echo "Board config: iv2001 (pinmux in firmware/, BSP via mt7682_hdk/mt7686_hdk)"
 
-# copy_firmware.sh expects tools/config/iv2001/download/default/flash_download.cfg
-IV2001_TOOLS_CFG="$SDK_ROOT/tools/config/iv2001"
-mkdir -p "$(dirname "$IV2001_TOOLS_CFG")"
-ln -sfn "$SDK_ROOT/tools/config/mt7682_hdk" "$IV2001_TOOLS_CFG"
+# copy_firmware.sh reads tools/config/iv2001/download/default/flash_download.cfg
+IV2001_DOWNLOAD_CFG="$SDK_ROOT/tools/config/iv2001/download/default"
+mkdir -p "$IV2001_DOWNLOAD_CFG"
+ln -sfn "$FIRMWARE_DIR/flash/flash_download.cfg" "$IV2001_DOWNLOAD_CFG/flash_download.cfg"
 
 # --- Apply SDK patches (idempotent) ---
 if [ -d "$PATCHES_DIR" ]; then
@@ -87,19 +87,36 @@ if [ -d "$PATCHES_DIR" ]; then
 fi
 
 # --- Toolchain (LinkIt does not bundle Linux GCC) ---
-if command -v arm-none-eabi-gcc >/dev/null 2>&1; then
-    export ARM_GCC_BIN="$(dirname "$(command -v arm-none-eabi-gcc)")"
-    export PATH="$ARM_GCC_BIN:$PATH"
-    echo "Using arm-none-eabi-gcc from $ARM_GCC_BIN"
-    # SDK Makefiles expect this layout.
-    mkdir -p "$SDK_ROOT/tools/gcc/linux" "$SDK_ROOT/tools/gcc"
-    ln -sfn "$ARM_GCC_BIN/.." "$SDK_ROOT/tools/gcc/linux/gcc-arm-none-eabi"
-    ln -sfn "$ARM_GCC_BIN/.." "$SDK_ROOT/tools/gcc/gcc-arm-none-eabi"
-else
-    echo "WARNING: arm-none-eabi-gcc not found on PATH"
-    echo "  Fedora:  sudo dnf install arm-none-eabi-gcc-cs"
-    echo "  Debian:  sudo apt install gcc-arm-none-eabi"
+if ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then
+    echo "ERROR: arm-none-eabi-gcc not found on PATH"
+    echo "Run: ./tools/check-prereqs.sh target"
+    return 1 2>/dev/null || exit 1
 fi
+
+ARM_GCC_SYSROOT="$(arm-none-eabi-gcc -print-sysroot 2>/dev/null || true)"
+if [ -z "$ARM_GCC_SYSROOT" ] || [ ! -f "$ARM_GCC_SYSROOT/include/stdio.h" ]; then
+    echo "ERROR: arm-none-eabi-gcc sysroot lacks newlib headers (stdio.h)"
+    echo "Run: ./tools/check-prereqs.sh target"
+    return 1 2>/dev/null || exit 1
+fi
+
+export ARM_GCC_BIN="$(dirname "$(command -v arm-none-eabi-gcc)")"
+export PATH="$ARM_GCC_BIN:$PATH"
+
+# SDK link step calls tools/gcc/gcc-arm-none-eabi/bin/arm-none-eabi-g++.
+# Distro tools live in /usr/bin — build a stub tree with bin/ symlinks.
+ARM_TOOLCHAIN_STUB="$REPO_ROOT/external/arm-none-eabi-stub"
+mkdir -p "$ARM_TOOLCHAIN_STUB/bin"
+for tool in gcc g++ objcopy objdump size nm ranlib strip; do
+    if command -v "arm-none-eabi-$tool" >/dev/null 2>&1; then
+        ln -sfn "$(command -v "arm-none-eabi-$tool")" "$ARM_TOOLCHAIN_STUB/bin/arm-none-eabi-$tool"
+    fi
+done
+
+mkdir -p "$SDK_ROOT/tools/gcc/linux" "$SDK_ROOT/tools/gcc"
+ln -sfn "$ARM_TOOLCHAIN_STUB" "$SDK_ROOT/tools/gcc/linux/gcc-arm-none-eabi"
+ln -sfn "$ARM_TOOLCHAIN_STUB" "$SDK_ROOT/tools/gcc/gcc-arm-none-eabi"
+echo "Using arm-none-eabi-gcc from $ARM_GCC_BIN"
 
 echo "SDK_ROOT=$SDK_ROOT"
 echo "FIRMWARE_DIR=$FIRMWARE_DIR"
