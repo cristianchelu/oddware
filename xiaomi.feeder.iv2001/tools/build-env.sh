@@ -38,7 +38,7 @@ ln -sfn "$FIRMWARE_DIR/inc" "$PETFEEDER_APP/inc"
 ln -sfn "$FIRMWARE_DIR/ports" "$PETFEEDER_APP/ports"
 ln -sfn "$FIRMWARE_DIR/adapters" "$PETFEEDER_APP/adapters"
 ln -sfn "$FIRMWARE_DIR/flash" "$PETFEEDER_APP/flash"
-for gcc_file in Makefile feature.mk mt7682_flash.ld; do
+for gcc_file in Makefile feature.mk mt7682_flash.ld mt7682_flash_A.ld mt7682_flash_B.ld; do
     if [ -f "$FIRMWARE_DIR/GCC/$gcc_file" ]; then
         ln -sfn "$FIRMWARE_DIR/GCC/$gcc_file" "$PETFEEDER_APP/GCC/$gcc_file"
     fi
@@ -64,6 +64,7 @@ ln -sfn "$FIRMWARE_DIR/inc/flash_map.h" "$BOOTLOADER_INC/flash_map.h"
 ln -sfn "$FIRMWARE_DIR/inc/bl_dual_image.h" "$BOOTLOADER_INC/bl_dual_image.h"
 ln -sfn "$FIRMWARE_DIR/inc/boot_bank.h" "$BOOTLOADER_INC/boot_bank.h"
 ln -sfn "$FIRMWARE_DIR/src/bl_dual_image.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/bl_dual_image.c"
+ln -sfn "$FIRMWARE_DIR/src/bl_boot_ctrl.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/bl_boot_ctrl.c"
 ln -sfn "$FIRMWARE_DIR/src/boot_bank.c" "$SDK_ROOT/project/mt7682_hdk/apps/bootloader/src/boot_bank.c"
 
 MQTT_CLIENT_INC="$SDK_ROOT/project/mt7682_hdk/apps/mqtt_client/inc"

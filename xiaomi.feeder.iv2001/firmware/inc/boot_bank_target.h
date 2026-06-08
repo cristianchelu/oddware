@@ -9,5 +9,6 @@
 
 boot_bank_t boot_bank_query_active(void);
 int boot_bank_switch_active(void);
+int boot_bank_switch_with_hash(const uint8_t image_hash[64]);
 
 #endif /* __BOOT_BANK_TARGET_H__ */

@@ -70,12 +70,22 @@ Windows IoT Flash Tool. Reference INI: `firmware/flash/coda_readback_2mb.ini`.
 Optional: `tools/udev/99-ch341-ignore-modemmanager.rules` prevents ModemManager
 from claiming CH340/CH341 adapters.
 
+### OTA (bench)
+
+MQTT-triggered A/B updates from a dev machine. See
+[`tools/ota/README.md`](tools/ota/README.md).
+
+```bash
+./tools/ota/mqtt-ota.sh --device-id 768722 --skip-build
+```
+
 ## Repository layout
 
 ```
 spec/           Specifications (source of truth)
 firmware/       Application source and board overlay
 tools/          Bootstrap, SDK fetch, build, flash helpers
+  ota/          MQTT OTA bench scripts (see tools/ota/README.md)
 external/       Gitignored — LinkIt SDK and Wine flash tool
 ```
 

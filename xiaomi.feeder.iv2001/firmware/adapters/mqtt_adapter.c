@@ -6,9 +6,12 @@
 #include <string.h>
 
 #include "MQTTClient.h"
+#include "syslog.h"
 
 #include "mqtt_adapter.h"
 #include "mqtt_port.h"
+
+log_create_module(mqtt_adapter, PRINT_LEVEL_INFO);
 
 #define MQTT_CMD_TIMEOUT_MS 12000
 #define MQTT_TX_BUF_SIZE    512
@@ -23,6 +26,8 @@ static bool s_session_up;
 static mqtt_lwt_t s_lwt;
 static char s_lwt_topic[128];
 static char s_lwt_payload[128];
+static char s_subscribe_topic[128];
+static char s_connect_client_id[64];
 static mqtt_message_cb_t s_on_message;
 static mqtt_connection_cb_t s_on_connection;
 static void *s_cb_ctx;
@@ -56,9 +61,12 @@ static void mqtt_adapter_message_arrived(MessageData *md)
         topic_buf[copy_len] = '\0';
         topic_cstr = topic_buf;
     } else {
+        LOG_E(mqtt_adapter, "message dropped: no topic");
         return;
     }
 
+    LOG_I(mqtt_adapter, "rx topic=%s len=%u", topic_cstr, (unsigned)message->payloadlen);
+    printf("[mqtt] rx %s len=%u\r\n", topic_cstr, (unsigned)message->payloadlen);
     s_on_message(topic_cstr, message->payload, message->payloadlen, s_cb_ctx);
 }
 
@@ -100,7 +108,9 @@ static port_err_t mqtt_adapter_connect(const mqtt_connect_cfg_t *cfg)
                sizeof(s_rx_buf));
 
     data.MQTTVersion = 4;
-    data.clientID.cstring = (char *)cfg->client_id;
+    strncpy(s_connect_client_id, cfg->client_id, sizeof(s_connect_client_id) - 1);
+    s_connect_client_id[sizeof(s_connect_client_id) - 1] = '\0';
+    data.clientID.cstring = s_connect_client_id;
     data.keepAliveInterval = 60;
     data.cleansession = 1;
 
@@ -176,7 +186,10 @@ static port_err_t mqtt_adapter_subscribe(const char *topic, uint8_t qos)
         return PORT_ERR_INVALID_ARG;
     }
 
-    rc = MQTTSubscribe(&s_client, topic, qos, mqtt_adapter_message_arrived);
+    strncpy(s_subscribe_topic, topic, sizeof(s_subscribe_topic) - 1);
+    s_subscribe_topic[sizeof(s_subscribe_topic) - 1] = '\0';
+
+    rc = MQTTSubscribe(&s_client, s_subscribe_topic, qos, mqtt_adapter_message_arrived);
     return rc == 0 ? PORT_OK : PORT_ERR_IO;
 }
 

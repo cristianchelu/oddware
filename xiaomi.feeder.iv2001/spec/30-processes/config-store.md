@@ -32,7 +32,8 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | calib | tare | int32 | 0 | Load cell tare offset |
 | calib | span | int32 | 1000 | Load cell span factor |
 | power | battery_wifi | enum | on | Wi-Fi on battery: on / off / scheduled_only |
-| system | boot_count | uint32 | 0 | Incremented each boot (OTA rollback detection) |
+| system | boot_count | uint32 | 0 | Incremented each post-OTA boot while `ota_pending` is set; cleared on successful post-OTA MQTT connect |
+| system | ota_pending | bool | 0 | Set to `1` before bank swap; cleared on successful post-OTA MQTT connect (OTA rollback health check) |
 | system | last_reset | enum | — | Reason for last reset (watchdog / ota / user / power) |
 
 ## Access pattern

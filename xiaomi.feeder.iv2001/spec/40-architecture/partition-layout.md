@@ -42,8 +42,11 @@ leaving headroom for application features. `[design]`
 
 ## A/B control block
 
-Located at flash offset `0x8000` (absolute `0x08008000`), inside the
-bootloader region. Format matches LinkIt SDK dual-image FOTA (see
+Located at flash offset `0xF000` (absolute `0x0800F000`), in the last
+4 KB sector of the 64 KB bootloader region — above the linked bootloader
+code. The slot at `0x8000` (`0x08008000`) falls inside linked bootloader
+`.text` and is not used for the control block.
+Format matches LinkIt SDK dual-image FOTA (see
 [sdk-reference.md](sdk-reference.md)):
 
 | Field | Offset | Size | Value |

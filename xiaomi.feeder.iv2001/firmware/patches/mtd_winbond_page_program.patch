@@ -1,0 +1,51 @@
+--- a/driver/chip/mt7686/src/hal_flash_mtd_dal.c
++++ b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
+@@ -2576,6 +2576,11 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+     /*
+      *  Page program loop
+      */
+     while (0 != Length) {
++        do {
++            result = SF_DAL_CheckDeviceReady(D, 0);
++        } while (FS_FLASH_ERASE_BUSY == result);
++
+         p_data_first    = p_data;
+         /*
+          * Calculate how many bytes to write this loop
+@@ -2589,6 +2594,14 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+         // stpe2. If program Length is greater than the offset to the page boundary
+         length = written = ((Length > length) ? length : Length);
+ 
++        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet §7.2.20) */
++        {
++            uint32_t nor_page_remain = 256u - (address & 255u);
++            if (written > nor_page_remain) {
++                written = nor_page_remain;
++                length = nor_page_remain;
++            }
++        }
++
+         if ((uint32_t)p_data & SFC_GENERIC_FLASH_BANK_MASK) {
+             //only copy data to RAM when data is on flash.
+             uint32_t j;
+@@ -2599,10 +2612,6 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+             p_data_first = tmp_data_buffer;
+         }
+ 
+-        if (!(D->sf_dal_fix & sf_fix_gigadevice_b))   { //For GD 3V device, WE cmd should put into IRQMask Region to avoid enter HPM mode again before Program.
+-            SF_DAL_Dev_WriteEnable(D);
+-        }
+-
+ 
+         // step3. Handling 3/4 bytes address
+ #if defined(__SFI_4BYTES_ADDRESS__)
+@@ -2621,6 +2630,9 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+         SF_Prog_Init();
+         savedMask = SaveAndSetIRQMask();
+         NOR_PROFILE_60Q_START();
++        if (!(D->sf_dal_fix & sf_fix_gigadevice_b)) {
++            SF_DAL_Dev_WriteEnable(D);
++        }
+ #if defined(SF_DAL_GIGADEVICE)   //For GD 3V device, WE cmd should put into IRQMask Region to avoid enter HPM mode again before Program.
+         if (D->sf_dal_fix & sf_fix_gigadevice_b)   {
+             SFI_Dev_Command(D->CS, D->CMD->WriteEnable);

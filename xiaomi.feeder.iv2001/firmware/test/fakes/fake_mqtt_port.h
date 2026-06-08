@@ -15,6 +15,8 @@ typedef struct fake_mqtt_port_state {
     char last_subscribe_topic[128];
     char last_publish_topic[128];
     char last_publish_payload[128];
+    char prior_publish_topic[128];
+    char prior_publish_payload[128];
     bool fail_next_connect;
     bool fail_subscribe;
     bool fail_publish;

@@ -1,0 +1,17 @@
+--- a/tools/scripts/build/copy_firmware.sh
++++ b/tools/scripts/build/copy_firmware.sh
+@@ -255,8 +255,12 @@ elif [ "$BOARD_CONFIG" == "mt7686_hdk" ] || [ "$BOARD_CONFIG" == "mt7682_hdk" ]
+     change_cfg_bin_filename $OUTPUT/flash_download.cfg $BIN_FILENAME
+ 
+-    # copy bootloader
++    # copy bootloader (iv2001 board config uses mt7682_hdk bootloader project)
++    BL_BOARD="$BOARD_CONFIG"
++    if [ "$BOARD_CONFIG" == "iv2001" ]; then
++        BL_BOARD="mt7682_hdk"
++    fi
+     if [ ! -f "${OUTPUT}/${IC_CONFIG}_bootloader.bin" ]; then
+-        cp $SOURCE_DIR/project/$BOARD_CONFIG/apps/bootloader/GCC/bootloader.bin $OUTPUT/$IC_CONFIG'_bootloader.bin'
++        cp $SOURCE_DIR/project/$BL_BOARD/apps/bootloader/GCC/bootloader.bin $OUTPUT/$IC_CONFIG'_bootloader.bin'
+         echo "${OUTPUT}/${IC_CONFIG}_bootloader.bin doesn't exist. copy default bootloader done."
+     fi
+ fi

@@ -12,7 +12,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 
 | Topic | Payload | QoS |
 |-------|---------|-----|
-| `.../state` | `{"online": true}` | 1 |
+| `.../state` | `{"online": true, "bank": "A"}` or `{"online": true, "bank": "B"}` | 1 |
 | `.../weight` | `{"bowl_g": 42, "eaten_today_g": 85}` | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
 | `.../power` | `{"source": "mains", "battery_pct": 100}` | 1 |
@@ -22,7 +22,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | `{...full config object...}` | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
-| `.../ota/status` | `{"state": "idle", "pct": 0, "error": ""}` | 1 |
+| `.../ota/status` | `{"state": "idle", "pct": 0, "error": ""}` — see [OTA status](#ota-status) | 1 |
 
 ## Command topics (subscribed by device, not retained)
 
@@ -36,7 +36,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../cmd/display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../cmd/config` | `{"key": "value", ...}` | 1 |
 | `.../cmd/reboot` | `{}` | 1 |
-| `.../cmd/ota` | `{"url": "http://..."}` | 1 |
+| `.../cmd/ota` | `{"url": "http://...", "sha512": "<128 hex chars>"}` — `sha512` optional | 1 |
 
 ## Last Will and Testament (LWT)
 
@@ -89,21 +89,22 @@ Bench and runtime behavior (UART details in
 
 | Phase | Behavior |
 |-------|----------|
-| Boot | `mqtt_io` task starts **disarmed** — no connect attempt |
+| Boot | `mqtt_io` task starts; if `mqtt/host` is stored, connect when Wi-Fi STA has DHCP (no `mqtt connect` needed). Otherwise remain idle until armed |
 | `mqtt connect` (or provisioning success) | Arm client; connect when Wi-Fi STA has DHCP |
-| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `{"online": true}` on `.../state`; install LWT per table above |
+| `mqtt disconnect` | Disarm for this boot; no reconnect until `mqtt connect` or reboot |
+| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `{"online": true, "bank": "A"|"B"}` on `.../state` (`bank` is the active A/B partition); install LWT per table above |
 | Connected idle | Process inbound commands via `MQTTYield`; route known `cmd/*` topics silently (handlers `[design]`) |
 | Session loss while armed | Exponential backoff reconnect (see below) |
-| `mqtt disconnect` | Disarm; disconnect if connected; cancel backoff; NVDM unchanged |
 
 Subscription is a single wildcard `.../cmd/#` covering the nine command topics
 below — not `#`, not other devices' namespaces.
 
 **Implemented now:** connect/LWT/online state, subscribe, reconnect backoff,
-command topic classification (no handlers yet).
+command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
+A/B bank swap, post-boot rollback timer).
 
 **Not implemented yet:** Home Assistant discovery, other retained state topics,
-command handlers, rate limiting.
+non-OTA command handlers, rate limiting.
 
 ### Reconnect strategy
 
@@ -122,3 +123,29 @@ Exponential backoff on disconnect:
 | Dispense progress | 1 per `[tune]` 500 ms | `[design]` |
 
 Newer values supersede queued publishes (last-value-wins, not queued).
+
+## OTA status
+
+Topic `.../ota/status` (retained, QoS 1). Published on OTA progress and after
+MQTT connect (`state` reset to `idle`).
+
+| Field | Values |
+|-------|--------|
+| `state` | `idle`, `downloading`, `applying`, `error` |
+| `pct` | 0–100 download progress |
+| `error` | Empty string on success paths; when `state` is `error`, one of: |
+
+| `error` value | When |
+|---------------|------|
+| `invalid_url` | Malformed or oversized `cmd/ota` payload, bad URL scheme, invalid `sha512` hex, or `start` rejected |
+| `already_in_progress` | OTA already running (`PORT_ERR_BUSY`) |
+| `download_failed` | HTTP download or flash write failure |
+| `verify_failed` | SHA-512 mismatch or inactive-bank verify failure |
+| `image_too_large` | Image exceeds inactive bank capacity |
+
+### `cmd/ota` payload
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `url` | yes | HTTP or HTTPS firmware URL (max 255 chars) |
+| `sha512` | no | Expected image SHA-512 as 128 lowercase/uppercase hex digits; when omitted, verify uses the hash computed from the downloaded image |

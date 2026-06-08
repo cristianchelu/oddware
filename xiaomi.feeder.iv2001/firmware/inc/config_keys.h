@@ -17,4 +17,8 @@
 #define CONFIG_KEY_MQTT_DEVICE_ID  "device_id"
 #define CONFIG_KEY_MQTT_TLS        "tls"
 
+#define CONFIG_GROUP_SYSTEM        "system"
+#define CONFIG_KEY_BOOT_COUNT      "boot_count"
+#define CONFIG_KEY_OTA_PENDING     "ota_pending"
+
 #endif /* CONFIG_KEYS_H */

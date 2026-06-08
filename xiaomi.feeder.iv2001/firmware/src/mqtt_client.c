@@ -12,6 +12,7 @@
 
 #include "task_def.h"
 
+#include "boot_bank_target.h"
 #include "config_port.h"
 #include "mqtt_adapter.h"
 #include "mqtt_backoff.h"
@@ -20,11 +21,11 @@
 #include "mqtt_port.h"
 #include "mqtt_route.h"
 #include "mqtt_topics.h"
+#include "ota_client.h"
 #include "wifi_port.h"
 
 log_create_module(mqtt_client, PRINT_LEVEL_INFO);
 
-#define MQTT_ONLINE_PAYLOAD   "{\"online\": true}"
 #define MQTT_OFFLINE_PAYLOAD  "{\"online\": false}"
 #define MQTT_CMD_WILDCARD     "cmd/#"
 
@@ -33,6 +34,9 @@ static volatile bool s_connect_busy;
 static volatile bool s_wifi_ready;
 static volatile bool s_connect_pending;
 static volatile bool s_connect_armed;
+static volatile bool s_disconnect_pending;
+static volatile bool s_suspended;
+static bool s_boot_autoconnect;
 static bool s_log_connect_failures;
 static mqtt_backoff_t s_backoff;
 static TickType_t s_reconnect_at;
@@ -77,27 +81,40 @@ static bool mqtt_client_wifi_has_ip(void)
 static port_err_t mqtt_client_publish_online(const mqtt_port_t *mqtt)
 {
     char topic[96];
+    char payload[64];
+    boot_bank_t active;
+    int written;
 
     if (mqtt_topic_format(topic, sizeof(topic), s_device_id, "state") != PORT_OK) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    return mqtt->publish(topic,
-                         MQTT_ONLINE_PAYLOAD,
-                         strlen(MQTT_ONLINE_PAYLOAD),
-                         1,
-                         true);
+    active = boot_bank_query_active();
+    written = snprintf(payload, sizeof(payload),
+                       "{\"online\": true, \"bank\": \"%c\"}",
+                       (active == BOOT_BANK_B) ? 'B' : 'A');
+    if (written <= 0 || (size_t)written >= sizeof(payload)) {
+        return PORT_ERR_IO;
+    }
+
+    return mqtt->publish(topic, payload, (size_t)written, 1, true);
 }
 
 static port_err_t mqtt_client_subscribe_commands(const mqtt_port_t *mqtt)
 {
     char topic[96];
+    port_err_t err;
 
     if (mqtt_topic_format(topic, sizeof(topic), s_device_id, MQTT_CMD_WILDCARD) != PORT_OK) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    return mqtt->subscribe(topic, 1);
+    err = mqtt->subscribe(topic, 1);
+    if (err == PORT_OK) {
+        LOG_I(mqtt_client, "subscribed %s", topic);
+        printf("[mqtt] subscribed %s\r\n", topic);
+    }
+    return err;
 }
 
 static void mqtt_client_on_message(const char *topic,
@@ -106,10 +123,8 @@ static void mqtt_client_on_message(const char *topic,
                                    void *ctx)
 {
     (void)ctx;
-    (void)payload;
-    (void)len;
 
-    (void)mqtt_route_classify(topic, s_device_id);
+    ota_client_on_mqtt_message(topic, payload, len);
 }
 
 static void mqtt_client_on_connection(bool connected, void *ctx)
@@ -167,12 +182,14 @@ static port_err_t mqtt_client_do_connect(void)
 
     if (s_log_connect_failures) {
         LOG_I(mqtt_client, "connecting to %s:%u", cred.host, (unsigned)cred.port);
+        printf("[mqtt] connecting to %s:%u\r\n", cred.host, (unsigned)cred.port);
     }
 
     err = mqtt->connect(&connect_cfg);
     if (err != PORT_OK) {
         if (s_log_connect_failures) {
             LOG_E(mqtt_client, "mqtt connect failed");
+            printf("[mqtt] connect failed\r\n");
             s_log_connect_failures = false;
         }
         return err;
@@ -181,6 +198,7 @@ static port_err_t mqtt_client_do_connect(void)
     s_log_connect_failures = true;
 
     LOG_I(mqtt_client, "mqtt connected");
+    printf("[mqtt] connected\r\n");
 
     if (mqtt_client_subscribe_commands(mqtt) != PORT_OK) {
         LOG_E(mqtt_client, "subscribe failed");
@@ -195,41 +213,84 @@ static port_err_t mqtt_client_do_connect(void)
     }
 
     mqtt_backoff_on_success(&s_backoff);
+    ota_client_set_device_id(s_device_id);
+    ota_client_on_mqtt_connected();
     return PORT_OK;
+}
+
+static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
+{
+    if (mqtt != NULL) {
+        mqtt->disconnect();
+    }
+
+    s_connect_pending = false;
+    s_connect_busy = false;
+    s_reconnect_at = 0;
+}
+
+static uint32_t mqtt_client_cap_delay(uint32_t delay_ms, uint32_t ota_delay)
+{
+    if (ota_delay > 0 && ota_delay < delay_ms) {
+        return ota_delay;
+    }
+
+    return delay_ms;
 }
 
 uint32_t mqtt_client_step(void)
 {
     const mqtt_port_t *mqtt = mqtt_port_get();
+    uint32_t ota_delay;
+
+    if (s_disconnect_pending) {
+        s_disconnect_pending = false;
+        LOG_I(mqtt_client, "disconnecting");
+        mqtt_client_do_disconnect(mqtt);
+        return 200;
+    }
+
+    if (s_suspended) {
+        ota_delay = ota_client_poll_ms();
+        return mqtt_client_cap_delay(200, ota_delay);
+    }
+
+    ota_delay = ota_client_poll_ms();
 
     if (!s_connect_armed) {
-        return 500;
+        return mqtt_client_cap_delay(500, ota_delay);
     }
 
     if (!s_wifi_ready || !mqtt_client_wifi_has_ip()) {
-        return 500;
+        return mqtt_client_cap_delay(500, ota_delay);
     }
 
     if (!s_connect_pending && mqtt->is_connected()) {
+        uint32_t delay_ms = 250;
+
         mqtt_adapter_yield(250);
-        return 250;
+        ota_delay = ota_client_poll_ms();
+        return mqtt_client_cap_delay(delay_ms, ota_delay);
     }
 
     if (!s_connect_pending) {
         if (s_reconnect_at != 0 && xTaskGetTickCount() < s_reconnect_at) {
-            return 200;
+            return mqtt_client_cap_delay(200, ota_delay);
         }
         if (!mqtt_cred_is_stored(config_port_get())) {
-            return 500;
+            return mqtt_client_cap_delay(500, ota_delay);
         }
         s_connect_pending = true;
     }
 
     if (mqtt->is_connected()) {
+        uint32_t delay_ms = 250;
+
         s_connect_pending = false;
         s_connect_busy = false;
         mqtt_adapter_yield(250);
-        return 250;
+        ota_delay = ota_client_poll_ms();
+        return mqtt_client_cap_delay(delay_ms, ota_delay);
     }
 
     if (mqtt_client_do_connect() == PORT_OK) {
@@ -244,7 +305,7 @@ uint32_t mqtt_client_step(void)
     s_reconnect_at = xTaskGetTickCount() + pdMS_TO_TICKS(mqtt_backoff_current_ms(&s_backoff));
     s_connect_pending = false;
     s_connect_busy = false;
-    return 200;
+    return mqtt_client_cap_delay(200, ota_delay);
 }
 
 static void mqtt_client_task(void *param)
@@ -268,6 +329,9 @@ void mqtt_client_test_reset(void)
     s_wifi_ready = false;
     s_connect_pending = false;
     s_connect_armed = false;
+    s_disconnect_pending = false;
+    s_suspended = false;
+    s_boot_autoconnect = false;
     s_log_connect_failures = true;
     s_reconnect_at = 0;
     s_device_id[0] = '\0';
@@ -281,12 +345,19 @@ void mqtt_client_test_bootstrap(void)
     mqtt_port_get()->set_callbacks(mqtt_client_on_message, mqtt_client_on_connection, NULL);
 }
 
+void mqtt_client_test_start(void)
+{
+    mqtt_client_test_bootstrap();
+    s_boot_autoconnect = mqtt_cred_is_stored(config_port_get());
+}
+
 void mqtt_client_start(void)
 {
     mqtt_backoff_init(&s_backoff);
     s_reconnect_at = 0;
     s_log_connect_failures = true;
     mqtt_port_get()->set_callbacks(mqtt_client_on_message, mqtt_client_on_connection, NULL);
+    s_boot_autoconnect = mqtt_cred_is_stored(config_port_get());
 
     if (xTaskCreate(mqtt_client_task,
                     "mqtt_io",
@@ -315,6 +386,10 @@ bool mqtt_client_request_connect(void)
         return false;
     }
 
+    if (s_suspended) {
+        return false;
+    }
+
     if (!mqtt_client_wifi_is_ready()) {
         return false;
     }
@@ -332,25 +407,74 @@ bool mqtt_client_request_connect(void)
 
 void mqtt_client_stop(void)
 {
-    const mqtt_port_t *mqtt = mqtt_port_get();
-
     s_connect_armed = false;
+    s_boot_autoconnect = false;
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
     s_log_connect_failures = true;
     mqtt_backoff_init(&s_backoff);
-
-    if (mqtt != NULL && mqtt->is_connected()) {
-        mqtt->disconnect();
-    }
+    s_disconnect_pending = true;
 }
 
 void mqtt_client_notify_wifi_ready(void)
 {
     s_wifi_ready = true;
 
+    if (s_suspended) {
+        return;
+    }
+
+    if (s_boot_autoconnect && mqtt_cred_is_stored(config_port_get())) {
+        s_boot_autoconnect = false;
+        mqtt_client_request_connect();
+        return;
+    }
+
     if (s_connect_armed) {
         mqtt_client_request_connect();
     }
+}
+
+void mqtt_client_suspend_for_ota(void)
+{
+    s_suspended = true;
+    s_disconnect_pending = true;
+    printf("[mqtt] suspended for ota\r\n");
+}
+
+void mqtt_client_resume_after_ota(void)
+{
+    s_suspended = false;
+
+    if (s_mqtt_task != NULL) {
+        vTaskResume(s_mqtt_task);
+        printf("[mqtt] io task resumed\r\n");
+    }
+
+    if (mqtt_cred_is_stored(config_port_get()) && mqtt_client_wifi_is_ready()) {
+        s_connect_armed = true;
+        mqtt_client_request_connect();
+    }
+
+    printf("[mqtt] resumed after ota\r\n");
+}
+
+bool mqtt_client_wait_disconnected(uint32_t timeout_ms)
+{
+    const mqtt_port_t *mqtt = mqtt_port_get();
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+
+    while (xTaskGetTickCount() < deadline) {
+        if (mqtt == NULL || !mqtt->is_connected()) {
+            if (s_mqtt_task != NULL) {
+                vTaskSuspend(s_mqtt_task);
+                printf("[mqtt] io task suspended\r\n");
+            }
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    return (mqtt == NULL || !mqtt->is_connected());
 }

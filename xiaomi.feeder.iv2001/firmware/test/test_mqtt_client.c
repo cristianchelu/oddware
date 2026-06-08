@@ -71,10 +71,13 @@ void test_connect_subscribes_and_publishes_online(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
     TEST_ASSERT_EQUAL_UINT(1, mqtt->subscribe_calls);
-    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/cmd/#", mqtt->last_subscribe_topic);
-    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->last_publish_topic);
-    TEST_ASSERT_EQUAL_STRING("{\"online\": true}", mqtt->last_publish_payload);
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->prior_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("{\"online\": true, \"bank\": \"A\"}", mqtt->prior_publish_payload);
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/ota/status", mqtt->last_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("{\"state\": \"idle\", \"pct\": 0, \"error\": \"\"}",
+                             mqtt->last_publish_payload);
     TEST_ASSERT_TRUE(mqtt->connected);
 }
 
@@ -148,7 +151,7 @@ void test_connect_failure_honors_backoff(void)
     TEST_ASSERT_EQUAL_UINT(2, mqtt->connect_calls);
 }
 
-void test_host_in_nvdm_does_not_auto_connect(void)
+void test_bootstrap_without_autoconnect_flag_does_not_connect(void)
 {
     const fake_mqtt_port_state_t *mqtt;
 
@@ -163,4 +166,20 @@ void test_host_in_nvdm_does_not_auto_connect(void)
 
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
+}
+
+void test_stored_host_autoconnects_on_wifi_ready(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_start();
+    setup_wifi_up();
+
+    mqtt_client_step();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT(1, mqtt->connect_calls);
 }

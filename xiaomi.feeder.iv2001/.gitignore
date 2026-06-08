@@ -4,6 +4,11 @@ external/
 # Session summaries (local memory, not committed)
 summaries/
 
+# OTA bench (tools/ota/)
+tools/ota/.env
+tools/ota/logs/
+tools/ota/logs/.uart-*.lock
+
 # Build output
 *.bin
 *.elf

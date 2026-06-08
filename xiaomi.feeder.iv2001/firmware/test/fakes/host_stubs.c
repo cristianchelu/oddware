@@ -1,7 +1,22 @@
 #include <string.h>
 
+#include "boot_bank_target.h"
+#include "hal_flash.h"
 #include "mqtt_adapter.h"
 #include "wifi_api.h"
+
+boot_bank_t boot_bank_query_active(void)
+{
+    return BOOT_BANK_A;
+}
+
+hal_flash_status_t hal_flash_read(uint32_t address, uint8_t *buffer, uint32_t length)
+{
+    (void)address;
+    (void)buffer;
+    (void)length;
+    return HAL_FLASH_STATUS_ERROR;
+}
 
 void mqtt_adapter_yield(int timeout_ms)
 {

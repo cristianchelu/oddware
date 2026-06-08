@@ -47,6 +47,7 @@ include $(SOURCE_DIR)/middleware/MTK/dhcpd/module.mk
 include $(SOURCE_DIR)/middleware/MTK/wifi_service/combo/module.mk
 include $(SOURCE_DIR)/middleware/third_party/mbedtls/module.mk
 include $(SOURCE_DIR)/middleware/third_party/mqtt/module.mk
+include $(SOURCE_DIR)/middleware/third_party/httpclient/module.mk
 
 DEBUG           = 0
 FLOAT_TYPE      = hard
@@ -54,6 +55,15 @@ BUILD_DIR       = $(PWD)/build
 PROJ_NAME       = $(notdir $(abspath $(dir $(PWD))))
 PROJ_PATH       = $(PWD)
 OUTPATH         = $(PWD)/build
+
+ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE),y)
+export MTK_FOTA_DUAL_IMAGE_ENABLE
+FOTA_PARTITION_B_BUILD    ?= n
+ifeq ($(FOTA_PARTITION_B_BUILD),y)
+CFLAGS += -DFOTA_PARTITION_B_BUILD
+endif
+PARTITION_B_EXTRA ?= FOTA_PARTITION_B_BUILD=y BUILD_DIR=$(BUILD_DIR)/binary_B OUTPATH=$(OUTPATH)/binary_B PROJ_PATH=$(PROJ_PATH)
+endif
 
 APP_PATH        = $(patsubst $(SDK_PATH)/%,%,$(abspath $(dir $(PWD))))
 APP_PATH_SRC    = $(APP_PATH)/src
@@ -76,10 +86,17 @@ APP_FILES      += $(APP_PATH_SRC)/mqtt_topics.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_route.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_client.c
 APP_FILES      += $(APP_PATH_SRC)/app_mqtt_cli.c
+APP_FILES      += $(APP_PATH_SRC)/ota_url.c
+APP_FILES      += $(APP_PATH_SRC)/ota_image.c
+APP_FILES      += $(APP_PATH_SRC)/flash_bank_logic.c
+APP_FILES      += $(APP_PATH_SRC)/ota_client.c
+APP_FILES      += $(APP_PATH_SRC)/ota_rollback.c
 APP_FILES      += $(APP_PATH_SRC)/nvdm_boot.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/mqtt_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/flash_bank_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/ota_adapter.c
 APP_FILES      += $(APP_PATH_SRC)/ept_gpio_var.c
 APP_FILES      += $(APP_PATH_SRC)/ept_eint_var.c
 APP_FILES      += $(MINICLI)/src/regions_init.c
@@ -116,10 +133,22 @@ ifneq ($(MTK_MQTT_DEBUG_ENABLE),y)
 CFLAGS += -DMTK_MQTT_DEBUG=0
 endif
 
+ifeq ($(FLASH_BANK_OTA_SELFTEST),y)
+CFLAGS += -DFLASH_BANK_OTA_SELFTEST
+endif
+
 LDFLAGS += $(ALLFLAGS) $(FPUFLAGS) --specs=nano.specs -lnosys -nostartfiles
 LDFLAGS += -Wl,-wrap=malloc -Wl,-wrap=calloc -Wl,-wrap=realloc -Wl,-wrap=free
 LDFLAGS += -u _printf_float -u _scanf_float
-LDFLAGS += -Wl,-Tmt7682_flash.ld -Wl,--gc-sections
+ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE),y)
+ifeq ($(FOTA_PARTITION_B_BUILD),y)
+LDFLAGS += -Wl,-T$(PWD)/mt7682_flash_B.ld -Wl,--gc-sections
+else
+LDFLAGS += -Wl,-T$(PWD)/mt7682_flash_A.ld -Wl,--gc-sections
+endif
+else
+LDFLAGS += -Wl,-T$(PWD)/mt7682_flash_A.ld -Wl,--gc-sections
+endif
 
 .PHONY: proj clean $(MODULE_PATH)
 
@@ -127,6 +156,14 @@ all: cleanlog proj
 	@mkdir -p $(BUILD_DIR)
 	@$(SIZE) $(OUTPATH)/$(PROJ_NAME).elf
 	@$(SOURCE_DIR)/tools/scripts/build/copy_firmware.sh $(SOURCE_DIR) $(OUTPATH) $(IC_CONFIG) $(BOARD_CONFIG) $(PROJ_NAME).bin $(PWD)
+ifeq ($(MTK_FOTA_DUAL_IMAGE_ENABLE),y)
+ifneq ($(FOTA_PARTITION_B_BUILD),y)
+	@echo "build partition B binary."
+	@mkdir -p $(BUILD_DIR)/binary_B
+	@mkdir -p $(OUTPATH)/binary_B
+	@$(MAKE) -C $(PWD) $(PARTITION_B_EXTRA) BUILD_DIR=$(BUILD_DIR) PROJ_PATH=$(PROJ_PATH)
+endif
+endif
 
 MOD_EXTRA = BUILD_DIR=$(BUILD_DIR) OUTPATH=$(OUTPATH) PROJ_PATH=$(PROJ_PATH)
 

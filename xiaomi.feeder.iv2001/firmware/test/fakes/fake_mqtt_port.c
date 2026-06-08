@@ -70,6 +70,15 @@ static port_err_t fake_mqtt_publish(const char *topic,
         return PORT_ERR_IO;
     }
 
+    if (s_state.publish_calls > 0) {
+        strncpy(s_state.prior_publish_topic,
+                s_state.last_publish_topic,
+                sizeof(s_state.prior_publish_topic) - 1);
+        strncpy(s_state.prior_publish_payload,
+                s_state.last_publish_payload,
+                sizeof(s_state.prior_publish_payload) - 1);
+    }
+
     s_state.publish_calls++;
     if (topic != NULL) {
         strncpy(s_state.last_publish_topic, topic, sizeof(s_state.last_publish_topic) - 1);

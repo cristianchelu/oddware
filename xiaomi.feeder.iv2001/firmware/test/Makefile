@@ -15,8 +15,15 @@ HOST_SRCS := ../src/boot_bank.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
              ../src/mqtt_client.c \
+             ../src/ota_client.c \
+             ../src/ota_url.c \
+             ../src/ota_image.c \
+             ../src/ota_rollback.c \
+             ../src/flash_bank_logic.c \
              fakes/fake_config_port.c \
+             fakes/ota_rollback_host_stubs.c \
              fakes/fake_mqtt_port.c \
+             fakes/fake_ota_port.c \
              fakes/fake_wifi_port.c \
              fakes/fake_time.c \
              fakes/freertos_shim.c \

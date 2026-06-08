@@ -3,6 +3,8 @@
 #
 #   ./tools/build-firmware.sh
 #
+# Produces petfeeder_a.bin (Bank A @ 0x08012000) and petfeeder_b.bin (Bank B @ 0x08100000).
+#
 # Requires: ./tools/fetch-sdk.sh and source tools/build-env.sh (or bootstrap.sh).
 set -euo pipefail
 
@@ -17,26 +19,40 @@ cd "$SDK_ROOT"
 
 OUTPUT="$SDK_ROOT/out/mt7682_hdk/petfeeder"
 FLASH_DIR="$FIRMWARE_DIR/flash"
+A_BIN="$OUTPUT/petfeeder.bin"
+B_BIN="$OUTPUT/binary_B/petfeeder.bin"
 
-# MediaTek Flash Tool resolves rom `file:` paths relative to the .cfg directory.
-# Keep symlinks next to the committed cfg so the tool finds the build artifacts.
-for bin in mt7682_bootloader.bin petfeeder.bin mt768x_default_PerRate_TxPwr.bin; do
+if [ ! -f "$A_BIN" ]; then
+    echo "ERROR: missing Bank A build: $A_BIN" >&2
+    exit 1
+fi
+
+if [ ! -f "$B_BIN" ]; then
+    echo "ERROR: missing Bank B build: $B_BIN" >&2
+    echo "  Dual-image build should produce binary_B/petfeeder.bin" >&2
+    exit 1
+fi
+
+for bin in mt7682_bootloader.bin mt768x_default_PerRate_TxPwr.bin; do
     if [ ! -f "$OUTPUT/$bin" ]; then
-        rm -f "$FLASH_DIR/$bin"
         echo "ERROR: missing $OUTPUT/$bin" >&2
-        if [ "$bin" = "mt7682_bootloader.bin" ]; then
-            echo "  Flash Tool shows BootLoader in red when this file is absent." >&2
-        fi
         exit 1
     fi
-    ln -sfn "$OUTPUT/$bin" "$FLASH_DIR/$bin"
+    rm -f "$FLASH_DIR/$bin"
+    cp -f "$OUTPUT/$bin" "$FLASH_DIR/$bin"
 done
+
+rm -f "$FLASH_DIR/petfeeder_a.bin" "$FLASH_DIR/petfeeder_b.bin" "$FLASH_DIR/petfeeder.bin"
+cp -f "$A_BIN" "$FLASH_DIR/petfeeder_a.bin"
+cp -f "$B_BIN" "$FLASH_DIR/petfeeder_b.bin"
+ln -sf petfeeder_a.bin "$FLASH_DIR/petfeeder.bin"
 
 echo ""
 echo "Build output: $OUTPUT"
-echo "  ${OUTPUT}/petfeeder.bin"
-echo "  ${OUTPUT}/mt7682_bootloader.bin"
-echo "  ${OUTPUT}/mt768x_default_PerRate_TxPwr.bin"
+echo "  ${FLASH_DIR}/petfeeder_a.bin  (Bank A, 0x08012000)"
+echo "  ${FLASH_DIR}/petfeeder_b.bin  (Bank B, 0x08100000)"
+echo "  ${FLASH_DIR}/mt7682_bootloader.bin"
+echo "  ${FLASH_DIR}/mt768x_default_PerRate_TxPwr.bin"
 echo ""
 echo "Flash package (load this .cfg in MediaTek IoT Flash Tool):"
 echo "  ${FLASH_DIR}/flash_download.cfg"

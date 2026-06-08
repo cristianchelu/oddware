@@ -32,8 +32,10 @@
 #define FOTA_RESERVED_BASE    BANK_B_BASE
 #define FOTA_RESERVED_LENGTH  BANK_B_LENGTH
 
-/* A/B control block (inside bootloader region) */
-#define DUAL_IMAGE_CTRL_BASE  0x08008000
+/* A/B control block — last 4 KB sector of the 64 KB bootloader region.
+ * Must sit above the linked bootloader image (ends ~0x08009600); never
+ * overlap bootloader .text at 0x08008000. */
+#define DUAL_IMAGE_CTRL_BASE  0x0800F000
 
 #define ROM_NVDM_BASE           0x081EE000
 #define ROM_NVDM_LENGTH         0x00010000  /* 64 KB */

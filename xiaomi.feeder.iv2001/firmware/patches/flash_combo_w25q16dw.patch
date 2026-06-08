@@ -23,7 +23,7 @@
 +    {
 +        // W25Q16DW (Winbond 2 MB, IV2001)
 +        CMEM_FDM_NOR_DEFAULT,
-+        256,
++        64,      // Page Buffer Program Size (64 words -> 128 B MAC payload)
 +        (4 | 32 | 64),
 +        {
 +            {0x0, 0x1000},

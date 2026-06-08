@@ -11,5 +11,7 @@ BaseType_t xTaskCreate(TaskFunction_t pxTaskCode,
                        UBaseType_t uxPriority,
                        TaskHandle_t *const pxCreatedTask);
 TickType_t xTaskGetTickCount(void);
+void vTaskSuspend(TaskHandle_t task);
+void vTaskResume(TaskHandle_t task);
 
 #endif /* TASK_H */

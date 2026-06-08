@@ -59,3 +59,27 @@ void test_null_ctrl_defaults_to_bank_a(void)
 {
     TEST_ASSERT_EQUAL(BOOT_BANK_A, boot_bank_resolve(NULL));
 }
+
+void test_image_header_rejects_erased(void)
+{
+    const uint8_t hdr[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    TEST_ASSERT_FALSE(boot_bank_image_header_valid(hdr, CM4_BASE));
+}
+
+void test_image_header_accepts_reset_handler(void)
+{
+    const uint8_t hdr[8] = {0xD0, 0xF8, 0x74, 0xD0, 0x72, 0xB6, 0x21, 0xF0};
+
+    TEST_ASSERT_TRUE(boot_bank_image_header_valid(hdr, CM4_BASE));
+}
+
+void test_image_header_accepts_vector_table(void)
+{
+    const uint8_t hdr[8] = {
+        0x00, 0x00, 0x20, 0x14,
+        0x01, 0x20, 0x01, 0x08,
+    };
+
+    TEST_ASSERT_TRUE(boot_bank_image_header_valid(hdr, CM4_BASE));
+}

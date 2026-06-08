@@ -10,15 +10,36 @@ entry override is required for flash init to succeed. `[bootlog]`
 
 ## Chip characteristics
 
+Verified against Winbond W25Q16DW datasheet (Rev J, Sep 2014)
+`[ds:W25Q16DW]`.
 
 | Parameter    | Value                     | Source          |
 | ------------ | ------------------------- | --------------- |
-| Capacity     | 2 MB (16 Mbit)            | `[ds:W25Q16DW]` |
-| Sector size  | 4 KB                      | `[ds:W25Q16DW]` |
-| Block size   | 64 KB                     | `[ds:W25Q16DW]` |
-| Page size    | 256 bytes                 | `[ds:W25Q16DW]` |
-| Interface    | SPI / Dual-SPI / Quad-SPI | `[ds:W25Q16DW]` |
-| Erase cycles | 100K per sector typical   | `[ds:W25Q16DW]` |
+| Capacity     | 2 MB (16 Mbit, 2,097,152 B) | `[ds:W25Q16DW]` §1–2 |
+| Supply       | 1.65–1.95 V (1.8 V family)  | `[ds:W25Q16DW]` §2 |
+| JEDEC ID     | MFID `EFh`, Device `6015h` (bytes `0xEF 0x60 0x15`) | `[ds:W25Q16DW]` §7.2.1 |
+| Organization | 8,192 pages; 512 × 4 KB sectors; 32 × 64 KB blocks | `[ds:W25Q16DW]` §1 |
+| Page size    | 256 bytes (program 1–256 B per command) | `[ds:W25Q16DW]` §1–2, §7.2.20 |
+| Sector erase | 4 KB uniform              | `[ds:W25Q16DW]` §1–2 |
+| Block erase  | 32 KB and 64 KB uniform   | `[ds:W25Q16DW]` §1–2 |
+| Interface    | Standard / Dual / Quad SPI, QPI | `[ds:W25Q16DW]` §2 |
+| Endurance    | >100,000 erase/program cycles | `[ds:W25Q16DW]` §2 |
+| Data retention | >20 years (typ.)        | `[ds:W25Q16DW]` §2 |
+
+### Page program rules (OTA-relevant)
+
+- Programs only into **previously erased (`FFh`)** locations (§7.2.20).
+- **Partial page program** is allowed: fewer than 256 bytes can be
+  programmed without affecting other bytes in the same page, provided the
+  command does not wrap past the page boundary (§7.2.20).
+- Sending **>256 bytes** in one Page Program wraps within the page and
+  overwrites earlier bytes in that command (instruction-set notes, §7.2).
+
+Our OTA path: 4 KB sector erase ahead, then programs up to **256 bytes**
+per `hal_flash_write` (one Winbond page). The MediaTek SFC driver issues
+**up to two 128-byte partial programs** per page internally (GPRAM limit);
+that is datasheet-compliant partial page programming, not an arbitrary
+chunk size.
 
 
 ## Identity and calibration

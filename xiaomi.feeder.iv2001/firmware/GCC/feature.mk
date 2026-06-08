@@ -36,3 +36,9 @@ MTK_PING_OUT_ENABLE                 = y
 
 # MQTT client (plain TCP; TLS deferred)
 MTK_MBEDTLS_CONFIG_FILE             = config-mtk-basic.h
+
+# HTTP client for OTA download
+MTK_HTTPCLIENT_SSL_ENABLE           = n
+
+# UART flash self-test on first OTA write (128/256/2048 B); set y to validate on device
+FLASH_BANK_OTA_SELFTEST             = n

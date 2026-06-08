@@ -79,11 +79,11 @@ Adapter: wraps SDK `middleware/third_party/mqtt/MQTTClient-C`. The
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `get_active_bank` | `() -> bank_id` | Returns A or B based on control block |
+| `get_active_bank` | `() -> boot_bank_t` | Returns `BOOT_BANK_A` or `BOOT_BANK_B` based on control block |
 | `erase_inactive` | `() -> err` | Erase the inactive bank |
 | `write_inactive` | `(offset, data, len) -> err` | Write to inactive bank at offset |
-| `verify_inactive` | `(expected_hash) -> err` | Compute SHA-512 over inactive bank, compare |
-| `swap_banks` | `() -> err` | Flip active flag in control block, next boot targets other bank |
+| `verify_inactive` | `(expected_hash[64], image_len) -> err` | Compute SHA-512 over inactive bank image, compare |
+| `swap_banks` | `(image_hash[64]) -> err` | Flip active flag in control block; next boot targets other bank |
 
 Adapter: wraps the adapted `fota_dual_image` APIs and `hal_flash_*` calls.
 See [sdk-reference.md](sdk-reference.md) for the FOTA dual-image
@@ -93,9 +93,10 @@ adaptation.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `start` | `(url) -> err` | Begin OTA download to inactive bank; spawns `ota_dl` task |
-| `get_status` | `() -> status` | Current OTA state (idle, downloading, verifying, applying, error) |
+| `start` | `(url, expected_sha512, has_expected_sha512) -> err` | Begin OTA download to inactive bank; spawns `ota_dl` task. `expected_sha512` is 64 bytes; when `has_expected_sha512` is false, verify uses the hash computed from the downloaded image |
+| `get_status` | `() -> ota_status_t` | Current OTA state: `idle`, `downloading`, `verifying`, `applying`, `error` |
 | `abort` | `() -> err` | Cancel in-progress download |
+| `set_progress_cb` | `(cb, ctx) -> void` | Register callback invoked on status/progress updates (`ota_progress_t`: `status`, `pct`, `error`) |
 
 Adapter: wraps SDK `httpclient` middleware for download, delegates flash
 operations to `flash_bank_port`.

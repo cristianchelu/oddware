@@ -7,18 +7,25 @@ serves:
 
 User publishes to `.../cmd/ota`:
 ```json
-{"url": "http://192.168.1.100:8080/firmware.bin"}
+{"url": "http://192.168.1.100:8080/firmware.bin", "sha512": "<128 hex chars>"}
 ```
+
+The `sha512` field is optional; when present it must match the SHA-512 of the
+downloaded image bytes.
 
 Device validates URL (non-empty, http:// or https:// scheme).
 
 ## Pre-flight checks
 
-| Check | Action on failure |
-|-------|-------------------|
-| Dispense in progress? | Reject OTA, publish error: `"busy_dispense"` |
-| URL scheme valid? | Reject, publish error: `"invalid_url"` |
-| Already updating? | Reject, publish error: `"already_in_progress"` |
+Firmware enforces URL validation and duplicate-OTA rejection. Dispense
+gating is specified below but not enforced until the dispense supervisor
+exists (`dispense-cycle.md`).
+
+| Check | Action on failure | Enforced |
+|-------|-------------------|----------|
+| Dispense in progress? | Reject OTA, publish error: `"busy_dispense"` | No — requires `dispense-cycle.md` |
+| URL scheme valid? | Reject, publish error: `"invalid_url"` | Yes |
+| Already updating? | Reject, publish error: `"already_in_progress"` | Yes |
 
 ## Download
 

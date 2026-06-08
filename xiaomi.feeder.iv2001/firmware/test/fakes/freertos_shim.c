@@ -35,3 +35,13 @@ TickType_t xTaskGetTickCount(void)
 {
     return fake_time_ticks();
 }
+
+void vTaskSuspend(TaskHandle_t task)
+{
+    (void)task;
+}
+
+void vTaskResume(TaskHandle_t task)
+{
+    (void)task;
+}

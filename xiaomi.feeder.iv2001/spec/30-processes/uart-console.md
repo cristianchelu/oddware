@@ -185,8 +185,9 @@ submission in [provisioning-flow.md](provisioning-flow.md).
 | TLS | Boolean; default false when key missing | Reject invalid value |
 
 `mqtt_cred_is_stored` is true when NVDM `mqtt/host` exists and is non-empty.
-A stored host is required for `mqtt connect` but does **not** arm or start the
-client by itself (port defaults to 1883 when `mqtt/port` is missing).
+A stored host is required for connect attempts (port defaults to 1883 when
+`mqtt/port` is missing). Runtime `mqtt set` commands persist keys only — they
+do not arm the client or start a connect; see session arming below.
 
 ## `mqtt` commands
 
@@ -274,8 +275,9 @@ Validates and writes `mqtt/device_id` to NVDM. Empty string clears the key
 
 ### `mqtt connect`
 
-Loads broker settings from NVDM, validates, and starts MQTT connect when Wi-Fi
-STA has a DHCP address. Runs in the MQTT client task (not the CLI task).
+Arms the client, loads broker settings from NVDM, validates, and starts MQTT
+connect when Wi-Fi STA has a DHCP address. Runs in the MQTT client task (not
+the CLI task).
 
 | Precondition | Behavior |
 |--------------|----------|
@@ -308,23 +310,37 @@ SDK logs inside every `MQTTYield` loop and would flood the console.
 
 ### `mqtt disconnect`
 
-Stops the MQTT client: disconnects if connected, cancels reconnect backoff, and
-does not retry until the next `mqtt connect`. NVDM settings are unchanged.
+Stops the MQTT client: disconnects if connected, disarms the client, cancels
+reconnect backoff, and does not retry until the next `mqtt connect` in the same
+boot session. NVDM settings are unchanged.
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `mqtt stopped` |
 
-Saving `mqtt set host` (or other keys) alone does **not** start connecting.
-Only `mqtt connect` arms the client; `mqtt disconnect` disarms it.
+### Session arming
+
+The client is **armed** when it may connect or reconnect automatically.
+`mqtt connect` arms the client; exponential backoff applies while armed per
+[mqtt-protocol.md](mqtt-protocol.md).
+
+Runtime `mqtt set` commands write NVDM only — they do not arm the client or
+start a connect. Use `mqtt connect` to arm and connect in the current boot
+session, or reboot with `mqtt/host` already stored to auto-connect after Wi-Fi
+DHCP.
+
+`mqtt disconnect` disarms the client for the remainder of the boot session.
+Reboot with a stored host arms and auto-connects again.
 
 ## Boot behavior (MQTT)
 
 | Condition | Action |
 |-----------|--------|
-| Boot | Start `mqtt_io` task; remain disarmed until `mqtt connect` |
-| `mqtt/host` in NVDM | Does not auto-connect (finish `user`/`pass`, then `mqtt connect`) |
-| After successful `mqtt connect` | Stay armed; reconnect with backoff if the session drops |
+| Boot | Start `mqtt_io` task |
+| `mqtt/host` stored in NVDM | Auto-connect once Wi-Fi STA has DHCP (no `mqtt connect` required) |
+| No stored host | Remain disarmed until `mqtt connect` |
+| After boot auto-connect or `mqtt connect` | Stay armed; reconnect with backoff if the session drops |
+| `mqtt disconnect` (same boot session) | Disarm; no reconnect until next `mqtt connect` |
 
 Subscription scope, online/LWT behavior, and command routing are defined in
 [mqtt-protocol.md](mqtt-protocol.md#session-lifecycle).

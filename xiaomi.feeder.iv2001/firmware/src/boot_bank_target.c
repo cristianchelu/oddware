@@ -5,6 +5,7 @@
 #include "boot_bank_target.h"
 #include "hal_flash.h"
 #include "memory_map.h"
+#include <string.h>
 
 static int boot_bank_read_ctrl(boot_control_block_t *ctrl)
 {
@@ -48,6 +49,11 @@ boot_bank_t boot_bank_query_active(void)
 
 int boot_bank_switch_active(void)
 {
+    return boot_bank_switch_with_hash(NULL);
+}
+
+int boot_bank_switch_with_hash(const uint8_t image_hash[64])
+{
     boot_control_block_t ctrl;
 
     if (boot_bank_read_ctrl(&ctrl) != 0) {
@@ -63,6 +69,10 @@ int boot_bank_switch_active(void)
         ctrl.active_flag = BOOT_FLAG_A;
     } else {
         ctrl.active_flag = BOOT_FLAG_B;
+    }
+
+    if (image_hash != NULL) {
+        memcpy(ctrl.sha512, image_hash, sizeof(ctrl.sha512));
     }
 
     return boot_bank_write_ctrl(&ctrl);
