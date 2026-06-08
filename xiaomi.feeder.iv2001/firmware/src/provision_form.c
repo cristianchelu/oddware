@@ -66,8 +66,15 @@ static void set_field(provision_input_t *out, const char *key, const char *value
     url_decode(value, decoded, sizeof(decoded));
 
     if (strcmp(key, PROVISION_FIELD_WIFI_SSID) == 0) {
-        strncpy(out->wifi_ssid, decoded, sizeof(out->wifi_ssid) - 1);
-        out->wifi_ssid[sizeof(out->wifi_ssid) - 1] = '\0';
+        if (decoded[0] != '\0') {
+            strncpy(out->wifi_ssid, decoded, sizeof(out->wifi_ssid) - 1);
+            out->wifi_ssid[sizeof(out->wifi_ssid) - 1] = '\0';
+        }
+    } else if (strcmp(key, PROVISION_FIELD_WIFI_SSID_PICK) == 0) {
+        if (out->wifi_ssid[0] == '\0' && decoded[0] != '\0') {
+            strncpy(out->wifi_ssid, decoded, sizeof(out->wifi_ssid) - 1);
+            out->wifi_ssid[sizeof(out->wifi_ssid) - 1] = '\0';
+        }
     } else if (strcmp(key, PROVISION_FIELD_WIFI_PASS) == 0) {
         strncpy(out->wifi_pass, decoded, sizeof(out->wifi_pass) - 1);
         out->wifi_pass[sizeof(out->wifi_pass) - 1] = '\0';
@@ -75,12 +82,15 @@ static void set_field(provision_input_t *out, const char *key, const char *value
         strncpy(out->mqtt_host, decoded, sizeof(out->mqtt_host) - 1);
         out->mqtt_host[sizeof(out->mqtt_host) - 1] = '\0';
     } else if (strcmp(key, PROVISION_FIELD_MQTT_PORT) == 0) {
-        unsigned long port_val = strtoul(decoded, NULL, 10);
-
         if (decoded[0] != '\0') {
+            char *end = NULL;
+            unsigned long port_val = strtoul(decoded, &end, 10);
+
             out->mqtt_port_set = true;
-            if (port_val >= 1 && port_val <= 65535) {
+            if (end != decoded && *end == '\0' && port_val >= 1 && port_val <= 65535) {
                 out->mqtt_port = (uint16_t)port_val;
+            } else {
+                out->mqtt_port = 0;
             }
         }
     } else if (strcmp(key, PROVISION_FIELD_MQTT_USER) == 0) {
@@ -237,8 +247,65 @@ static void html_escape(const char *src, char *dst, size_t dst_len)
     dst[di] = '\0';
 }
 
+static size_t provision_form_append_scan_select(const provision_scan_list_t *scan,
+                                                const char *selected_ssid,
+                                                char *buf,
+                                                size_t len,
+                                                size_t offset)
+{
+    size_t i;
+    int written = 0;
+
+    if (buf == NULL || len == 0 || offset >= len) {
+        return offset;
+    }
+
+    written = snprintf(buf + offset,
+                       len - offset,
+                       "<p>Nearby Wi-Fi networks<br>"
+                       "<select name=\"%s\">"
+                       "<option value=\"\">— Select a network —</option>",
+                       PROVISION_FIELD_WIFI_SSID_PICK);
+    if (written <= 0 || offset + (size_t)written >= len) {
+        return 0;
+    }
+    offset += (size_t)written;
+
+    if (scan != NULL) {
+        for (i = 0; i < scan->count; i++) {
+            char ssid_esc[WIFI_SSID_MAX_LEN * 6 + 1];
+            const char *selected = "";
+
+            html_escape(scan->aps[i].ssid, ssid_esc, sizeof(ssid_esc));
+            if (selected_ssid != NULL && strcmp(selected_ssid, scan->aps[i].ssid) == 0) {
+                selected = " selected";
+            }
+
+            written = snprintf(buf + offset,
+                                 len - offset,
+                                 "<option value=\"%s\"%s>%s (%d dBm)</option>",
+                                 ssid_esc,
+                                 selected,
+                                 ssid_esc,
+                                 (int)scan->aps[i].rssi);
+            if (written <= 0 || offset + (size_t)written >= len) {
+                return 0;
+            }
+            offset += (size_t)written;
+        }
+    }
+
+    written = snprintf(buf + offset, len - offset, "</select></p>");
+    if (written <= 0 || offset + (size_t)written >= len) {
+        return 0;
+    }
+
+    return offset + (size_t)written;
+}
+
 size_t provision_form_render(const provision_input_t *input,
                              const char *message,
+                             const provision_scan_list_t *scan,
                              char *buf,
                              size_t len)
 {
@@ -248,6 +315,7 @@ size_t provision_form_render(const provision_input_t *input,
     char msg_block[320];
     const provision_input_t empty = {0};
     const provision_input_t *fields = (input != NULL) ? input : &empty;
+    size_t written_total;
     int written;
 
     if (buf == NULL || len == 0) {
@@ -262,7 +330,10 @@ size_t provision_form_render(const provision_input_t *input,
 
     if (message != NULL && message[0] != '\0') {
         html_escape(message, msg_esc, sizeof(msg_esc));
-        snprintf(msg_block, sizeof(msg_block), "<p><strong>%s</strong></p>", msg_esc);
+        snprintf(msg_block,
+                 sizeof(msg_block),
+                 "<p role=\"alert\"><strong>%s</strong></p>",
+                 msg_esc);
     } else {
         msg_block[0] = '\0';
     }
@@ -272,41 +343,111 @@ size_t provision_form_render(const provision_input_t *input,
                          "<!DOCTYPE html><html><head><title>PetFeeder Setup</title></head><body>"
                          "<h1>PetFeeder Setup</h1>"
                          "%s"
-                         "<form method=\"post\" action=\"/provision.cgi\">"
-                         "<p>Wi-Fi SSID<br><input name=\"wifi_ssid\" value=\"%s\" maxlength=\"32\"></p>",
-                         msg_block,
-                         field_esc);
+                         "<form method=\"post\" action=\"/provision.cgi\">",
+                         msg_block);
     if (written <= 0 || (size_t)written >= len) {
+        return 0;
+    }
+    written_total = (size_t)written;
+
+    written_total = provision_form_append_scan_select(scan,
+                                                      fields->wifi_ssid,
+                                                      buf,
+                                                      len,
+                                                      written_total);
+    if (written_total == 0) {
         return 0;
     }
 
-    html_escape(fields->mqtt_host, field_esc, sizeof(field_esc));
-    written += snprintf(buf + written, len - (size_t)written,
-                        "<p>Wi-Fi password (empty = open)<br><input type=\"password\" name=\"wifi_pass\" value=\"\"></p>"
-                        "<p>MQTT broker host<br><input name=\"mqtt_host\" value=\"%s\" maxlength=\"253\"></p>"
-                        "<p>MQTT broker port<br><input name=\"mqtt_port\" value=\"%s\" maxlength=\"5\"></p>",
-                        field_esc,
-                        port_buf);
-    if (written <= 0 || (size_t)written >= len) {
+    html_escape(fields->wifi_ssid, field_esc, sizeof(field_esc));
+    written = snprintf(buf + written_total,
+                       len - written_total,
+                       "<p>Wi-Fi SSID (or type manually)<br>"
+                       "<input name=\"wifi_ssid\" value=\"%s\" maxlength=\"32\"></p>",
+                       field_esc);
+    if (written <= 0 || written_total + (size_t)written >= len) {
         return 0;
     }
+    written_total += (size_t)written;
+
+    {
+        char pass_esc[WIFI_PASS_MAX_LEN * 6 + 1];
+
+        html_escape(fields->wifi_pass, pass_esc, sizeof(pass_esc));
+        html_escape(fields->mqtt_host, field_esc, sizeof(field_esc));
+        written = snprintf(buf + written_total,
+                           len - written_total,
+                           "<p>Wi-Fi password (empty = open)<br>"
+                           "<input type=\"password\" name=\"wifi_pass\" value=\"%s\"></p>"
+                           "<p>MQTT broker host<br><input name=\"mqtt_host\" value=\"%s\" maxlength=\"253\"></p>"
+                           "<p>MQTT broker port<br><input name=\"mqtt_port\" value=\"%s\" maxlength=\"5\"></p>",
+                           pass_esc,
+                           field_esc,
+                           port_buf);
+    }
+    if (written <= 0 || written_total + (size_t)written >= len) {
+        return 0;
+    }
+    written_total += (size_t)written;
 
     html_escape(fields->mqtt_user, field_esc, sizeof(field_esc));
-    written += snprintf(buf + written, len - (size_t)written,
-                        "<p>MQTT username<br><input name=\"mqtt_user\" value=\"%s\" maxlength=\"64\"></p>",
-                        field_esc);
-    if (written <= 0 || (size_t)written >= len) {
+    written = snprintf(buf + written_total,
+                       len - written_total,
+                       "<p>MQTT username<br><input name=\"mqtt_user\" value=\"%s\" maxlength=\"64\"></p>",
+                       field_esc);
+    if (written <= 0 || written_total + (size_t)written >= len) {
+        return 0;
+    }
+    written_total += (size_t)written;
+
+    {
+        char mqtt_pass_esc[MQTT_PASS_MAX_LEN * 6 + 1];
+
+        html_escape(fields->mqtt_pass, mqtt_pass_esc, sizeof(mqtt_pass_esc));
+        html_escape(fields->device_id, field_esc, sizeof(field_esc));
+        written = snprintf(buf + written_total,
+                           len - written_total,
+                           "<p>MQTT password<br>"
+                           "<input type=\"password\" name=\"mqtt_pass\" value=\"%s\"></p>"
+                           "<p>Device ID (optional)<br><input name=\"device_id\" value=\"%s\" maxlength=\"32\"></p>"
+                           "<p><input type=\"submit\" value=\"Save and connect\"></p>"
+                           "<p><a href=\"/provision.cgi?rescan=1\">Refresh network list</a></p>"
+                           "</form></body></html>",
+                           mqtt_pass_esc,
+                           field_esc);
+    }
+
+    if (written <= 0 || written_total + (size_t)written >= len) {
         return 0;
     }
 
-    html_escape(fields->device_id, field_esc, sizeof(field_esc));
-    written += snprintf(buf + written, len - (size_t)written,
-                        "<p>MQTT password<br><input type=\"password\" name=\"mqtt_pass\" value=\"\"></p>"
-                        "<p>Device ID (optional)<br><input name=\"device_id\" value=\"%s\" maxlength=\"32\"></p>"
-                        "<p><input type=\"submit\" value=\"Save and connect\"></p>"
-                        "</form></body></html>",
-                        field_esc);
+    return written_total + (size_t)written;
+}
 
+size_t provision_form_wifi_fail_message(const char *ssid, char *buf, size_t len)
+{
+    char ssid_esc[WIFI_SSID_MAX_LEN * 6 + 1];
+    int written;
+
+    if (buf == NULL || len == 0) {
+        return 0;
+    }
+
+    if (ssid == NULL || ssid[0] == '\0') {
+        if (strlen(PROVISION_MSG_WIFI_FAIL) + 1 > len) {
+            return 0;
+        }
+        strcpy(buf, PROVISION_MSG_WIFI_FAIL);
+        return strlen(PROVISION_MSG_WIFI_FAIL);
+    }
+
+    html_escape(ssid, ssid_esc, sizeof(ssid_esc));
+    written = snprintf(buf,
+                       len,
+                       "%s%s%s",
+                       PROVISION_MSG_WIFI_FAIL_PREFIX,
+                       ssid_esc,
+                       PROVISION_MSG_WIFI_FAIL_SUFFIX);
     if (written <= 0 || (size_t)written >= len) {
         return 0;
     }

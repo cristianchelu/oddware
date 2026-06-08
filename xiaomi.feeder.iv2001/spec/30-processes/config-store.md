@@ -52,7 +52,9 @@ moderate write frequency.
 
 1. Erase all NVDM namespaces (wifi, mqtt, feed, display, schedule, time,
    calib, power, system). A namespace with no keys is already clear —
-   `erase_group` succeeds without error.
+   `erase_group` succeeds without error. Also clear the LinkIt SDK STA
+   profile (`STA/Ssid` in NVDM) so a failed provisioning attempt does not
+   leave a ghost SSID in the radio stack.
 2. Reboot.
 3. Device enters first-boot AP provisioning mode (no stored Wi-Fi credentials).
 

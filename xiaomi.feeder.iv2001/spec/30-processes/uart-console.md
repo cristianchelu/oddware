@@ -95,7 +95,8 @@ start AP provisioning mode.
 
 ### `wifi show`
 
-Displays stored Wi-Fi credentials. Password is never printed in cleartext.
+Displays stored Wi-Fi credentials from the app `wifi` NVDM namespace
+(not the LinkIt SDK `STA` profile). Password is never printed in cleartext.
 
 | Outcome | UART response |
 |---------|---------------|

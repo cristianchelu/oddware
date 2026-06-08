@@ -4,8 +4,19 @@
 
 #include "provision_flow.h"
 
+#include "config_keys.h"
 #include "mqtt_cred.h"
 #include "wifi_cred.h"
+
+static void provision_flow_rollback_creds(const config_port_t *cfg)
+{
+    if (cfg == NULL) {
+        return;
+    }
+
+    (void)cfg->erase_group(CONFIG_GROUP_WIFI);
+    (void)cfg->erase_group(CONFIG_GROUP_MQTT);
+}
 
 static port_err_t provision_flow_save_mqtt_keys(const config_port_t *cfg,
                                                 const provision_input_t *input)
@@ -64,29 +75,33 @@ provision_flow_result_t provision_flow_submit(const provision_input_t *input,
         return PROVISION_FLOW_WIFI_FAIL;
     }
 
-    if (ops->save_mqtt != NULL) {
-        if (ops->save_mqtt(cfg, input) != PORT_OK) {
-            return PROVISION_FLOW_WIFI_FAIL;
-        }
-    } else if (provision_flow_save_mqtt_keys(cfg, input) != PORT_OK) {
-        return PROVISION_FLOW_WIFI_FAIL;
-    }
-
     mqtt_ok = true;
     if (ops->mqtt_try_connect != NULL) {
         mqtt_ok = ops->mqtt_try_connect(input, 10000);
     }
 
-    if (ops->save_wifi != NULL) {
-        if (ops->save_wifi(cfg, input->wifi_ssid, input->wifi_pass) != PORT_OK) {
-            return PROVISION_FLOW_WIFI_FAIL;
-        }
-    } else if (wifi_cred_save(cfg, input->wifi_ssid, input->wifi_pass) != PORT_OK) {
-        return PROVISION_FLOW_WIFI_FAIL;
+    if (!mqtt_ok) {
+        return PROVISION_FLOW_MQTT_FAIL;
     }
 
-    if (!mqtt_ok) {
-        return PROVISION_FLOW_MQTT_WARN;
+    if (ops->save_wifi != NULL) {
+        if (ops->save_wifi(cfg, input->wifi_ssid, input->wifi_pass) != PORT_OK) {
+            provision_flow_rollback_creds(cfg);
+            return PROVISION_FLOW_SAVE_FAIL;
+        }
+    } else if (wifi_cred_save(cfg, input->wifi_ssid, input->wifi_pass) != PORT_OK) {
+        provision_flow_rollback_creds(cfg);
+        return PROVISION_FLOW_SAVE_FAIL;
+    }
+
+    if (ops->save_mqtt != NULL) {
+        if (ops->save_mqtt(cfg, input) != PORT_OK) {
+            provision_flow_rollback_creds(cfg);
+            return PROVISION_FLOW_SAVE_FAIL;
+        }
+    } else if (provision_flow_save_mqtt_keys(cfg, input) != PORT_OK) {
+        provision_flow_rollback_creds(cfg);
+        return PROVISION_FLOW_SAVE_FAIL;
     }
 
     return PROVISION_FLOW_OK;
@@ -99,8 +114,10 @@ const char *provision_flow_message(provision_flow_result_t result)
         return PROVISION_MSG_VALIDATION;
     case PROVISION_FLOW_WIFI_FAIL:
         return PROVISION_MSG_WIFI_FAIL;
-    case PROVISION_FLOW_MQTT_WARN:
-        return PROVISION_MSG_MQTT_WARN;
+    case PROVISION_FLOW_MQTT_FAIL:
+        return PROVISION_MSG_MQTT_FAIL;
+    case PROVISION_FLOW_SAVE_FAIL:
+        return PROVISION_MSG_SAVE_FAIL;
     case PROVISION_FLOW_OK:
         return PROVISION_MSG_SUCCESS;
     default:

@@ -11,7 +11,11 @@ TEST_SRCS := $(wildcard test_*.c)
 HOST_SRCS := ../src/boot_bank.c \
              ../src/wifi_cred.c \
              ../src/provision_form.c \
+             ../src/provision_scan_list.c \
              ../src/provision_flow.c \
+             ../src/provision_wifi_try.c \
+             ../src/provision_pending.c \
+             ../src/provision_portal.c \
              ../src/provision_reset.c \
              ../src/mqtt_cred.c \
              ../src/mqtt_backoff.c \

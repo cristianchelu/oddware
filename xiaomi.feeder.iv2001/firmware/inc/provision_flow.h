@@ -15,7 +15,8 @@ typedef enum provision_flow_result {
     PROVISION_FLOW_OK = 0,
     PROVISION_FLOW_VALIDATION_FAIL,
     PROVISION_FLOW_WIFI_FAIL,
-    PROVISION_FLOW_MQTT_WARN,
+    PROVISION_FLOW_MQTT_FAIL,
+    PROVISION_FLOW_SAVE_FAIL,
 } provision_flow_result_t;
 
 typedef struct provision_flow_ops {

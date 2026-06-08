@@ -14,8 +14,27 @@
 
 log_create_module(http_srv, PRINT_LEVEL_INFO);
 
+#define HTTP_SERVER_STOP_WAIT_MS 100
+/* httpd_main select() timeout is 10 s — wait longer before restart. */
+#define HTTP_SERVER_STOP_WAIT_MAX 150
+
 static QueueHandle_t s_fb_queue;
 static bool s_running;
+
+static port_err_t http_server_port_stop(void);
+
+static void http_server_wait_stopped(void)
+{
+    HTTPD_STATUS status;
+
+    for (int i = 0; i < HTTP_SERVER_STOP_WAIT_MAX; i++) {
+        status = httpd_get_status();
+        if (status == HTTPD_STATUS_STOP || status == HTTPD_STATUS_UNINIT) {
+            return;
+        }
+        vTaskDelay(pdMS_TO_TICKS(HTTP_SERVER_STOP_WAIT_MS));
+    }
+}
 
 static int http_server_wait_for_run(void)
 {
@@ -40,21 +59,41 @@ static int http_server_wait_for_run(void)
     }
 }
 
-static port_err_t http_server_port_start(uint16_t port)
+static bool http_server_ensure_stopped(void)
+{
+    HTTPD_STATUS status;
+    HTTPD_RESULT result;
+
+    status = httpd_get_status();
+    if (status == HTTPD_STATUS_UNINIT || status == HTTPD_STATUS_STOP) {
+        s_running = false;
+        return true;
+    }
+
+    result = httpd_stop();
+    if (result != HTTPD_RESULT_SUCCESS && result != HTTPD_RESULT_WAITING) {
+        return false;
+    }
+
+    http_server_wait_stopped();
+    s_running = false;
+    return httpd_get_status() == HTTPD_STATUS_STOP
+        || httpd_get_status() == HTTPD_STATUS_UNINIT;
+}
+
+static port_err_t http_server_do_start(uint16_t port)
 {
     httpd_para parameter;
     HTTPD_RESULT result;
 
     (void)port;
 
-    if (s_running) {
-        return PORT_OK;
-    }
-
-    result = httpd_init();
-    if (result != HTTPD_RESULT_SUCCESS && result != HTTPD_RESULT_WAITING) {
-        LOG_E(http_srv, "httpd_init failed (%d)", (int)result);
-        return PORT_ERR_IO;
+    if (httpd_get_status() == HTTPD_STATUS_UNINIT) {
+        result = httpd_init();
+        if (result != HTTPD_RESULT_SUCCESS && result != HTTPD_RESULT_WAITING) {
+            LOG_E(http_srv, "httpd_init failed (%d)", (int)result);
+            return PORT_ERR_IO;
+        }
     }
 
     if (s_fb_queue == NULL) {
@@ -70,10 +109,12 @@ static port_err_t http_server_port_start(uint16_t port)
     if (result == HTTPD_RESULT_WAITING) {
         if (http_server_wait_for_run() != 0) {
             LOG_E(http_srv, "httpd_start wait failed");
+            s_running = false;
             return PORT_ERR_IO;
         }
     } else if (result != HTTPD_RESULT_SUCCESS) {
         LOG_E(http_srv, "httpd_start failed (%d)", (int)result);
+        s_running = false;
         return PORT_ERR_IO;
     }
 
@@ -82,29 +123,44 @@ static port_err_t http_server_port_start(uint16_t port)
     return PORT_OK;
 }
 
-static port_err_t http_server_port_stop(void)
+static port_err_t http_server_port_start(uint16_t port)
 {
-    HTTPD_RESULT result;
-    HTTPD_STATUS status;
-
-    if (!s_running) {
+    if (httpd_get_status() == HTTPD_STATUS_RUN) {
+        s_running = true;
         return PORT_OK;
     }
 
-    result = httpd_stop();
-    if (result != HTTPD_RESULT_SUCCESS && result != HTTPD_RESULT_WAITING) {
+    if (!http_server_ensure_stopped()) {
+        LOG_E(http_srv, "httpd did not reach STOP before restart");
         return PORT_ERR_IO;
     }
 
-    for (int i = 0; i < 50; i++) {
-        status = httpd_get_status();
-        if (status == HTTPD_STATUS_STOP || status == HTTPD_STATUS_UNINIT) {
-            break;
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
+    return http_server_do_start(port);
+}
+
+port_err_t http_server_adapter_force_restart(uint16_t port)
+{
+    HTTPD_STATUS status = httpd_get_status();
+
+    if (status == HTTPD_STATUS_RUN || status == HTTPD_STATUS_STOPPING) {
+        (void)http_server_ensure_stopped();
     }
 
-    s_running = false;
+    status = httpd_get_status();
+    if (status != HTTPD_STATUS_STOP && status != HTTPD_STATUS_UNINIT) {
+        LOG_E(http_srv, "httpd stuck in state %d", (int)status);
+        return PORT_ERR_IO;
+    }
+
+    return http_server_do_start(port);
+}
+
+static port_err_t http_server_port_stop(void)
+{
+    if (!http_server_ensure_stopped()) {
+        return PORT_ERR_IO;
+    }
+
     return PORT_OK;
 }
 

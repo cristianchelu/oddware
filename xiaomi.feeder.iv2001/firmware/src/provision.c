@@ -7,20 +7,23 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "timers.h"
 #include "syslog.h"
 
 #include "hal_cache.h"
 #include "hal_sys.h"
 #include "wifi_api.h"
-#include "wifi_lwip_helper.h"
 
 #include "config_port.h"
 #include "http_server_adapter.h"
+#include "wifi_adapter.h"
 #include "mqtt_adapter.h"
 #include "mqtt_client.h"
 #include "mqtt_cred.h"
 #include "provision_flow.h"
 #include "provision_form.h"
+#include "provision_portal.h"
+#include "provision_wifi_try.h"
 #include "provision.h"
 #include "provision_reset.h"
 #include "task_def.h"
@@ -35,6 +38,20 @@ log_create_module(provision, PRINT_LEVEL_INFO);
 
 static bool s_active;
 static char s_ap_ssid[20];
+static provision_scan_list_t s_scan_list;
+
+#define PROVISION_SCAN_TIMEOUT_MS   10000
+#define PROVISION_RESTORE_TIMER_MS  250
+
+static void provision_refresh_scan(void)
+{
+    provision_scan_ap_t raw[PROVISION_SCAN_MAX_APS];
+    size_t raw_count;
+
+    provision_scan_list_clear(&s_scan_list);
+    raw_count = wifi_adapter_scan_networks(raw, PROVISION_SCAN_MAX_APS, PROVISION_SCAN_TIMEOUT_MS);
+    provision_scan_list_merge(&s_scan_list, raw, raw_count, s_ap_ssid);
+}
 
 static void provision_get_mac_hex(char *buf, size_t len)
 {
@@ -93,44 +110,161 @@ static bool provision_wait_wifi_ready(uint32_t timeout_ms)
     return false;
 }
 
-static bool provision_wifi_try_connect(const char *ssid, const char *pass, uint32_t timeout_ms)
+static port_err_t provision_http_stop(void)
 {
-    const wifi_port_t *wifi = wifi_port_get();
     const http_server_port_t *http = http_server_port_get();
 
     if (http->stop() != PORT_OK) {
-        LOG_E(provision, "failed to stop HTTP server for STA test");
+        LOG_E(provision, "failed to stop HTTP server");
+        return PORT_ERR_IO;
     }
+
+    return PORT_OK;
+}
+
+static port_err_t provision_http_start(uint16_t port)
+{
+    const http_server_port_t *http = http_server_port_get();
+
+    if (http->start(port) != PORT_OK) {
+        LOG_E(provision, "failed to restart HTTP server");
+        return PORT_ERR_IO;
+    }
+
+    return PORT_OK;
+}
+
+static port_err_t provision_ap_stop(void)
+{
+    const wifi_port_t *wifi = wifi_port_get();
 
     if (wifi->stop_ap() != PORT_OK) {
         LOG_E(provision, "failed to leave AP mode");
-        return false;
+        return PORT_ERR_IO;
     }
+
+    return PORT_OK;
+}
+
+static port_err_t provision_ap_start(const char *ssid, uint8_t channel)
+{
+    const wifi_port_t *wifi = wifi_port_get();
+
+    if (wifi->start_ap(ssid, "", channel) != PORT_OK) {
+        LOG_E(provision, "failed to restore AP mode");
+        return PORT_ERR_IO;
+    }
+
+    return PORT_OK;
+}
+
+static port_err_t provision_sta_connect(const char *ssid, const char *pass)
+{
+    const wifi_port_t *wifi = wifi_port_get();
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
         LOG_E(provision, "STA connect API failed");
-        goto restore_ap;
+        return PORT_ERR_IO;
     }
 
-    lwip_net_ready();
+    /* lwip_net_ready() blocks until DHCP; provision_wait_wifi_ready times out instead. */
+    return PORT_OK;
+}
 
-    if (provision_wait_wifi_ready(timeout_ms)) {
+static void provision_sta_abort(void)
+{
+    wifi_adapter_clear_sdk_sta_profile();
+}
+
+static const provision_wifi_try_deps_t s_wifi_try_deps = {
+    .http_stop = NULL,
+    .http_start = NULL,
+    .ap_stop = provision_ap_stop,
+    .ap_start = provision_ap_start,
+    .sta_connect = provision_sta_connect,
+    .sta_wait_ready = provision_wait_wifi_ready,
+    .sta_abort = provision_sta_abort,
+};
+
+static provision_portal_restore_t s_pending_restore;
+static provision_portal_restore_t s_timer_restore_kind;
+static TimerHandle_t s_restore_timer;
+
+static void provision_restore_ap_portal(void);
+
+static void provision_restore_http_only(void)
+{
+    if (http_server_adapter_force_restart(PROVISION_WIFI_TRY_HTTP_PORT) != PORT_OK) {
+        LOG_E(provision, "failed to force-restart HTTP server");
+    }
+}
+
+static void provision_restore_timer_cb(TimerHandle_t timer)
+{
+    (void)timer;
+
+    switch (s_timer_restore_kind) {
+    case PROVISION_PORTAL_RESTORE_HTTP_ONLY:
+        provision_restore_http_only();
+        break;
+    case PROVISION_PORTAL_RESTORE_AP_PORTAL:
+        provision_restore_ap_portal();
+        break;
+    default:
+        break;
+    }
+
+    s_timer_restore_kind = PROVISION_PORTAL_RESTORE_NONE;
+}
+
+static bool provision_ensure_restore_timer(void)
+{
+    if (s_restore_timer != NULL) {
         return true;
     }
 
-    LOG_E(provision, "STA connect timed out");
+    s_restore_timer = xTimerCreate("prov_rst",
+                                   pdMS_TO_TICKS(PROVISION_RESTORE_TIMER_MS),
+                                   pdFALSE,
+                                   NULL,
+                                   provision_restore_timer_cb);
+    return s_restore_timer != NULL;
+}
 
-restore_ap:
-    if (wifi->start_ap(s_ap_ssid, "", PROVISION_AP_CHANNEL) != PORT_OK) {
-        LOG_E(provision, "failed to restore AP mode");
-        return false;
+static void provision_schedule_restore(provision_portal_restore_t kind)
+{
+    if (kind == PROVISION_PORTAL_RESTORE_NONE) {
+        return;
     }
 
-    if (http->start(80) != PORT_OK) {
-        LOG_E(provision, "failed to restart HTTP server");
+    if (s_pending_restore == PROVISION_PORTAL_RESTORE_NONE) {
+        s_pending_restore = kind;
+    } else if (kind == PROVISION_PORTAL_RESTORE_AP_PORTAL) {
+        s_pending_restore = PROVISION_PORTAL_RESTORE_AP_PORTAL;
     }
+}
 
-    return false;
+static void provision_portal_request_restore(provision_portal_restore_t kind)
+{
+    provision_schedule_restore(kind);
+}
+
+static void provision_restore_ap_portal(void)
+{
+    provision_sta_abort();
+    vTaskDelay(pdMS_TO_TICKS(PROVISION_WIFI_TRY_AP_SETTLE_MS));
+    (void)provision_ap_start(s_ap_ssid, PROVISION_AP_CHANNEL);
+    provision_restore_http_only();
+}
+
+static bool provision_flow_wifi_try_connect(const char *ssid, const char *pass, uint32_t timeout_ms)
+{
+    return provision_wifi_try_connect(ssid,
+                                      pass,
+                                      timeout_ms,
+                                      s_ap_ssid,
+                                      PROVISION_AP_CHANNEL,
+                                      &s_wifi_try_deps);
 }
 
 static bool provision_mqtt_try_connect(const provision_input_t *input, uint32_t timeout_ms)
@@ -156,9 +290,53 @@ static void provision_reboot(void)
 static const provision_flow_ops_t s_flow_ops = {
     .save_wifi = NULL,
     .save_mqtt = NULL,
-    .wifi_try_connect = provision_wifi_try_connect,
+    .wifi_try_connect = provision_flow_wifi_try_connect,
     .mqtt_try_connect = provision_mqtt_try_connect,
 };
+
+static provision_flow_result_t provision_portal_flow_submit(const provision_input_t *input)
+{
+    return provision_flow_submit(input, config_port_get(), &s_flow_ops);
+}
+
+static const provision_portal_deps_t s_portal_deps = {
+    .scan = &s_scan_list,
+    .active = false,
+    .refresh_scan = provision_refresh_scan,
+    .flow_submit = provision_portal_flow_submit,
+    .request_restore = provision_portal_request_restore,
+    .on_success = provision_reboot,
+};
+
+void provision_after_cgi_response(void)
+{
+    provision_portal_restore_t kind = s_pending_restore;
+
+    if (kind == PROVISION_PORTAL_RESTORE_NONE) {
+        return;
+    }
+
+    if (!provision_ensure_restore_timer()) {
+        LOG_E(provision, "failed to create portal restore timer");
+        return;
+    }
+
+    s_pending_restore = PROVISION_PORTAL_RESTORE_NONE;
+    s_timer_restore_kind = kind;
+
+    if (xTimerChangePeriod(s_restore_timer,
+                           pdMS_TO_TICKS(PROVISION_RESTORE_TIMER_MS),
+                           pdMS_TO_TICKS(100)) != pdPASS) {
+        LOG_E(provision, "failed to arm portal restore timer");
+        s_pending_restore = kind;
+        return;
+    }
+
+    if (xTimerStart(s_restore_timer, pdMS_TO_TICKS(100)) != pdPASS) {
+        LOG_E(provision, "failed to start portal restore timer");
+        s_pending_restore = kind;
+    }
+}
 
 bool provision_is_active(void)
 {
@@ -175,6 +353,7 @@ static void provision_task(void *param)
     vTaskDelay(pdMS_TO_TICKS(PROVISION_SCHEDULER_DELAY_MS));
 
     mqtt_client_stop();
+    wifi_adapter_clear_sdk_sta_profile();
     provision_build_ap_ssid(s_ap_ssid, sizeof(s_ap_ssid));
 
     if (wifi->start_ap(s_ap_ssid, "", PROVISION_AP_CHANNEL) != PORT_OK) {
@@ -184,6 +363,7 @@ static void provision_task(void *param)
     }
 
     vTaskDelay(pdMS_TO_TICKS(PROVISION_AP_SETTLE_MS));
+    provision_refresh_scan();
 
     if (http->start(80) != PORT_OK) {
         LOG_E(provision, "failed to start HTTP server");
@@ -220,48 +400,26 @@ bool provision_factory_reset(void)
         return false;
     }
 
+    wifi_adapter_clear_sdk_sta_profile();
+
     hal_cache_disable();
     hal_cache_deinit();
     hal_sys_reboot(HAL_SYS_REBOOT_MAGIC, WHOLE_SYSTEM_REBOOT_COMMAND);
     return true;
 }
 
-size_t provision_handle_get(char *html, size_t len)
+size_t provision_handle_get(const char *query, size_t query_len, char *html, size_t len)
 {
-    if (html == NULL || len == 0) {
-        return 0;
-    }
+    provision_portal_deps_t deps = s_portal_deps;
 
-    return provision_form_render(NULL, NULL, html, len);
+    deps.active = s_active;
+    return provision_portal_handle_get(query, query_len, html, len, &deps);
 }
 
 size_t provision_handle_post(const char *body, size_t body_len, char *html, size_t len)
 {
-    provision_input_t input;
-    provision_flow_result_t result;
-    size_t html_len;
+    provision_portal_deps_t deps = s_portal_deps;
 
-    if (html == NULL || len == 0) {
-        return 0;
-    }
-
-    if (body == NULL || body_len == 0) {
-        return provision_form_render(NULL, PROVISION_MSG_VALIDATION, html, len);
-    }
-
-    if (provision_form_parse_urlencoded(body, body_len, &input) != PORT_OK) {
-        return provision_form_render(NULL, PROVISION_MSG_VALIDATION, html, len);
-    }
-
-    result = provision_flow_submit(&input, config_port_get(), &s_flow_ops);
-
-    if (result == PROVISION_FLOW_OK) {
-        html_len = provision_form_render_success(html, len);
-        if (html_len > 0) {
-            provision_reboot();
-        }
-        return html_len;
-    }
-
-    return provision_form_render(&input, provision_flow_message(result), html, len);
+    deps.active = s_active;
+    return provision_portal_handle_post(body, body_len, html, len, &deps);
 }

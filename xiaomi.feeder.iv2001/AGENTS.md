@@ -309,6 +309,13 @@ All firmware code follows strict **spec → red → green → refactor**. This
 applies to features, bugfixes, bench discoveries, and plan-driven tasks.
 There is no alternate path.
 
+**Debug does not skip the conga.** UART spam, captive-portal misbehaviour,
+OTA stalls, and “I’ll add tests after we confirm on hardware” are still
+spec → red → green → refactor. Observation on the bench is step 0 (repro
+evidence), not permission to patch `firmware/` and backfill tests later.
+If you already patched to learn something, **revert or redo**: spec the
+correct behaviour, write the failing host test, then re-apply a minimal fix.
+
 ### The conga (only valid order)
 
 For **each** testable behavior (one assertion or tightly related group):
@@ -332,6 +339,9 @@ spec/tests later.
 | “Reverse-document” / backfill spec from code before commit | Stop; write spec first, then test, then code (revert or redo if already coded) |
 | Write tests after code to “cover” what was built | Delete the backward test or treat it as step 2 of the conga on a **new** behavior only after spec exists |
 | Bench-debug → patch → flash → spec at end | Observe on bench → **spec delta** → failing test → fix → flash |
+| “Debug first, TDD when it works” (any urgency: UART, portal, OTA, crash) | Same conga — urgency changes **deploy** order (flash to verify), not **test** order |
+| Spike patch kept because bench looked good | Revert spike or extract testable logic; spec → red → green → re-apply minimal diff |
+| Tests added after a debug fix to “lock it in” | Invalid backfill — delete or rewrite as step 2 on a **new** spec’d behaviour |
 | Partial spec (“CLI is documented, lifecycle isn’t”) as permission to code | List missing assertions; write them in the canonical Tier 3 file, then conga |
 | `#ifdef UNIT_TEST` or duplicate logic to make tests pass | Port fakes and shims (see below) |
 
@@ -359,13 +369,17 @@ allowed.
 
 When the user is at the hardware (UART spam, flash failure, reconnect bug):
 
-1. **Diagnose** — capture evidence (log snippet, repro steps).
+1. **Diagnose** — capture evidence (log snippet, repro steps). **Stop here**
+   before editing `firmware/` unless the Tier 3 spec already states the fix.
 2. **Spec** — if the correct behavior is not already in Tier 3, add it now
    (e.g. “idle yield does not drop session”, “countdown ends on `Done.` only”).
 3. **Red** — host test that fails with the bug (or documents the invariant).
 4. **Green** — fix in `firmware/` or `tools/`.
 5. **Deploy** — OTA via `mqtt-ota.sh` when the device is MQTT-online; otherwise
    ask the user to UART-flash.
+
+Flash/OTA is **verification after green**, not a substitute for red. Never ship
+a bench-only patch with “tests coming in the next commit”.
 
 Skipping step 2 because “we’ll fix spec before commit” is the same violation
 as backfill. The commit must not be the first time Tier 3 mentions the

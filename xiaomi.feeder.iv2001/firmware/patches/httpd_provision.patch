@@ -150,7 +150,9 @@ index 873a651c..cfeba700 100644
 -	return total_send_len;
 -
 +    return WEB_printf(cn,
-+                      "<!DOCTYPE html><html><head><title>PetFeeder Setup</title></head>"
++                      "<!DOCTYPE html><html><head>"
++                      "<meta http-equiv=\"refresh\" content=\"0;url=/provision.cgi\">"
++                      "<title>PetFeeder Setup</title></head>"
 +                      "<body><p><a href=\"/provision.cgi\">PetFeeder Setup</a></p></body></html>");
  }
 diff --git a/middleware/third_party/httpd/src/axhttpd.c b/middleware/third_party/httpd/src/axhttpd.c
