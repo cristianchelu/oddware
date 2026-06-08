@@ -158,7 +158,9 @@ port_err_t mqtt_cred_save_device_id(const config_port_t *cfg, const char *device
     }
 
     if (device_id[0] == '\0') {
-        return cfg->erase(CONFIG_GROUP_MQTT, CONFIG_KEY_MQTT_DEVICE_ID);
+        port_err_t err = cfg->erase(CONFIG_GROUP_MQTT, CONFIG_KEY_MQTT_DEVICE_ID);
+
+        return (err == PORT_OK || err == PORT_ERR_NOT_FOUND) ? PORT_OK : err;
     }
 
     return cfg->write(CONFIG_GROUP_MQTT, CONFIG_KEY_MQTT_DEVICE_ID, device_id);

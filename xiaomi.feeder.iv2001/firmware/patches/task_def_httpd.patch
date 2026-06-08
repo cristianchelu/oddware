@@ -1,0 +1,15 @@
+--- a/project/mt7682_hdk/apps/minicli/inc/task_def.h
++++ b/project/mt7682_hdk/apps/minicli/inc/task_def.h
+@@ -81,6 +81,12 @@
+ #define UNIFY_WPA_SUPPLICANT_TASK_STACKSIZE   (2048*4) /*unit byte!*/
+ #define UNIFY_WPA_SUPPLICANT_TASK_PRIO        TASK_PRIORITY_ABOVE_NORMAL
+ 
++/* for httpd task */
++#define HTTPD_TASK_NAME                 "httpd_proc"
++#define HTTPD_TASK_STACKSIZE            (2048 * 4) /* provisioning form render needs >2.5 KB */
++#define HTTPD_TASK_PRIO                 TASK_PRIORITY_NORMAL
++#define HTTPD_QUEUE_LENGTH              1
++
+ /* for lwIP task */
+ #define TCPIP_THREAD_NAME              "lwIP"
+ #define TCPIP_THREAD_STACKSIZE         (512 * 4)

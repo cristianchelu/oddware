@@ -215,6 +215,71 @@ commands. Reference `README.md` (Flashing) and `spec/10-hardware/flash.md`.
 Download starts CODA first; the user resets the feeder (power-cycle or TP15)
 within the timed prompt.
 
+## OTA bench loop (agent-run)
+
+When the device already runs OTA-capable A/B firmware and is online on the
+same LAN as the broker, agents can **build, deploy, and validate on hardware
+themselves** — no manual CODA reset. UART is optional but recommended on the
+bench: OTA scripts auto-capture boot logs when the serial port is present.
+
+Full tool reference: `tools/ota/README.md`. Device behaviour:
+`spec/30-processes/ota-flow.md`.
+
+### OTA vs UART flash
+
+| Situation | Who runs it |
+|-----------|-------------|
+| Device online on MQTT, A/B firmware in flash | Agent — `mqtt-ota.sh` (below) |
+| First image, bricked bank, bootloader recovery | User — UART flash (above) |
+
+### One-time setup
+
+```bash
+cp tools/ota/.env.example tools/ota/.env   # broker host, credentials, UART_DEV
+```
+
+Broker must be reachable from both the dev machine and the feeder.
+`mosquitto_pub`, `mosquitto_sub`, `python3`, `curl`, and `fuser` are required.
+
+### Iteration cheatsheet
+
+From `xiaomi.feeder.iv2001/`:
+
+```bash
+make test-host
+source tools/build-env.sh && ./tools/build-firmware.sh
+./tools/ota/mqtt-ota.sh --device-id <ID>          # serves inactive-bank .bin, waits for swap
+./tools/ota/mqtt-ota.sh --device-id <ID> --skip-build   # when images already built
+```
+
+`mqtt-ota.sh` reads the active bank from `petfeeder/<ID>/state`, serves
+`petfeeder_a.bin` or `petfeeder_b.bin` from `firmware/flash/` over a local
+Range HTTP server, publishes `petfeeder/<ID>/cmd/ota`, and waits for the bank
+field to flip. Logs land in `tools/ota/logs/<run-id>/` (HTTP + UART).
+
+### Success criteria
+
+- Script exits 0; hop meta shows `result=OK`.
+- `petfeeder/<ID>/state` reports the opposite bank (`A` ↔ `B`).
+- On failure: inspect `tools/ota/logs/<run-id>/hop-*-uart.log` for `[ota]` /
+  `[mqtt]` lines and `http.log` for stalled Range GETs.
+
+Subscribe to `petfeeder/<ID>/ota/status` for download progress when debugging
+interactively.
+
+### Device ID
+
+MQTT topic prefix is `petfeeder/<device_id>/`. The ID is the NVDM
+`mqtt/device_id` value when set; otherwise the last six hex digits of the STA
+MAC (`spec/30-processes/config-store.md`). Ask the user or read it from an
+existing `state` message if unknown — do not assume the example `768722`.
+
+### UART on the bench
+
+Default port: `UART_DEV` in `tools/ota/.env` (typically `/dev/ttyUSB0`).
+OTA scripts flock the port during a hop; use `./tools/uart-console.sh` between
+runs for interactive CLI (`spec/30-processes/uart-console.md`).
+
 ## Ports and adapters (layering)
 
 Application and orchestration code (`firmware/src/`, CLI handlers, credential
@@ -299,7 +364,8 @@ When the user is at the hardware (UART spam, flash failure, reconnect bug):
    (e.g. “idle yield does not drop session”, “countdown ends on `Done.` only”).
 3. **Red** — host test that fails with the bug (or documents the invariant).
 4. **Green** — fix in `firmware/` or `tools/`.
-5. **Flash** — ask the user to flash when a target image is needed.
+5. **Deploy** — OTA via `mqtt-ota.sh` when the device is MQTT-online; otherwise
+   ask the user to UART-flash.
 
 Skipping step 2 because “we’ll fix spec before commit” is the same violation
 as backfill. The commit must not be the first time Tier 3 mentions the
@@ -410,8 +476,10 @@ Verify the conga actually happened — do not use this list to backfill:
 2. **Tests** — `make test-host` green; new tests existed **before** or
    alongside the code they assert (not a post-hoc coverage pass).
 3. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
-4. **Build** — `source tools/build-env.sh` then `./build.sh mt7682_hdk petfeeder`
+4. **Build** — `source tools/build-env.sh` then `./tools/build-firmware.sh`
    when touching adapters, `GCC/`, or patches.
+5. **Bench** — when hardware is available and the change is not host-test-only,
+   run `mqtt-ota.sh`. UART flash only when OTA is not an option.
 
 If spec and code diverged during the session, **fix order in the branch**:
 spec commit (or hunk) before test/code hunks, or split into spec-first PR.

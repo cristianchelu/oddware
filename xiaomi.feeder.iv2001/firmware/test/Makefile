@@ -10,6 +10,9 @@ UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
 HOST_SRCS := ../src/boot_bank.c \
              ../src/wifi_cred.c \
+             ../src/provision_form.c \
+             ../src/provision_flow.c \
+             ../src/provision_reset.c \
              ../src/mqtt_cred.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \

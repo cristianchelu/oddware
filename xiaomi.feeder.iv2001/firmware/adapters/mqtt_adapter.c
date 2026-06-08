@@ -8,6 +8,13 @@
 #include "MQTTClient.h"
 #include "syslog.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "mqtt_cred.h"
+#include "mqtt_topics.h"
+#include "provision_form.h"
+
 #include "mqtt_adapter.h"
 #include "mqtt_port.h"
 
@@ -235,6 +242,61 @@ static const mqtt_port_t s_mqtt_port = {
 const mqtt_port_t *mqtt_port_get(void)
 {
     return &s_mqtt_port;
+}
+
+bool mqtt_adapter_probe_broker(const provision_input_t *input,
+                               const char *mac_hex12,
+                               uint32_t timeout_ms)
+{
+    const mqtt_port_t *mqtt = mqtt_port_get();
+    mqtt_connect_cfg_t cfg;
+    mqtt_cred_t cred;
+    char device_id[MQTT_DEVICE_ID_MAX_LEN + 1];
+    char client_id[MQTT_DEVICE_ID_MAX_LEN + 16];
+    TickType_t deadline;
+    uint16_t port;
+
+    if (input == NULL || mac_hex12 == NULL) {
+        return false;
+    }
+
+    memset(&cred, 0, sizeof(cred));
+    strncpy(cred.host, input->mqtt_host, sizeof(cred.host) - 1);
+    port = input->mqtt_port_set ? input->mqtt_port : 1883;
+    cred.port = port;
+    strncpy(cred.user, input->mqtt_user, sizeof(cred.user) - 1);
+    strncpy(cred.pass, input->mqtt_pass, sizeof(cred.pass) - 1);
+    strncpy(cred.device_id, input->device_id, sizeof(cred.device_id) - 1);
+
+    mqtt_cred_resolve_device_id(&cred, mac_hex12, device_id, sizeof(device_id));
+    if (mqtt_client_id_format(client_id, sizeof(client_id), device_id) != PORT_OK) {
+        return false;
+    }
+
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.host = cred.host;
+    cfg.port = port;
+    cfg.client_id = client_id;
+    cfg.username = cred.user;
+    cfg.password = cred.pass;
+
+    if (mqtt->connect(&cfg) != PORT_OK) {
+        mqtt->disconnect();
+        return false;
+    }
+
+    deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+    while (xTaskGetTickCount() < deadline) {
+        mqtt_adapter_yield(200);
+        if (mqtt->is_connected()) {
+            mqtt->disconnect();
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    mqtt->disconnect();
+    return false;
 }
 
 void mqtt_adapter_yield(int timeout_ms)

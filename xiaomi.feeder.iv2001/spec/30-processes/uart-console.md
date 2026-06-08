@@ -36,6 +36,7 @@ mqtt set pass <password>
 mqtt set device_id <id>
 mqtt connect
 mqtt disconnect
+config factory-reset
 ```
 
 Command matching is case-sensitive. Extra arguments after the required
@@ -167,7 +168,7 @@ with the CLI prompt):
 |-----------|--------|
 | Boot | Initialize Wi-Fi stack in STA-only mode with auto-connect **disabled** |
 | `wifi/ssid` stored in NVDM at boot | Automatically queue `wifi connect` equivalent |
-| No stored SSID | Remain idle until `wifi connect` or future provisioning |
+| No stored SSID | Enter AP provisioning mode (see [provisioning-flow.md](provisioning-flow.md)) |
 
 ## MQTT broker rules
 
@@ -344,3 +345,20 @@ Reboot with a stored host arms and auto-connects again.
 
 Subscription scope, online/LWT behavior, and command routing are defined in
 [mqtt-protocol.md](mqtt-protocol.md#session-lifecycle).
+
+## `config` commands
+
+Bench helper for factory reset without the pin-hole button. Same effect as
+long press in [provisioning-flow.md](provisioning-flow.md#re-provisioning-pin-hole-button-p04).
+
+### `config factory-reset`
+
+Erases all application NVDM namespaces (`wifi`, `mqtt`, `feed`, `display`,
+`schedule`, `time`, `calib`, `power`, `system`) and reboots immediately.
+Erasing a namespace that has no keys (never written) is success — the goal is
+an empty store, not that every group must have existed beforehand.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `factory reset — rebooting` then reboot |
+| NVDM erase failure | `factory reset failed` |

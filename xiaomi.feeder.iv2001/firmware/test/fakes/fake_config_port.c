@@ -125,7 +125,7 @@ static port_err_t fake_erase_group(const char *group)
         i++;
     }
 
-    return removed ? PORT_OK : PORT_ERR_NOT_FOUND;
+    return PORT_OK;
 }
 
 static const config_port_t s_fake_port = {

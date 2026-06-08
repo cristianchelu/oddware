@@ -48,6 +48,7 @@ include $(SOURCE_DIR)/middleware/MTK/wifi_service/combo/module.mk
 include $(SOURCE_DIR)/middleware/third_party/mbedtls/module.mk
 include $(SOURCE_DIR)/middleware/third_party/mqtt/module.mk
 include $(SOURCE_DIR)/middleware/third_party/httpclient/module.mk
+include $(SOURCE_DIR)/middleware/third_party/httpd/module.mk
 
 DEBUG           = 0
 FLOAT_TYPE      = hard
@@ -92,8 +93,14 @@ APP_FILES      += $(APP_PATH_SRC)/flash_bank_logic.c
 APP_FILES      += $(APP_PATH_SRC)/ota_client.c
 APP_FILES      += $(APP_PATH_SRC)/ota_rollback.c
 APP_FILES      += $(APP_PATH_SRC)/nvdm_boot.c
+APP_FILES      += $(APP_PATH_SRC)/provision_form.c
+APP_FILES      += $(APP_PATH_SRC)/provision_flow.c
+APP_FILES      += $(APP_PATH_SRC)/provision_reset.c
+APP_FILES      += $(APP_PATH_SRC)/provision.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/http_server_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/provision_cgi.c
 APP_FILES      += $(APP_PATH_ADAPT)/mqtt_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/flash_bank_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/ota_adapter.c
@@ -128,6 +135,7 @@ CFLAGS += -I$(SOURCE_DIR)/driver/board/mt7686_hdk/ept/inc
 CFLAGS += -I$(SOURCE_DIR)/driver/CMSIS/Device/MTK/mt7682/Include
 CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/nvdm/inc
 CFLAGS += -I$(SOURCE_DIR)/middleware/MTK/wifi_service/combo/inc
+CFLAGS += -I$(SOURCE_DIR)/middleware/third_party/httpd/inc
 
 ifneq ($(MTK_MQTT_DEBUG_ENABLE),y)
 CFLAGS += -DMTK_MQTT_DEBUG=0

@@ -109,7 +109,9 @@ operations to `flash_bank_port`.
 | `stop` | `() -> err` | Stop HTTP server |
 | `register_route` | `(method, path, handler) -> err` | Register a route handler |
 
-Adapter: wraps SDK `httpd` middleware. Used for the provisioning captive
+Adapter: wraps SDK `httpd` middleware. The SDK `httpd_proc` task stack is
+sized for provisioning HTML generation (see `HTTPD_TASK_STACKSIZE` in
+`task_def.h`). Used for the provisioning captive
 portal.
 
 ### `config_port.h`

@@ -5,6 +5,12 @@ serves:
 
 ## AP mode entry
 
+AP and HTTP server bring-up run from an application FreeRTOS task after
+`vTaskStartScheduler()` — LinkIt Wi-Fi configuration APIs require the
+in-band task to be running. The MQTT client task does not start when no
+Wi-Fi credentials are stored (frees heap for AP + DHCP + httpd). HTTP
+starts after a short settle delay once AP mode is up.
+
 Device enters Wi-Fi AP mode on:
 
 - **First boot** — no stored Wi-Fi credentials in NVDM.
@@ -25,7 +31,8 @@ PSK derivation: hash of serial number or MAC, printed on device label. `[design]
 
 ## Captive portal
 
-Minimal HTTP server at 192.168.4.1 serving a single-page form:
+Minimal HTTP server at 192.168.4.1 serving a single-page form. No HTTP
+authentication — the open AP is the only access control during setup.
 
 | Field | Type | Required | Default |
 |-------|------|----------|---------|
@@ -39,6 +46,36 @@ Minimal HTTP server at 192.168.4.1 serving a single-page form:
 
 Form submission via HTTP POST. No JavaScript dependency — should work in
 captive portal webviews on all platforms.
+
+### HTTP interface
+
+| Method | Path | Response |
+|--------|------|----------|
+| GET | `/` or `/index.html` | Redirect link to `/provision.cgi` (no JavaScript) |
+| GET | `/provision.cgi` | HTML form (empty fields, or repopulated after error) |
+| POST | `/provision.cgi` | Save + connect flow result page |
+
+POST body is `application/x-www-form-urlencoded`. Field names match the
+table above:
+
+| Form field | Maps to |
+|------------|---------|
+| `wifi_ssid` | NVDM `wifi/ssid` |
+| `wifi_pass` | NVDM `wifi/pass` (empty = open network) |
+| `mqtt_host` | NVDM `mqtt/host` |
+| `mqtt_port` | NVDM `mqtt/port` (empty = 1883) |
+| `mqtt_user` | NVDM `mqtt/user` |
+| `mqtt_pass` | NVDM `mqtt/pass` |
+| `device_id` | NVDM `mqtt/device_id` (empty = MAC-derived) |
+
+User-visible error strings on the form page:
+
+| Condition | Message |
+|-----------|---------|
+| Validation failure | `Please fix the highlighted fields.` |
+| Wi-Fi association or DHCP timeout (`[tune]` 15 s) | `Connection failed` |
+| Wi-Fi OK, MQTT connect timeout (`[tune]` 10 s) | `Wi-Fi saved. MQTT connection failed — you can retry from the form.` |
+| Success (before reboot) | `Setup complete. Rebooting in 3 seconds…` |
 
 ## Save + connect flow
 

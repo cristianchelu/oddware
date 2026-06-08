@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include "nvdm.h"
 #include "wifi_api.h"
 #include "wifi_lwip_helper.h"
 #include "lwip/inet.h"
@@ -13,6 +14,25 @@
 #include "wifi_adapter.h"
 #include "wifi_port.h"
 #include "wifi_private_api.h"
+
+static void wifi_adapter_set_ap_network_profile(void)
+{
+    nvdm_write_data_item("network",
+                         "IpAddr",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)"192.168.4.1",
+                         (uint32_t)strlen("192.168.4.1"));
+    nvdm_write_data_item("network",
+                         "IpNetmask",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)"255.255.255.0",
+                         (uint32_t)strlen("255.255.255.0"));
+    nvdm_write_data_item("network",
+                         "IpGateway",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)"192.168.4.1",
+                         (uint32_t)strlen("192.168.4.1"));
+}
 
 void wifi_adapter_stack_init(void)
 {
@@ -115,15 +135,72 @@ static port_err_t wifi_port_get_ip(char *buf, size_t len)
 
 static port_err_t wifi_port_start_ap(const char *ssid, const char *pass, uint8_t channel)
 {
-    (void)ssid;
-    (void)pass;
-    (void)channel;
-    return PORT_ERR_NOT_SUPPORTED;
+    uint8_t ssid_len;
+    uint8_t pass_len;
+    uint8_t ap_channel = (channel == 0) ? 6 : channel;
+
+    if (ssid == NULL || pass == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    ssid_len = (uint8_t)strlen(ssid);
+    pass_len = (uint8_t)strlen(pass);
+
+    if (ssid_len == 0 || ssid_len > WIFI_MAX_LENGTH_OF_SSID) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    if (pass_len > WIFI_LENGTH_PASSPHRASE) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    wifi_adapter_set_ap_network_profile();
+
+    if (wifi_config_set_ssid(WIFI_PORT_AP, (uint8_t *)ssid, ssid_len) < 0) {
+        return PORT_ERR_IO;
+    }
+
+    if (pass_len > 0) {
+        if (wifi_config_set_wpa_psk_key(WIFI_PORT_AP, (uint8_t *)pass, pass_len) < 0) {
+            return PORT_ERR_IO;
+        }
+        if (wifi_config_set_security_mode(WIFI_PORT_AP,
+                                          WIFI_AUTH_MODE_WPA2_PSK,
+                                          WIFI_ENCRYPT_TYPE_AES_ENABLED) < 0) {
+            return PORT_ERR_IO;
+        }
+    } else if (wifi_config_set_security_mode(WIFI_PORT_AP,
+                                               WIFI_AUTH_MODE_OPEN,
+                                               WIFI_ENCRYPT_TYPE_WEP_DISABLED) < 0) {
+        return PORT_ERR_IO;
+    }
+
+    if (wifi_config_reload_setting() < 0) {
+        return PORT_ERR_IO;
+    }
+
+    if (wifi_set_opmode(WIFI_MODE_AP_ONLY) != 0) {
+        return PORT_ERR_IO;
+    }
+
+    if (wifi_config_set_channel(WIFI_PORT_AP, ap_channel) < 0) {
+        return PORT_ERR_IO;
+    }
+
+    if (wifi_config_reload_setting() < 0) {
+        return PORT_ERR_IO;
+    }
+
+    return PORT_OK;
 }
 
 static port_err_t wifi_port_stop_ap(void)
 {
-    return PORT_ERR_NOT_SUPPORTED;
+    if (wifi_set_opmode(WIFI_MODE_STA_ONLY) != 0) {
+        return PORT_ERR_IO;
+    }
+
+    return PORT_OK;
 }
 
 static const wifi_port_t s_wifi_port = {

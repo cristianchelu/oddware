@@ -12,6 +12,9 @@
 #include "boot_bank_target.h"
 #include "ota_client.h"
 #include "ota_rollback.h"
+#include "config_port.h"
+#include "provision.h"
+#include "wifi_cred.h"
 #include "wifi_sta.h"
 #include "mqtt_client.h"
 
@@ -26,9 +29,12 @@ int main(void)
 
     app_cli_start();
     wifi_sta_start();
+    provision_start();
     ota_rollback_on_boot();
     ota_client_start();
-    mqtt_client_start();
+    if (wifi_cred_is_stored(config_port_get())) {
+        mqtt_client_start();
+    }
 
     SysInitStatus_Set();
     vTaskStartScheduler();

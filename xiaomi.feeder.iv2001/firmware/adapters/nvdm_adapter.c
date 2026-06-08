@@ -69,11 +69,18 @@ static port_err_t nvdm_port_erase(const char *group, const char *key)
 
 static port_err_t nvdm_port_erase_group(const char *group)
 {
+    port_err_t err;
+
     if (group == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    return map_nvdm_status(nvdm_delete_group(group));
+    err = map_nvdm_status(nvdm_delete_group(group));
+    if (err == PORT_ERR_NOT_FOUND) {
+        return PORT_OK;
+    }
+
+    return err;
 }
 
 static const config_port_t s_nvdm_port = {

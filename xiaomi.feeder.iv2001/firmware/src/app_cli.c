@@ -18,6 +18,7 @@
 #include "boot_bank_target.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
+#include "provision.h"
 
 #define CLI_HISTORY_LINES   20
 #define CLI_HISTORY_LINE    128
@@ -56,6 +57,25 @@ static uint8_t app_cli_bank_switch(uint8_t argc, char *argv[])
     return 0;
 }
 
+static uint8_t app_cli_config_factory_reset(uint8_t argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+
+    if (!provision_factory_reset()) {
+        printf("factory reset failed\r\n");
+        return 1;
+    }
+
+    printf("factory reset — rebooting\r\n");
+    return 0;
+}
+
+static cmd_t app_cli_config_subcmds[] = {
+    { "factory-reset", "erase all config and reboot", app_cli_config_factory_reset, NULL },
+    { NULL, NULL, NULL, NULL },
+};
+
 static cmd_t app_cli_bank_subcmds[] = {
     { "show",   "show active bank",        app_cli_bank_show,   NULL },
     { "switch", "toggle A/B and reboot",   app_cli_bank_switch, NULL },
@@ -63,9 +83,10 @@ static cmd_t app_cli_bank_subcmds[] = {
 };
 
 static cmd_t app_cli_cmds[] = {
-    { "bank", "bank show|switch",      NULL, app_cli_bank_subcmds },
-    { "wifi", "wifi show|set|connect", NULL, wifi_cli_subcmds },
-    { "mqtt", "mqtt show|set|connect", NULL, mqtt_cli_subcmds },
+    { "bank",   "bank show|switch",           NULL, app_cli_bank_subcmds },
+    { "wifi",   "wifi show|set|connect",      NULL, wifi_cli_subcmds },
+    { "mqtt",   "mqtt show|set|connect",      NULL, mqtt_cli_subcmds },
+    { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
     { NULL, NULL, NULL, NULL },
 };
 

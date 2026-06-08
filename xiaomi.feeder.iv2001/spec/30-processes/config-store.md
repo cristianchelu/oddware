@@ -51,7 +51,8 @@ moderate write frequency.
 ## Factory reset
 
 1. Erase all NVDM namespaces (wifi, mqtt, feed, display, schedule, time,
-   calib, power, system).
+   calib, power, system). A namespace with no keys is already clear —
+   `erase_group` succeeds without error.
 2. Reboot.
 3. Device enters first-boot AP provisioning mode (no stored Wi-Fi credentials).
 
