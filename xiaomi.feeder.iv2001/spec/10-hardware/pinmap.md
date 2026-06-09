@@ -20,8 +20,8 @@ Pins used by the application firmware. Directly exposed on the module.
 | 12    | UART2 RX         | CS1270 weigh ASSP RX                   | `[probe]` `[bootlog]` |
 | 13    | Output           | TM1637 CLK (bit-bang)                  | `[probe]`             |
 | 14    | Output           | AW9523B hardware RESET (active-low)    | `[probe]`             |
-| 15    | I2C1 SDA         | AW9523B data                           | `[probe]`             |
-| 16    | I2C1 SCL         | AW9523B clock                          | `[probe]`             |
+| 15    | I2C1 SCL         | AW9523B clock (`HAL_GPIO_15_SCL1`)     | `[probe]`             |
+| 16    | I2C1 SDA         | AW9523B data (`HAL_GPIO_16_SDA1`)      | `[probe]`             |
 | 17    | ADC              | NC7SB3157 COM — battery or motor sense | `[probe]`             |
 | 18–20 | —                | No application use identified          | —                     |
 | 21    | UART0 TX         | Boot ROM / flash tool (module pad)     | `[bootlog]`           |
@@ -69,7 +69,7 @@ MT7682 GPIO0 ──── hopper low-fill IR drive
 MT7682 GPIO1,13 ─ TM1637 display (DIO, CLK)
 MT7682 GPIO4 ──── AW9523B INT
 MT7682 GPIO11,12  CS1270 UART2
-MT7682 GPIO14–16  AW9523B (RST, SDA, SCL)
+MT7682 GPIO14–16  AW9523B (RST, SCL, SDA)
 MT7682 GPIO17 ─── NC7SB3157 COM (ADC input)
 MT7682 GPIO21,22  UART0 boot/flash
 

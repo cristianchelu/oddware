@@ -52,8 +52,8 @@
 #define GPIO_PORT12_MODE  MODE_0
 #define GPIO_PORT13_MODE  MODE_0   /* TM1637 CLK */
 #define GPIO_PORT14_MODE  MODE_0   /* AW9523B RST (active-low, held deasserted) */
-#define GPIO_PORT15_MODE  MODE_0   /* I2C1 / AW9523B — mux deferred */
-#define GPIO_PORT16_MODE  MODE_0
+#define GPIO_PORT15_MODE  MODE_0   /* AW9523B I2C SCL — I2C1 mux in i2c_bus_adapter */
+#define GPIO_PORT16_MODE  MODE_0   /* AW9523B I2C SDA — I2C1 mux in i2c_bus_adapter */
 #define GPIO_PORT17_MODE  MODE_6   /* AUXADC0 — battery/motor sense mux */
 #define GPIO_PORT18_MODE  MODE_NC
 #define GPIO_PORT19_MODE  MODE_NC  /* EVK UART0 — not used on IV2001 */
@@ -110,7 +110,7 @@
 #define GPIO_PORT22_OUTPUT_LEVEL  0
 
 #define GPIO_PORT0_PU   0
-#define GPIO_PORT1_PU   0
+#define GPIO_PORT1_PU   1   /* TM1637 DIO pull-up */
 #define GPIO_PORT2_PU   0
 #define GPIO_PORT3_PU   0
 #define GPIO_PORT4_PU   1
@@ -122,7 +122,7 @@
 #define GPIO_PORT10_PU  0
 #define GPIO_PORT11_PU  0
 #define GPIO_PORT12_PU  0
-#define GPIO_PORT13_PU  0
+#define GPIO_PORT13_PU  1   /* TM1637 CLK pull-up */
 #define GPIO_PORT14_PU  0
 #define GPIO_PORT15_PU  1
 #define GPIO_PORT16_PU  1

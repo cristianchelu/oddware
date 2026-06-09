@@ -26,7 +26,7 @@ Packaged inside the MHCW05P-B module on this board.
 - **UART0** (GPIO21/22): boot ROM, flash programming
 - **UART1** (GPIO2/3): factory test (not used in production firmware)
 - **UART2** (GPIO11/12): CS1270 weighing ASSP
-- **I2C1** (GPIO15/16): AW9523B GPIO expander
+- **I2C1** (GPIO15 SCL, GPIO16 SDA): AW9523B GPIO expander
 - **ADC ch0** (GPIO17): battery/motor sense via analog mux
 - **EINT** (GPIO4): AW9523B interrupt
 - **GPIO bit-bang** (GPIO1, GPIO13): TM1637 display

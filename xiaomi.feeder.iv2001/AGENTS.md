@@ -130,6 +130,8 @@ restates that fact** — not just the one you were editing.
 | Wi-Fi credential validation limits | Tier 3 `uart-console.md` | `wifi_cred.c`, captive portal validation |
 | Optional NVDM keys and display states | Tier 3 process for that mechanism (e.g. `uart-console.md` for `pass: (open)`) | `wifi_cred.c`, CLI handlers, provisioning forms |
 | SDK vs application NVDM namespaces | `40-architecture/build-integration.md` | `feature.mk`, adapters (do not reuse SDK `STA`/`AP` groups for app config) |
+| I2C1 pin roles (GPIO15 SCL, GPIO16 SDA) | `10-hardware/pinmap.md` | `board_gpio_iv2001.h`, `i2c_bus_adapter.c`, `ept_gpio_drv.h` |
+| Display boot before `connsys_init()` | `40-architecture/build-integration.md` § Display boot | `mqtt_sys_init_display_boot.patch`, `display_boot.c` |
 | Task priorities and event types | `40-architecture/task-model.md` | `task_def.h`, event enum in source |
 
 Derived copies must match the canonical source. When restating a limit or
@@ -199,8 +201,12 @@ Read `spec/40-architecture/build-integration.md` and
 4. **Scaffold by path.** Reference SDK example files from the fetched tree at
    compile time (`fota_over_wifi` for `sys_init.c`, etc.). Our tree supplies
    `main.c`, `memory_map.h`, linker script, board overlay, patches.
-5. **Single SDK.** LinkIt v4.6.2 houndify tree only.
-6. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
+5. **Display boot before Wi-Fi SPI.** AW9523B I2C1 (GPIO15/16) and reset
+   (GPIO14) conflict with WFCI SPI on the same pins. `display_boot_run()` runs
+   from patched `system_init()` before `connsys_init()`, not from `main.c`.
+   Do not move display boot after Wi-Fi init without a pin-arbitration design.
+6. **Single SDK.** LinkIt v4.6.2 houndify tree only.
+7. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 
 ## Bench flashing

@@ -42,3 +42,6 @@ MTK_HTTPCLIENT_SSL_ENABLE           = n
 
 # UART flash self-test on first OTA write (128/256/2048 B); set y to validate on device
 FLASH_BANK_OTA_SELFTEST             = n
+
+# AW9523B GPIO expander on I2C1 (display rail, motor, sensors)
+MTK_HAL_I2C_MASTER_ENABLE           = y

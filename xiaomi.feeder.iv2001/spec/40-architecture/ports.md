@@ -149,16 +149,58 @@ Adapter: sends commands to `motor_ctrl` task. Results arrive as
 
 Adapter: wraps UART2 serial protocol to CS1270.
 
-### `display_port.h` (future, with display features)
+### Display stack ports
+
+`[design]` Three ports separate infrastructure, driver, and presentation:
+
+- **`i2c_bus_port`** + **`gpio_expander_port`** — infrastructure (AW9523B @
+  `0x58`). Used by display rail and future motor/weight subsystems. **Not**
+  called from presentation code.
+- **`display_port`** — presentation-facing rendering API.
+
+Physical seam: AW9523B **P0.5** switches display power (I2C); TM1637 segment
+data uses SoC **GPIO1/GPIO13** only. Only `display_driver.c` sequences
+rail-on before TM1637 traffic. See [display-driver.md](../30-processes/display-driver.md)
+§ Software layering.
+
+### `i2c_bus_port.h`
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `power_on` | `() -> err` | Enable display rail via AW9523B P0.5, wait settle |
-| `power_off` | `() -> err` | Disable display rail |
-| `show_number` | `(value, unit) -> err` | Render 0–999 on digits with unit icon |
-| `show_icons` | `(icon_mask) -> err` | Set/clear pictograph and status bar bits |
-| `set_brightness` | `(level) -> err` | Brightness 1–4 |
+| `write_reg` | `(addr, reg, val) -> err` | I2C write one register byte |
+| `read_reg` | `(addr, reg, &val) -> err` | I2C read one register byte |
 
-Adapter: wraps TM1637 GPIO bit-bang protocol on GPIO1/GPIO13. Full refresh
-takes ~1 ms in a brief critical section for timing. See
+Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
+[pinmap.md](../10-hardware/pinmap.md)). Boot-time access only before
+`connsys_init()` unless a future arbitration layer reclaims pins from WFCI SPI.
+
+### `gpio_expander_port.h`
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `reset` | `() -> err` | Hardware reset pulse on GPIO14, verify ID `0x23` |
+| `configure` | `(dir_p0, dir_p1, out_p0, out_p1) -> err` | Write direction and output registers |
+| `set_pin` | `(port, pin, level) -> err` | Set one expander pin (0=output, 1=input per AW9523B) |
+| `get_pin` | `(port, pin, &level) -> err` | Read one expander input pin |
+
+Adapter: `gpio_expander_adapter.c` — AW9523B register model + `i2c_bus_port`.
+Bootstrap bitmaps: `board_gpio_iv2001.h`.
+
+### `display_port.h`
+
+Bootstrap subset implemented; full API grows with display features.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `power_on` | `() -> err` | Expander bootstrap + rail on + 100 ms settle + TM1637 init |
+| `power_off` | `() -> err` | P0.5 low via expander |
+| `show_fill` | `(segment_byte) -> err` | Requires rail settled; grids 0–4 same byte, grid 5 `0x00`, brightness 4 |
+| `show_grids` | `(grids[5]) -> err` | Five payload bytes (grids 0–4); `tm1637_refresh` clears grid 5 — see [display-tm1637.md](../10-hardware/components/display-tm1637.md) |
+| `blank` | `() -> err` | `show_fill(0x00)` |
+| `show_number` | `(value, unit) -> err` | *(future)* Render 0–999 on digits with unit icon |
+| `show_icons` | `(icon_mask) -> err` | *(future)* Set/clear pictograph and status bar bits |
+| `set_brightness` | `(level) -> err` | *(future)* Brightness 1–4 |
+
+Adapter: `display_adapter.c` binds `display_driver.c` to HAL GPIO and
+`gpio_expander_port`. Full refresh takes ~1 ms. See
 [display-tm1637.md](../10-hardware/components/display-tm1637.md).

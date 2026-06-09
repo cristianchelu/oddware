@@ -107,6 +107,26 @@ separate `wifi` group (`ssid`, `pass`) per
 disabled in `wifi_adapter_stack_init()` so the SDK profile is not used for
 association; the connect task reads only the `wifi` group.
 
+### Display boot before Wi-Fi SPI (`mqtt_sys_init_display_boot.patch`)
+
+On MT7682, WFCI (`wfcm_spi.c`) uses GPIO12–16 for SPI to the Wi-Fi N9.
+AW9523B shares GPIO14 (reset), GPIO15 (I2C SCL), and GPIO16 (I2C SDA).
+`connsys_init()` reclaims those pins; AW9523B I2C NACKs if touched afterward.
+
+Patch `firmware/patches/mqtt_sys_init_display_boot.patch` calls
+`display_boot_run()` in SDK `system_init()` after `bsp_ept_gpio_setting_init()`
+and `prvSetupHardware()`, **before** `connsys_init()`. `main.c` does not call
+`display_boot_run()` — the hook lives only in the patched SDK copy.
+
+Verify after `source tools/build-env.sh`:
+
+```
+grep display_boot_run external/linkit-sdk-v4.6.2-houndify/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+```
+
+Runtime display updates after Wi-Fi start require a separate pin-arbitration
+design (not yet implemented).
+
 ## `tools/build-env.sh`
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.

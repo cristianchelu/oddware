@@ -27,6 +27,16 @@ HOST_SRCS := ../src/boot_bank.c \
              ../src/ota_image.c \
              ../src/ota_rollback.c \
              ../src/flash_bank_logic.c \
+             ../src/aw9523b.c \
+             ../src/gpio_expander_bootstrap.c \
+             ../src/display_rail.c \
+             ../src/tm1637.c \
+             ../src/display_driver.c \
+             ../src/display_boot.c \
+             fakes/fake_i2c_bus.c \
+             fakes/fake_gpio_expander_port.c \
+             fakes/fake_tm1637_gpio.c \
+             fakes/fake_display_port.c \
              fakes/fake_config_port.c \
              fakes/ota_rollback_host_stubs.c \
              fakes/fake_mqtt_port.c \

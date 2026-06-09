@@ -69,17 +69,19 @@ serves:
 
 ## Boot sequence (power-on / reset / wake)
 
-| Step | Action |
-|------|--------|
-| 1 | Bootloader runs |
-| 2 | Application init: HAL, clock tree |
-| 3 | Hardware reset AW9523B via GPIO14 (active-low pulse) |
-| 4 | Configure AW9523B: direction registers, IRQ enables, initial outputs |
-| 5 | Init peripherals: UART2 (CS1270), TM1637 display, ADC |
-| 6 | Load config from NVDM |
-| 7 | Attempt Wi-Fi connection (non-blocking) |
-| 8 | Start scheduler, idle weight sampling, display update |
-| 9 | Ready state |
+| Step | Layer | Action |
+|------|-------|--------|
+| 1 | — | Bootloader runs |
+| 2 | — | Application init: HAL, clock tree, EPT GPIO |
+| 3 | Presentation + display stack | Boot self-test (`display_boot_run`) **before** `connsys_init()` — AW9523B on I2C1 and WFCI SPI share GPIO12–16 `[probe]` |
+| 4 | — | Wi-Fi firmware download (`connsys_init`) |
+| 5 | — | Load config from NVDM |
+| 6 | — | Attempt Wi-Fi connection (non-blocking) |
+| 7 | — | Start scheduler, idle weight sampling, display update |
+| 8 | — | Ready state |
+
+Boot self-test steps 3 mechanics: [display-driver.md](display-driver.md) § Boot self-test.
+UART2 (CS1270) and ADC init stay deferred to later features.
 
 ## Watchdog
 

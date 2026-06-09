@@ -1,5 +1,7 @@
 #include "config_port.h"
+#include "display_port.h"
 #include "fake_config_port.h"
+#include "fake_display_port.h"
 #include "fake_mqtt_port.h"
 #include "fake_ota_port.h"
 #include "fake_wifi_port.h"
@@ -25,4 +27,9 @@ const wifi_port_t *wifi_port_get(void)
 const ota_port_t *ota_port_get(void)
 {
     return fake_ota_port_get();
+}
+
+const display_port_t *display_port_get(void)
+{
+    return fake_display_port_get();
 }
