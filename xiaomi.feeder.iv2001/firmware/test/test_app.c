@@ -457,6 +457,42 @@ void test_app_button_press_logs_on_display_tick(void)
     TEST_ASSERT_EQUAL_STRING("[btn] power pressed", log);
 }
 
+void test_app_button_short_gesture_logs_on_release(void)
+{
+    char log[48];
+    button_sample_t down = {
+        .power_pressed = true,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+    button_sample_t up = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+
+    app_test_reset();
+    fake_button_port_reset();
+    fake_button_port_set_sample(&down);
+    app_test_clear_btn_log();
+
+    post_display_tick(0u);
+    app_step();
+    post_display_tick(50u);
+    app_step();
+    TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
+    TEST_ASSERT_EQUAL_STRING("[btn] power pressed", log);
+
+    fake_button_port_set_sample(&up);
+    post_display_tick(100u);
+    app_step();
+    post_display_tick(150u);
+    app_step();
+
+    TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
+    TEST_ASSERT_EQUAL_STRING("[btn] power short", log);
+}
+
 void test_app_weight_updates_during_mqtt_connecting(void)
 {
     uint8_t grids[TM1637_GRID_COUNT];

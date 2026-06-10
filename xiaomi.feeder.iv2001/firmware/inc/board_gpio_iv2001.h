@@ -40,10 +40,11 @@
 #define BOARD_GPIO_BOOT_OUT_P0  0x00u
 #define BOARD_GPIO_BOOT_OUT_P1  0x00u
 
-/* Button input masks — active low (pressed = bit clear). See pinmap.md */
-#define BOARD_GPIO_BTN_POWER_MASK     0x08u   /* P0.3 */
-#define BOARD_GPIO_BTN_RESET_MASK     0x10u   /* P0.4 */
-#define BOARD_GPIO_BTN_DISPENSE_MASK  0x01u   /* P1.0 */
+/* Button input masks. See pinmap.md — P0.3/P0.4 active-low; P1.0 active-high. */
+#define BOARD_GPIO_BTN_POWER_MASK       0x08u   /* P0.3 */
+#define BOARD_GPIO_BTN_RESET_MASK       0x10u   /* P0.4 */
+#define BOARD_GPIO_BTN_DISPENSE_MASK    0x01u   /* P1.0 */
+#define BOARD_GPIO_BTN_DISPENSE_ACTIVE_LOW  0u
 
 /* AW9523B IRQ mask defaults (0 = enabled). See gpio-expander-aw9523b.md */
 #define BOARD_GPIO_AW9523_INT_MASK_P0  0x57u

@@ -83,7 +83,7 @@ Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-eve
 | `EVT_MOTOR_FAULT` | `motor_ctrl` | Abort dispense, display error, publish fault |
 | `EVT_PARK_DONE` | `motor_ctrl` | Publish completion, update display |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | Defer expander read to `app`; see `button-handling.md` |
-| `EVT_BUTTON_PRESS` | `app` after debounce | Gesture routing (dispense, sleep, provisioning) — bring-up logs only |
+| `EVT_BUTTON_GESTURE` | `app` after `button_gesture` classifies hold | Gesture routing (dispense, sleep, provisioning); bring-up drains synchronously on display tick |
 
 ## ISR-to-task communication
 

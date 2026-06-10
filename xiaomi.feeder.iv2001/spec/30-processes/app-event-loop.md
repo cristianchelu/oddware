@@ -34,7 +34,7 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
 | `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `ota_client_on_mqtt_connected()` (rollback confirm + idle `ota/status`); no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (OTA live; other routes log-only stub) |
-| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` (includes P0.4 reset sampling) in one handler |
+| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) in one handler |
 | `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_rollback_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 

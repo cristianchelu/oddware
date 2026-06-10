@@ -217,7 +217,8 @@ Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
 `[design]` The AW9523B expander is shared infrastructure (display rail, motor
 lines, hopper IR, tactiles). Application and debounce logic depend on
 `button_port`, not `gpio_expander_port`. Today’s adapter reads expander input
-registers and maps active-low pins to `button_sample_t`; hopper broken-beam IR
+registers and maps pin polarity to `button_sample_t` (P0.3/P0.4 active-low,
+P1.0 active-high per `[probe]`); hopper broken-beam IR
 will use a separate adapter on the same GPIO4 IRQ line.
 
 | Function | Signature | Behavior |

@@ -2,13 +2,19 @@
  * AW9523B tactile inputs — spec/30-processes/button-handling.md
  */
 
+#include <stddef.h>
+
 #include "board_gpio_iv2001.h"
 #include "button_port.h"
 #include "gpio_expander_port.h"
 
-static bool button_port_active_low_pressed(uint8_t reg, uint8_t mask)
+static bool button_port_line_pressed(uint8_t reg, uint8_t mask, bool active_low)
 {
-    return (reg & mask) == 0u;
+    if (active_low) {
+        return (reg & mask) == 0u;
+    }
+
+    return (reg & mask) != 0u;
 }
 
 static port_err_t button_port_read_sample(button_sample_t *out)
@@ -31,11 +37,13 @@ static port_err_t button_port_read_sample(button_sample_t *out)
     }
 
     out->power_pressed =
-        button_port_active_low_pressed(p0, BOARD_GPIO_BTN_POWER_MASK);
+        button_port_line_pressed(p0, BOARD_GPIO_BTN_POWER_MASK, true);
     out->reset_pressed =
-        button_port_active_low_pressed(p0, BOARD_GPIO_BTN_RESET_MASK);
-    out->dispense_pressed =
-        button_port_active_low_pressed(p1, BOARD_GPIO_BTN_DISPENSE_MASK);
+        button_port_line_pressed(p0, BOARD_GPIO_BTN_RESET_MASK, true);
+    out->dispense_pressed = button_port_line_pressed(
+        p1,
+        BOARD_GPIO_BTN_DISPENSE_MASK,
+        BOARD_GPIO_BTN_DISPENSE_ACTIVE_LOW != 0u);
     return PORT_OK;
 }
 

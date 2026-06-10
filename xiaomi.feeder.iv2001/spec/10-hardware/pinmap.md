@@ -52,7 +52,7 @@ Pins used by the application firmware. Directly exposed on the module.
 
 | Pin  | Mask   | Dir    | Function                                   | Provenance |
 | ---- | ------ | ------ | ------------------------------------------ | ---------- |
-| P1.0 | 0x0100 | IN+IRQ | Manual dispense button (front)             | `[probe]`  |
+| P1.0 | 0x0100 | IN+IRQ | Manual dispense button (front, active-high) | `[probe]` |
 | P1.1 | 0x0200 | IN+IRQ | DC / mains present sense                   | `[probe]`  |
 | P1.2 | 0x0400 | IN     | Factory test UART (unused in product)      | `[probe]`  |
 | P1.3 | 0x0800 | IN     | Factory test UART (unused in product)      | `[probe]`  |

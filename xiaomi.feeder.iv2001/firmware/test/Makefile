@@ -25,6 +25,7 @@ HOST_SRCS := ../src/port_err.c \
              ../src/app.c \
              ../src/app_mqtt_dispatch.c \
              ../src/button_input.c \
+             ../src/button_gesture.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
              ../src/ota_url.c \

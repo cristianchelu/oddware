@@ -79,6 +79,7 @@ APP_FILES      += $(APP_PATH_SRC)/app_mqtt_dispatch.c
 APP_FILES      += $(APP_PATH_SRC)/app_event_port.c
 APP_FILES      += $(APP_PATH_SRC)/app_task.c
 APP_FILES      += $(APP_PATH_SRC)/button_input.c
+APP_FILES      += $(APP_PATH_SRC)/button_gesture.c
 APP_FILES      += $(APP_PATH_SRC)/port_err.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c

@@ -9,6 +9,7 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
+#include "button_gesture.h"
 #include "button_input.h"
 #include "button_port.h"
 #include "config_port.h"
@@ -205,12 +206,42 @@ static const char *app_button_press_label(button_id_t id)
 
 static char s_test_btn_log[48];
 
+static void app_button_log_line(const char *line)
+{
+    printf("%s\r\n", line);
+    (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "%s", line);
+}
+
 static void app_button_log_press(button_id_t id)
 {
-    const char *label = app_button_press_label(id);
+    char line[48];
 
-    printf("[btn] %s pressed\r\n", label);
-    (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "[btn] %s pressed", label);
+    (void)snprintf(line,
+                   sizeof(line),
+                   "[btn] %s pressed",
+                   app_button_press_label(id));
+    app_button_log_line(line);
+}
+
+static void app_button_log_gesture(const button_gesture_event_t *ev)
+{
+    char line[48];
+    const char *label;
+    const char *kind;
+
+    if (ev == NULL) {
+        return;
+    }
+
+    if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
+        app_button_log_line("[btn] child_lock toggle");
+        return;
+    }
+
+    label = app_button_press_label(ev->id);
+    kind = (ev->kind == BUTTON_GESTURE_LONG) ? "long" : "short";
+    (void)snprintf(line, sizeof(line), "[btn] %s %s", label, kind);
+    app_button_log_line(line);
 }
 
 void app_test_clear_btn_log(void)
@@ -237,19 +268,28 @@ bool app_test_take_btn_log(char *buf, size_t len)
     return true;
 }
 
-static void app_button_drain_logs(void)
+static void app_button_drain(void)
 {
-    button_id_t id;
+    button_transition_t tr;
+    button_gesture_event_t gesture;
 
-    while (button_input_pop_press(&id)) {
-        app_button_log_press(id);
+    while (button_input_pop_transition(&tr)) {
+        if (tr.edge == BUTTON_EDGE_DOWN) {
+            app_button_log_press(tr.id);
+        }
+        button_gesture_on_transition(&tr);
+    }
+
+    while (button_gesture_pop(&gesture)) {
+        app_button_log_gesture(&gesture);
     }
 }
 
 static void app_button_poll(uint32_t now_ms)
 {
     button_input_poll(now_ms);
-    app_button_drain_logs();
+    button_gesture_step(now_ms);
+    app_button_drain();
 }
 
 void app_dispatch(const app_event_t *ev)
@@ -329,6 +369,7 @@ void app_test_reset(void)
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
     button_input_init(button_port_get());
+    button_gesture_reset();
     app_event_port_init();
 }
 

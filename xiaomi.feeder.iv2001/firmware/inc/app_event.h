@@ -22,6 +22,7 @@ typedef enum {
     EVT_DISPLAY_TICK,
     EVT_TIMER_TICK,
     EVT_BUTTON_IRQ,
+    EVT_BUTTON_GESTURE,
 } app_event_type_t;
 
 typedef enum {
@@ -53,6 +54,18 @@ typedef struct {
     uint32_t now_ms;
 } app_button_irq_t;
 
+typedef enum {
+    APP_BUTTON_GESTURE_SHORT = 0,
+    APP_BUTTON_GESTURE_LONG,
+    APP_BUTTON_GESTURE_CHILD_LOCK_TOGGLE,
+} app_button_gesture_kind_t;
+
+typedef struct {
+    uint8_t button_id;
+    app_button_gesture_kind_t kind;
+    uint32_t now_ms;
+} app_button_gesture_t;
+
 typedef struct {
     app_event_type_t type;
     union {
@@ -61,6 +74,7 @@ typedef struct {
         app_mqtt_message_t mqtt_message;
         app_display_tick_t display_tick;
         app_button_irq_t button_irq;
+        app_button_gesture_t button_gesture;
     } u;
 } app_event_t;
 

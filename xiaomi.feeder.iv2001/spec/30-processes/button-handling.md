@@ -9,7 +9,7 @@ serves:
 |--------|-----|------|------------|
 | Rear power | AW9523B P0.3 | Tactile, active-low | `[probe]` |
 | Pin-hole reset | AW9523B P0.4 | Recessed, active-low | `[probe]` |
-| Manual dispense | AW9523B P1.0 | Tactile, active-low | `[probe]` |
+| Manual dispense | AW9523B P1.0 | Tactile, active-high | `[probe]` |
 
 All three are inputs on the AW9523B GPIO expander (I2C @ 0x58).
 
@@ -35,13 +35,16 @@ All buttons debounced in software:
   dispense) accept new samples; pin-hole reset (no expander IRQ) is sampled on
   every `EVT_DISPLAY_TICK` without that gate.
 - Two consecutive identical `button_port` reads satisfy the stable-state
-  requirement for bring-up (typically two `[tune]` 50 ms polls).
+  requirement (typically two `[tune]` 50 ms polls).
+- After stable state changes, `button_input` emits a **transition**:
+  **DOWN** (released → pressed) or **UP** (pressed → released). Gesture logic
+  consumes these transitions plus `now_ms` from each poll.
 
 ## Bring-up UART logging
 
 Until gesture actions (dispense, sleep, provisioning) are wired, a debounced
-**press** edge on any of the three buttons prints one UART line on the console
-(`spec/30-processes/uart-console.md`):
+**DOWN** transition on any of the three buttons prints one UART line on the
+console (`spec/30-processes/uart-console.md`):
 
 | Button | AW9523B pin | Line |
 |--------|-------------|------|
@@ -49,41 +52,63 @@ Until gesture actions (dispense, sleep, provisioning) are wired, a debounced
 | Pin-hole reset | P0.4 | `[btn] reset pressed` |
 | Manual dispense | P1.0 | `[btn] dispense pressed` |
 
-- Active-low switches: **pressed** is `true` on `button_port` (`read_sample`).
+- P0.3 and P0.4 are active-low; P1.0 (main-PCB SW2) is active-high — polarity
+  is decoded in `button_port_adapter`; **pressed** is `true` on `button_port`
+  (`read_sample`) for all three.
 - P0.4 has no expander IRQ; it is sampled on each `[tune]` 50 ms
   `EVT_DISPLAY_TICK` (same cadence as presentation refresh).
 - P0.3 and P1.0 also wake `EVT_BUTTON_IRQ` from GPIO4; `button_input` reads
   `button_port` after the IRQ debounce window — not in the ISR.
-- Release edges and long-press gestures are ignored in this phase.
+- Classified gestures log stub UART lines until real actions are wired (see
+  below).
 
-## Gesture detection
+## Gesture state machine
+
+`button_gesture` classifies debounced DOWN/UP transitions and hold duration.
+Long press fires **once** when the hold threshold is crossed (finger may still
+be down). Short press fires **only on UP** when hold duration is below the long
+threshold and no long press fired for that down cycle.
+
+| Button | Short (on UP) | Long (while held) | Long threshold |
+|--------|---------------|-------------------|----------------|
+| Dispense (P1.0) | release before long fired, hold &lt; `[tune]` 1 s | hold ≥ `[tune]` 2 s | `[tune]` 2000 ms |
+| Power (P0.3) | release before long fired, hold &lt; `[tune]` 1 s | hold ≥ `[tune]` 3 s | `[tune]` 3000 ms |
+| Reset (P0.4) | release before long fired, hold &lt; `[tune]` 1 s | hold ≥ `[tune]` 7 s | `[tune]` 7000 ms |
+| Combo (P0.4 + P1.0) | — | both held ≥ `[tune]` 3 s | `[tune]` 3000 ms |
+
+Combo emits `CHILD_LOCK_TOGGLE` (not per-button). Child-lock policy (ignore
+dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 
 ### Manual dispense (P1.0)
 
-| Gesture | Detection | Action |
-|---------|-----------|--------|
-| Short press (< `[tune]` 1 s) | Release before threshold | Dispense one portion (`feed/default_g`, default `[tune]` 10 g) |
-| Long press (> `[tune]` 2 s) | Hold exceeds threshold | `[design]` dispense double portion or ignore |
+| Gesture | Action |
+|---------|--------|
+| Short | Dispense one portion (`feed/default_g`, default `[tune]` 10 g) |
+| Long | `[design]` dispense double portion or ignore |
 
 - Blocked when child lock is active (no response; see lock indicator in
   `display-presentation.md`).
 - Queued if dispense already in progress.
+- Bring-up stub UART: `[btn] dispense short` / `[btn] dispense long`.
 
 ### Rear power (P0.3)
 
-| Gesture | Detection | Action |
-|---------|-----------|--------|
-| Short press (< `[tune]` 1 s) | Release before threshold | Wake from sleep / toggle Wi-Fi indicator |
-| Long press (> `[tune]` 3 s) | Hold exceeds threshold | Enter sleep mode (see `power-state-machine.md`) |
+| Gesture | Action |
+|---------|--------|
+| Short | Wake from sleep / toggle Wi-Fi indicator |
+| Long | Enter sleep mode (see `power-state-machine.md`) |
 
 - IRQ remains enabled in sleep mode for wake-up.
+- Bring-up stub UART: `[btn] power short` / `[btn] power long`.
 
 ### Pin-hole reset (P0.4)
 
-| Gesture | Detection | Action |
-|---------|-----------|--------|
-| Short press (< `[tune]` 1 s) | Release before threshold | Re-enter AP mode temporarily (30 s timeout, see `provisioning-flow.md`) |
-| Long press (> `[tune]` 7 s) | Hold exceeds threshold | Full factory reset: clear all NVDM, reboot into provisioning |
+| Gesture | Action |
+|---------|--------|
+| Short | Re-enter AP mode temporarily (30 s timeout, see `provisioning-flow.md`) |
+| Long | Full factory reset: clear all NVDM, reboot into provisioning |
+
+- Bring-up stub UART: `[btn] reset short` / `[btn] reset long`.
 
 ## Child lock
 
@@ -91,6 +116,7 @@ Until gesture actions (dispense, sleep, provisioning) are wired, a debounced
 
 - **Physical:** hold P0.4 (reset) + P1.0 (dispense) simultaneously for
   `[tune]` 3 s → toggle child lock state.
+- Bring-up stub UART: `[btn] child_lock toggle`.
 - **MQTT:** `cmd/config {"child_lock": true|false}`.
 
 ### Behavior when locked
