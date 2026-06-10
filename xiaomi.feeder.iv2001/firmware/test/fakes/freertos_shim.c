@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -44,4 +45,31 @@ void vTaskSuspend(TaskHandle_t task)
 void vTaskResume(TaskHandle_t task)
 {
     (void)task;
+}
+
+void vTaskPrioritySet(TaskHandle_t task, UBaseType_t priority)
+{
+    (void)task;
+    (void)priority;
+}
+
+UBaseType_t uxTaskPriorityGet(TaskHandle_t task)
+{
+    (void)task;
+    return 2u;
+}
+
+void vTaskDelete(TaskHandle_t task)
+{
+    (void)task;
+}
+
+void *pvPortMalloc(size_t size)
+{
+    return malloc(size);
+}
+
+void vPortFree(void *ptr)
+{
+    free(ptr);
 }

@@ -37,9 +37,11 @@ lives here and in `display_boot.c`. Hardware steps:
 
 ## Wi-Fi indicator
 
-`display_wifi_indicator.c` drives `DISPLAY_ICON_WIFI` from Wi-Fi lifecycle
-events (`wifi_sta.c`, `provision.c`, `provision_wifi_try.c`). User-facing
-semantics: [display.md](../20-stories/display.md) § Wi-Fi indicator.
+`display_wifi_indicator.c` drives `DISPLAY_ICON_WIFI`. Wi-Fi lifecycle
+producers (`wifi_sta.c`, `provision.c`, `provision_wifi_try.c`) post
+`EVT_WIFI_STA_*` to `app_event_q`; the `app` task calls the indicator helpers.
+See [app-event-loop.md](app-event-loop.md). User-facing semantics:
+[display.md](../20-stories/display.md) § Wi-Fi indicator.
 
 | State | Presentation | `[tune]` blink on/off |
 |-------|--------------|----------------------|
@@ -66,7 +68,12 @@ Provisioning STA test-connect.
 ## MQTT indicator (status lightbar)
 
 `display_mqtt_indicator.c` drives `DISPLAY_ICON_BAR_ORANGE` and
-`DISPLAY_ICON_BAR_GREEN` from MQTT session events (`mqtt_client.c`).
+`DISPLAY_ICON_BAR_GREEN`. `mqtt_client_request_connect()` and
+`mqtt_client_step()` post `EVT_MQTT_SESSION`; the `app` task calls the
+indicator helpers. Helpers update presentation **scene state only** — they do
+not call `display_presentation_refresh()`. Physical TM1637 updates come from
+`EVT_DISPLAY_TICK` via `display_presentation_tick` → `try_show_grids`. See
+[app-event-loop.md](app-event-loop.md) § Coexistence with MQTT connect.
 User-facing semantics: [display.md](../20-stories/display.md) § MQTT / broker
 indicator.
 
@@ -77,7 +84,7 @@ indicator.
 | MQTT error / reconnect backoff | `display_mqtt_indicator_error()` | Orange pattern: off 150 ms, off 150 ms, on 600 ms (loop) |
 | MQTT inactive | `display_mqtt_indicator_off()` | Both bars off |
 
-Transitions (derived in `mqtt_client.c` from session state):
+Transitions (derived in `mqtt_client.c`, applied in `app` on `EVT_MQTT_SESSION`):
 
 | Condition | Indicator |
 |-----------|-----------|
@@ -107,7 +114,10 @@ or pin masks.
 Values above 999 are rejected with `PORT_ERR_INVALID_ARG`.
 
 **Digits default:** After reset, grids 0–2 are **blank** — no implicit `0`. Digits
-appear only after `set_digits` (e.g. idle weight refresh or `display number`).
+appear only after `set_digits` (e.g. idle weight scene sync or `display number`).
+Digit/unit scene changes mark an internal dirty flag; `display_presentation_tick`
+pushes them to TM1637 on the next `EVT_DISPLAY_TICK` (coalesced with blink/pattern
+refreshes — no extra WFCI loan from the weight timer).
 Icon-only updates (`icon_set`, `icon_blink`) do not change digit state.
 `set_digits(0)` is explicit zero (`  0`), not the same as unset.
 
@@ -130,7 +140,7 @@ Up to `[tune]` **4** icons may blink concurrently.
 | Function | Behavior |
 |----------|----------|
 | `display_presentation_tick(now_ms)` | Advance blink phases and animation; refresh when needed; returns ms until next tick (`UINT32_MAX` if idle) |
-| `display_presentation_refresh()` | Compose scene and call `display_port.show_grids` immediately |
+| `display_presentation_refresh()` | Compose scene; `try_show_grids` when available (presentation tick path), else blocking `show_grids` (CLI / one-shot boot paint) |
 | `display_presentation_power_on/off()` | Wrap port power; first logical update auto-powers on |
 
 `display_glyph.c` maps `display_icon_t` labels to grid 3/4 wire bits per
@@ -172,9 +182,15 @@ Icon commands.
 
 ### WFCI refresh policy
 
-Each `refresh()` is one `DISPLAY` profile bus loan (~1 ms). If
-`try_acquire` fails, skip the frame and retry on the next tick — no blocking
-wait in presentation.
+Each physical frame is one `DISPLAY` profile bus loan (~1 ms). Presentation
+tick and `refresh()` use `display_port.try_show_grids` when implemented: if
+`try_acquire` fails, the frame is skipped and `scene_dirty` stays set for the
+next tick — no multi-second blocking wait in presentation or indicator code.
+
+Wi-Fi and MQTT indicator helpers (`display_wifi_indicator_*`,
+`display_mqtt_indicator_*`) never call `show_grids` directly. Weight idle
+sampling and TM1637 refresh share one `EVT_DISPLAY_TICK` handler turn in
+`app` so a successful WFCI gap can update digits and icons together.
 
 ## Icon labels (`display_icon_t`)
 
@@ -232,8 +248,8 @@ only; grids 0, 2, 3, 4 are `0x00`.
 
 | Mode | Content | When | Update rate |
 |------|---------|------|-------------|
-| **Weight** | Current bowl weight in grams (e.g. `  42g`) | Default idle | `[tune]` every 2 s |
-| **Eaten today** | Cumulative grams consumed since midnight (e.g. `  85g`) | User-selected idle alternative | `[tune]` every 2 s |
+| **Weight** | Bowl grams when calibrated and sampled (e.g. `  42g`); uncalibrated → `---`; calibrated, no sample yet → blank digits + `g` | Default idle (hardcoded in `app` until `cmd/display` lands) | `[tune]` 500 ms (2 Hz) |
+| **Eaten today** | Cumulative grams consumed since midnight (e.g. `  85g`) | User-selected idle alternative | `[tune]` 500 ms (2 Hz) |
 | **Off** | All segments blank | Sleep or user preference | — |
 
 **Eaten today** reads `eaten_today` from [weighing.md](weighing.md); resets at

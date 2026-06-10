@@ -91,11 +91,17 @@ Factory reset erases the `calib` namespace.
 
 | Mode | Interval | Active when |
 |------|----------|-------------|
-| Idle | `[tune]` 5 s | No dispense active; report current bowl weight |
+| Idle | `[tune]` 500 ms (2 Hz) | No dispense active; report current bowl weight |
 | Dispense | `[tune]` 500 ms | Dispense in progress; feed compensation loop |
 | Off | — | Sleep mode or deep power save |
 
-Transition between modes is driven by the dispense supervisor.
+Idle sampling at `[tune]` 500 ms (2 Hz) is driven on `EVT_DISPLAY_TICK` (paired
+with TM1637 refresh in the same `app` handler; boot FSM on `EVT_TIMER_TICK`).
+`try_read_grams` uses WFCI `try_acquire` on profile `WEIGH`. `PORT_ERR_BUSY`
+keeps the last good sample in presentation scene (typical during MQTT TCP
+connect). Non-busy errors (e.g. `PORT_ERR_IO`) clear the cached reading and
+show blank digits when calibrated. Dispense-mode sampling
+and transitions remain with the dispense supervisor when that feature lands.
 
 ## UART2 serialized access
 

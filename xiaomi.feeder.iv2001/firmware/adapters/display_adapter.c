@@ -102,7 +102,7 @@ static void display_bus_mutex_ensure(void)
     }
 }
 
-static port_err_t display_with_bus(display_op_fn_t fn)
+static port_err_t display_with_bus_loan(display_op_fn_t fn, bool try_only)
 {
     const wfci_bus_port_t *bus = wfci_bus_port_get();
     port_err_t err;
@@ -112,7 +112,11 @@ static port_err_t display_with_bus(display_op_fn_t fn)
         return PORT_ERR_BUSY;
     }
 
-    err = bus->acquire(WFCI_BUS_PROFILE_DISPLAY, WFCI_BUS_PRIORITY_NORMAL, 5000u);
+    if (try_only) {
+        err = bus->try_acquire(WFCI_BUS_PROFILE_DISPLAY, WFCI_BUS_PRIORITY_NORMAL);
+    } else {
+        err = bus->acquire(WFCI_BUS_PROFILE_DISPLAY, WFCI_BUS_PRIORITY_NORMAL, 5000u);
+    }
     if (err != PORT_OK) {
         (void)xSemaphoreGive(s_display_bus_mutex);
         return err;
@@ -123,6 +127,11 @@ static port_err_t display_with_bus(display_op_fn_t fn)
     bus->release(WFCI_BUS_PROFILE_DISPLAY);
     (void)xSemaphoreGive(s_display_bus_mutex);
     return err;
+}
+
+static port_err_t display_with_bus(display_op_fn_t fn)
+{
+    return display_with_bus_loan(fn, false);
 }
 
 static port_err_t port_power_on_body(void)
@@ -171,6 +180,12 @@ static port_err_t port_show_grids(const uint8_t grids[TM1637_GRID_COUNT])
     return display_with_bus(port_show_grids_body);
 }
 
+static port_err_t port_try_show_grids(const uint8_t grids[TM1637_GRID_COUNT])
+{
+    s_grids_ptr = grids;
+    return display_with_bus_loan(port_show_grids_body, true);
+}
+
 static port_err_t port_blank_body(void)
 {
     return display_blank(&s_state);
@@ -200,6 +215,7 @@ static const display_port_t s_display_port = {
     .power_off = port_power_off,
     .show_fill = port_show_fill,
     .show_grids = port_show_grids,
+    .try_show_grids = port_try_show_grids,
     .blank = port_blank,
     .set_brightness = port_set_brightness,
 };

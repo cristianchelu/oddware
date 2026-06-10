@@ -150,6 +150,7 @@ static const display_port_t s_fake_display = {
     .power_off = fake_display_power_off,
     .show_fill = fake_display_show_fill,
     .show_grids = fake_display_show_grids,
+    .try_show_grids = fake_display_show_grids,
     .blank = fake_display_blank,
     .set_brightness = fake_display_set_brightness,
 };

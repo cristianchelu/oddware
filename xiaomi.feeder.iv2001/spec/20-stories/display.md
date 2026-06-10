@@ -40,7 +40,8 @@ Wi-Fi and MQTT indicators are independent — both may be active at once.
 
 - **Green steady on** when connected to the MQTT broker.
 - **Orange mostly on** with a brief off-blip while connecting to the broker
-  (inverted blink — lit most of the time).
+  (inverted blink — lit most of the time). Bowl-gram digits in **weight** mode
+  continue to update during this phase.
 - **Orange signature blink** when the broker is unreachable or the session
   failed (two short off-blips, then a longer on, repeating).
 - **Both off** when MQTT is not in use (no broker configured, provisioning,

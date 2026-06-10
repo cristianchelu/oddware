@@ -62,12 +62,28 @@ Application code uses profiles only — not raw GPIO numbers.
 |----------|----------|--------------|
 | Motor burst edge, jam stop, index IRQ | HIGH | Micro-loan `EXPANDER` / `ADC` |
 | Button debounce / mains IRQ | ABOVE_NORMAL | Scoped `EXPANDER` |
-| Weight idle sample | NORMAL | `WEIGH` ~50 ms |
+| Weight idle sample | NORMAL | `WEIGH` ~50 ms; `try_acquire` — skip tick on `PORT_ERR_BUSY` |
 | Display presentation | NORMAL | `DISPLAY` < 5 ms |
 | Sleep entry / wake | NORMAL | `FULL` or `EXPANDER` ~200 ms |
 
 Higher priority `acquire` waits up to `timeout_ms`. Lower priority `try_acquire`
 fails and retries (display may skip a frame).
+
+## Coexistence with MQTT TCP connect
+
+After `connsys_init()`, the Wi-Fi N9 link holds WFCI SPI for long stretches
+during TCP and MQTT handshakes. The feeder does **not** block `app` or
+`mqtt_io` on those calls — the handshake runs on `mqtt_cn` at priority below
+`app` (see [mqtt-protocol.md](mqtt-protocol.md) § Connect execution).
+
+Idle weight and TM1637 refresh use `try_acquire` on `WEIGH` and `DISPLAY`
+respectively. A failed try leaves the last good gram sample in presentation
+scene (`PORT_ERR_BUSY`) or retries the frame on the next `[tune]` 50 ms
+display tick. Blocking `acquire` with multi-second timeout on the presentation
+path during connect starves the panel even when `app` runs.
+
+UART `weigh` / `display` CLI commands use blocking port functions — acceptable
+for bench use only.
 
 ## GPIO expander micro-session
 

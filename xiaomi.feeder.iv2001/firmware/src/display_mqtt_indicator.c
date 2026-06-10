@@ -34,15 +34,12 @@ void display_mqtt_indicator_connecting(void)
     (void)display_presentation_icon_blink(DISPLAY_ICON_BAR_ORANGE,
                                           DISPLAY_MQTT_INDICATOR_CONNECTING_ON_MS,
                                           DISPLAY_MQTT_INDICATOR_CONNECTING_OFF_MS);
-    (void)display_presentation_tick(0u);
-    (void)display_presentation_refresh();
 }
 
 void display_mqtt_indicator_connected(void)
 {
     display_mqtt_indicator_clear_bars();
     (void)display_presentation_icon_set(DISPLAY_ICON_BAR_GREEN, true);
-    (void)display_presentation_refresh();
 }
 
 void display_mqtt_indicator_error(void)
@@ -53,12 +50,9 @@ void display_mqtt_indicator_error(void)
         s_mqtt_error_pattern,
         (uint8_t)(sizeof(s_mqtt_error_pattern) / sizeof(s_mqtt_error_pattern[0])),
         true);
-    (void)display_presentation_tick(0u);
-    (void)display_presentation_refresh();
 }
 
 void display_mqtt_indicator_off(void)
 {
     display_mqtt_indicator_clear_bars();
-    (void)display_presentation_refresh();
 }

@@ -18,6 +18,7 @@ void test_display_mqtt_indicator_connected_green_on(void)
 
     mqtt_indicator_test_setup();
     display_mqtt_indicator_connected();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x02u, grids[4]);
@@ -31,6 +32,7 @@ void test_display_mqtt_indicator_off_clears_bars(void)
     mqtt_indicator_test_setup();
     display_mqtt_indicator_connected();
     display_mqtt_indicator_off();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
@@ -85,6 +87,7 @@ void test_display_mqtt_indicator_connected_clears_orange_pattern(void)
     mqtt_indicator_test_setup();
     display_mqtt_indicator_error();
     display_mqtt_indicator_connected();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x02u, grids[4]);

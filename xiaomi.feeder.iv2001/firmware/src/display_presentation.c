@@ -32,6 +32,7 @@ typedef struct {
 static struct {
     uint16_t digits;
     bool digits_valid;
+    bool digits_dash;
     display_unit_t unit;
     uint32_t steady_icons;
     uint8_t brightness;
@@ -47,7 +48,13 @@ static struct {
     bool anim_running;
 
     uint32_t last_now_ms;
+    bool scene_dirty;
 } s_pres;
+
+static void presentation_mark_scene_dirty(void)
+{
+    s_pres.scene_dirty = true;
+}
 
 static const char *const s_icon_names[DISPLAY_ICON_COUNT] = {
     "child_lock",
@@ -210,19 +217,33 @@ port_err_t display_presentation_set_digits(uint16_t value)
 
     s_pres.digits = value;
     s_pres.digits_valid = true;
+    s_pres.digits_dash = false;
+    presentation_mark_scene_dirty();
+    return PORT_OK;
+}
+
+port_err_t display_presentation_set_digits_dash(void)
+{
+    s_pres.digits_valid = true;
+    s_pres.digits_dash = true;
+    s_pres.digits = 0u;
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
 port_err_t display_presentation_clear_digits(void)
 {
     s_pres.digits_valid = false;
+    s_pres.digits_dash = false;
     s_pres.digits = 0u;
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
 port_err_t display_presentation_set_unit(display_unit_t unit)
 {
     s_pres.unit = unit;
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -237,6 +258,7 @@ port_err_t display_presentation_icon_set(display_icon_t icon, bool on)
     } else {
         s_pres.steady_icons &= ~DISPLAY_GLYPH_ICON_MASK(icon);
     }
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -291,6 +313,7 @@ port_err_t display_presentation_icon_blink(display_icon_t icon,
     slot->off_ms = off_ms;
     slot->phase_on = true;
     slot->phase_until_ms = s_pres.last_now_ms + on_ms;
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -304,6 +327,7 @@ port_err_t display_presentation_icon_blink_stop(display_icon_t icon)
     if (slot != NULL) {
         slot->active = false;
     }
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -349,6 +373,7 @@ port_err_t display_presentation_icon_pattern(display_icon_t icon,
     slot->phase_index = 0u;
     slot->phase_visible = phases[0].visible;
     slot->phase_until_ms = s_pres.last_now_ms + phases[0].duration_ms;
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -362,6 +387,7 @@ port_err_t display_presentation_icon_pattern_stop(display_icon_t icon)
     if (slot != NULL) {
         slot->active = false;
     }
+    presentation_mark_scene_dirty();
     return PORT_OK;
 }
 
@@ -443,6 +469,20 @@ port_err_t display_presentation_refresh(void)
 
     if (s_pres.anim_running && s_pres.anim != NULL) {
         memcpy(grids, s_pres.anim->frames[s_pres.anim_frame], sizeof(grids));
+    } else if (s_pres.digits_valid && s_pres.digits_dash) {
+        uint32_t icons = presentation_effective_icon_mask();
+
+        grids[0] = 0x40u;
+        grids[1] = 0x40u;
+        grids[2] = 0x40u;
+        display_compose_grids(false,
+                              0u,
+                              s_pres.unit,
+                              icons,
+                              grids);
+        grids[0] = 0x40u;
+        grids[1] = 0x40u;
+        grids[2] = 0x40u;
     } else {
         uint32_t icons = presentation_effective_icon_mask();
         display_compose_grids(s_pres.digits_valid,
@@ -452,7 +492,15 @@ port_err_t display_presentation_refresh(void)
                               grids);
     }
 
-    return dp->show_grids(grids);
+    if (dp->try_show_grids != NULL) {
+        err = dp->try_show_grids(grids);
+    } else {
+        err = dp->show_grids(grids);
+    }
+    if (err == PORT_OK) {
+        s_pres.scene_dirty = false;
+    }
+    return err;
 }
 
 uint32_t display_presentation_tick(uint32_t now_ms)
@@ -547,6 +595,10 @@ uint32_t display_presentation_tick(uint32_t now_ms)
             uint32_t remain = slot->phase_until_ms - now_ms;
             next_wake = presentation_min_wake(next_wake, remain);
         }
+    }
+
+    if (s_pres.scene_dirty) {
+        needs_refresh = true;
     }
 
     if (needs_refresh) {

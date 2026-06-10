@@ -105,6 +105,7 @@ static port_err_t mqtt_adapter_connect(const mqtt_connect_cfg_t *cfg)
     if (rc != 0) {
         return PORT_ERR_IO;
     }
+    taskYIELD();
 
     MQTTClient(&s_client,
                &s_network,
@@ -145,6 +146,7 @@ static port_err_t mqtt_adapter_connect(const mqtt_connect_cfg_t *cfg)
         s_network.disconnect(&s_network);
         return PORT_ERR_IO;
     }
+    taskYIELD();
 
     mqtt_adapter_notify_connection(true);
     return PORT_OK;

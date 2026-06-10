@@ -36,8 +36,9 @@ The SDK creates these internally. Their priorities are fixed:
 
 | Task | Priority | Stack | Lifetime | Role |
 |------|----------|-------|----------|------|
-| `app` | NORMAL | 4096 B | Persistent | Event loop: dequeues `app_event_t`, dispatches to handler, calls ports |
-| `mqtt_io` | ABOVE_NORMAL | 4096 B | Persistent | MQTT network I/O: `MQTTYield()` loop, posts received messages to `app_event_q` |
+| `app` | NORMAL | 4096 B | Persistent | Event loop: dequeues `app_event_t`, dispatches to handler, calls ports; local `[tune]` 50 ms display heartbeat when queue idle |
+| `mqtt_io` | ABOVE_NORMAL | 4096 B | Persistent | MQTT orchestration: `MQTTYield()` when connected; starts `mqtt_cn` connect worker and polls every `[tune]` 50 ms while handshake runs |
+| `mqtt_cn` | NORMAL − 1 | 3072 B | Ephemeral | Blocking `ConnectNetwork` + `MQTTConnect` + post-connect subscribe/publish; self-deletes on completion |
 | `ota_dl` | NORMAL | 4096 B | Ephemeral | Spawned during OTA download only, posts progress to `app_event_q`, self-deletes on completion |
 | `motor_ctrl` | HIGH | 2048 B | Persistent (when dispense features land) | Safety-critical motor I2C: receives fault notifications from ADC ISR, performs protective I2C writes, posts `EVT_MOTOR_FAULT` to `app_event_q` |
 
@@ -52,9 +53,14 @@ that budget. `[design]`
 A single FreeRTOS queue of `app_event_t` -- a tagged union of event type
 plus a small data payload. `[design]`
 
-Queue depth: 16 items. `app_event_t` is kept small (type + union of a
-pointer or a few scalars). Large payloads (MQTT message body, OTA chunk)
-are heap-allocated by the producer; the consumer frees after processing.
+Queue depth: `[tune]` 32 items. `app_event_post` coalesces duplicate
+`EVT_DISPLAY_TICK` and `EVT_TIMER_TICK` (at most one of each type pending).
+`app_event_t` is kept small (type + union of a pointer or a few scalars).
+Large payloads (MQTT message body, OTA chunk) are heap-allocated by the
+producer; the consumer frees after processing.
+
+Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-event-loop.md)
+§ Phase 2 event table.
 
 ### Event types
 

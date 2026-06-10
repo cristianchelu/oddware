@@ -13,5 +13,13 @@ BaseType_t xTaskCreate(TaskFunction_t pxTaskCode,
 TickType_t xTaskGetTickCount(void);
 void vTaskSuspend(TaskHandle_t task);
 void vTaskResume(TaskHandle_t task);
+void vTaskPrioritySet(TaskHandle_t task, UBaseType_t priority);
+UBaseType_t uxTaskPriorityGet(TaskHandle_t task);
+void vTaskDelete(TaskHandle_t task);
+
+#define taskYIELD() ((void)0)
+
+void *pvPortMalloc(size_t size);
+void vPortFree(void *ptr);
 
 #endif /* TASK_H */

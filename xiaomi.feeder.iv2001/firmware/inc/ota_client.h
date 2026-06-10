@@ -2,6 +2,7 @@
 #define OTA_CLIENT_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 void ota_client_start(void);
 void ota_client_set_device_id(const char *device_id);

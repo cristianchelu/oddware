@@ -98,9 +98,32 @@ Bench and runtime behavior (UART details in
 
 ### Session display
 
-Status lightbar updates from `mqtt_client.c` via
-`display_mqtt_indicator.c` — see [display-presentation.md](display-presentation.md)
-§ MQTT indicator. Summary:
+`mqtt_client_request_connect()` posts `EVT_MQTT_SESSION` (connecting) immediately.
+The TCP/MQTT handshake runs on a short-lived **`mqtt_cn` worker** at priority
+below `app`; `mqtt_io` (ABOVE_NORMAL) only starts the worker and polls
+completion every `[tune]` 50 ms — it does not call `mqtt->connect()` inline.
+Phase changes also sync at the end of each `mqtt_io` step. The `app` task maps
+phase → `display_mqtt_indicator_*` — see
+[app-event-loop.md](app-event-loop.md) and [display-presentation.md](display-presentation.md)
+§ MQTT indicator.
+
+While connecting, bowl-gram digits on the TM1637 continue to update at
+`[tune]` 500 ms (same `app` display tick path as idle). Orange lightbar
+blinks may skip occasional frames when WFCI `try_acquire` fails; weight
+readings keep the last good sample on `PORT_ERR_BUSY`.
+
+### Connect execution
+
+| Step | Task | Behavior |
+|------|------|----------|
+| Arm + session sync | `mqtt_io` or `app` producer | `mqtt_client_request_connect()` sets pending flags and posts connecting phase |
+| Handshake | `mqtt_cn` worker | `ConnectNetwork`, `MQTTConnect`, subscribe `cmd/#`, publish online + OTA idle status; `taskYIELD()` after major blocking calls |
+| Poll | `mqtt_io` | `[tune]` 50 ms step delay while worker runs; on completion apply backoff or post `EVT_MQTT_CONNECTED` |
+| Disarm | `mqtt_client_stop()` | Clears worker state; disconnect if session was up |
+
+Task priorities and stack sizes: [task-model.md](../40-architecture/task-model.md).
+
+Summary:
 
 | Session phase | Lightbar |
 |---------------|----------|

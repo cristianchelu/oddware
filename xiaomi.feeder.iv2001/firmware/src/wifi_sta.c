@@ -2,25 +2,35 @@
  * Wi-Fi STA bring-up — spec/30-processes/uart-console.md (boot behavior)
  */
 
+#include <string.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "syslog.h"
 
 #include "wifi_lwip_helper.h"
 
+#include "app_event.h"
 #include "config_port.h"
 #include "wifi_cred.h"
 #include "wifi_port.h"
 #include "task_def.h"
 #include "wifi_adapter.h"
-#include "display_wifi_indicator.h"
-#include "mqtt_client.h"
 #include "wifi_sta.h"
 
 log_create_module(wifi_sta, PRINT_LEVEL_INFO);
 
 static TaskHandle_t s_connect_task;
 static volatile bool s_connect_busy;
+
+static void wifi_sta_post(app_event_type_t type)
+{
+    app_event_t ev;
+
+    memset(&ev, 0, sizeof(ev));
+    ev.type = type;
+    (void)app_event_post(&ev);
+}
 
 static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 {
@@ -30,7 +40,7 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
         LOG_E(wifi_sta, "connect failed");
-        display_wifi_indicator_off();
+        wifi_sta_post(EVT_WIFI_STA_FAILED);
         return;
     }
 
@@ -38,13 +48,16 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 
     {
         char ip[20];
+        app_event_t ev;
 
+        memset(&ev, 0, sizeof(ev));
         if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
             LOG_I(wifi_sta, "STA ready, IP %s", ip);
-            mqtt_client_notify_wifi_ready();
-            display_wifi_indicator_connected();
+            ev.type = EVT_WIFI_STA_READY;
+            strncpy(ev.u.wifi_ready.ip, ip, sizeof(ev.u.wifi_ready.ip) - 1);
+            (void)app_event_post(&ev);
         } else {
-            display_wifi_indicator_off();
+            wifi_sta_post(EVT_WIFI_STA_FAILED);
         }
     }
 }
@@ -102,7 +115,7 @@ bool wifi_sta_request_connect(void)
     }
 
     s_connect_busy = true;
-    display_wifi_indicator_connecting();
+    wifi_sta_post(EVT_WIFI_STA_CONNECTING);
     xTaskNotifyGive(s_connect_task);
     return true;
 }

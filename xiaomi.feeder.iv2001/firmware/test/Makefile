@@ -22,6 +22,8 @@ HOST_SRCS := ../src/port_err.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
+             ../src/app.c \
+             ../src/app_mqtt_dispatch.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
              ../src/ota_url.c \
@@ -58,6 +60,7 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_mqtt_port.c \
              fakes/fake_ota_port.c \
              fakes/fake_wifi_port.c \
+             fakes/fake_app_event_q.c \
              fakes/fake_time.c \
              fakes/freertos_shim.c \
              fakes/host_stubs.c \

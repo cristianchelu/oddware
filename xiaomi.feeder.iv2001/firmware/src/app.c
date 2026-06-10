@@ -1,0 +1,275 @@
+/*
+ * Application event dispatcher — spec/30-processes/app-event-loop.md
+ */
+
+#include <stdio.h>
+#include <string.h>
+
+#include "app.h"
+#include "app_event.h"
+#include "app_event_port.h"
+#include "app_mqtt_dispatch.h"
+#include "config_port.h"
+#include "display_mqtt_indicator.h"
+#include "display_presentation.h"
+#include "display_wifi_indicator.h"
+#include "mqtt_client.h"
+#include "mqtt_cred.h"
+#include "ota_client.h"
+#include "ota_rollback.h"
+#include "port_err.h"
+#include "weight_port.h"
+
+#define APP_WEIGHT_SAMPLE_MS  500u
+
+typedef enum {
+    APP_DISPLAY_MODE_WEIGHT = 0,
+} app_display_mode_t;
+
+typedef enum {
+    WEIGHT_BOOT_PENDING = 0,
+    WEIGHT_BOOT_SETTLING,
+    WEIGHT_BOOT_DONE,
+} weight_boot_phase_t;
+
+static app_display_mode_t s_display_mode = APP_DISPLAY_MODE_WEIGHT;
+static weight_boot_phase_t s_weight_boot = WEIGHT_BOOT_PENDING;
+static int32_t s_bowl_g;
+static bool s_bowl_valid;
+static uint32_t s_weight_last_sample_ms;
+
+static void app_mqtt_session_apply(mqtt_session_phase_t phase)
+{
+    switch (phase) {
+    case MQTT_SESSION_CONNECTING:
+        display_mqtt_indicator_connecting();
+        break;
+    case MQTT_SESSION_CONNECTED:
+        display_mqtt_indicator_connected();
+        break;
+    case MQTT_SESSION_ERROR:
+        display_mqtt_indicator_error();
+        break;
+    default:
+        display_mqtt_indicator_off();
+        break;
+    }
+}
+
+static void app_weight_sync_display_scene(void)
+{
+    const weight_port_t *wp = weight_port_get();
+    weight_cal_status_t cal;
+
+    if (s_display_mode != APP_DISPLAY_MODE_WEIGHT) {
+        return;
+    }
+
+    cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
+                                                     : WEIGHT_CAL_UNCALIBRATED;
+
+    (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
+
+    if (cal != WEIGHT_CAL_SUCCESS) {
+        (void)display_presentation_set_digits_dash();
+    } else if (s_bowl_valid) {
+        uint16_t shown;
+
+        if (s_bowl_g < 0) {
+            shown = 0u;
+        } else if (s_bowl_g > 999) {
+            shown = 999u;
+        } else {
+            shown = (uint16_t)s_bowl_g;
+        }
+        (void)display_presentation_set_digits(shown);
+    } else {
+        (void)display_presentation_clear_digits();
+    }
+}
+
+static void app_weight_sample(bool idle_try)
+{
+    const weight_port_t *wp = weight_port_get();
+    int32_t grams;
+    port_err_t err;
+
+    if (wp == NULL) {
+        return;
+    }
+
+    if (idle_try && wp->try_read_grams != NULL) {
+        err = wp->try_read_grams(&grams);
+    } else if (wp->read_grams != NULL) {
+        err = wp->read_grams(&grams);
+    } else {
+        return;
+    }
+
+    if (err == PORT_OK) {
+        s_bowl_g = grams;
+        s_bowl_valid = true;
+        return;
+    }
+
+    if (err == PORT_ERR_BUSY) {
+        return;
+    }
+
+    if (s_bowl_valid) {
+        printf("[app] weight sample lost (%s)\r\n", port_err_name(err));
+    }
+    s_bowl_valid = false;
+}
+
+static void app_weight_boot_first_sample(void)
+{
+    app_weight_sample(false);
+    app_weight_sync_display_scene();
+}
+
+static void app_weight_idle_tick(void)
+{
+    app_weight_sample(true);
+    app_weight_sync_display_scene();
+}
+
+static void app_weight_idle_on_display_tick(uint32_t now_ms)
+{
+    if (s_weight_boot != WEIGHT_BOOT_DONE) {
+        return;
+    }
+
+    if (s_weight_last_sample_ms != 0u &&
+        (now_ms - s_weight_last_sample_ms) < APP_WEIGHT_SAMPLE_MS) {
+        return;
+    }
+
+    s_weight_last_sample_ms = now_ms;
+    app_weight_idle_tick();
+}
+
+static void app_weight_boot_advance(void)
+{
+    const weight_port_t *wp = weight_port_get();
+
+    if (s_weight_boot == WEIGHT_BOOT_PENDING) {
+        if (wp != NULL && wp->boot_begin != NULL) {
+            (void)wp->boot_begin();
+        }
+        s_weight_boot = WEIGHT_BOOT_SETTLING;
+        return;
+    }
+
+    if (s_weight_boot == WEIGHT_BOOT_SETTLING) {
+        port_err_t err = PORT_ERR_IO;
+
+        if (wp != NULL && wp->boot_poll != NULL) {
+            err = wp->boot_poll();
+        }
+
+        if (err == PORT_ERR_BUSY) {
+            return;
+        }
+
+        if (err == PORT_OK) {
+            app_weight_boot_first_sample();
+            s_weight_last_sample_ms = 0u;
+        }
+
+        s_weight_boot = WEIGHT_BOOT_DONE;
+    }
+}
+
+static void app_weight_boot_arm(void)
+{
+    s_weight_boot = WEIGHT_BOOT_PENDING;
+    s_bowl_valid = false;
+}
+
+void app_dispatch(const app_event_t *ev)
+{
+    if (ev == NULL) {
+        return;
+    }
+
+    switch (ev->type) {
+    case EVT_APP_BOOT:
+        s_display_mode = APP_DISPLAY_MODE_WEIGHT;
+        display_presentation_reset();
+        app_weight_boot_arm();
+        break;
+
+    case EVT_WIFI_STA_CONNECTING:
+        display_wifi_indicator_connecting();
+        break;
+
+    case EVT_WIFI_STA_READY:
+        display_wifi_indicator_connected();
+        mqtt_client_notify_wifi_ready();
+        if (mqtt_cred_is_stored(config_port_get())) {
+            (void)mqtt_client_request_connect();
+        }
+        break;
+
+    case EVT_WIFI_STA_FAILED:
+        display_wifi_indicator_off();
+        break;
+
+    case EVT_WIFI_STA_AP_MODE:
+        display_wifi_indicator_ap_mode();
+        break;
+
+    case EVT_MQTT_SESSION:
+        app_mqtt_session_apply(ev->u.mqtt_session.phase);
+        break;
+
+    case EVT_MQTT_CONNECTED:
+        ota_client_on_mqtt_connected();
+        break;
+
+    case EVT_MQTT_MESSAGE:
+        app_mqtt_dispatch(ev->u.mqtt_message.topic,
+                          ev->u.mqtt_message.payload,
+                          ev->u.mqtt_message.len,
+                          mqtt_client_device_id());
+        break;
+
+    case EVT_DISPLAY_TICK:
+        app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
+        (void)display_presentation_tick(ev->u.display_tick.now_ms);
+        break;
+
+    case EVT_TIMER_TICK:
+        (void)ota_rollback_poll_ms();
+        app_weight_boot_advance();
+        break;
+
+    default:
+        break;
+    }
+}
+
+void app_test_reset(void)
+{
+    s_display_mode = APP_DISPLAY_MODE_WEIGHT;
+    s_weight_boot = WEIGHT_BOOT_PENDING;
+    s_bowl_g = 0;
+    s_bowl_valid = false;
+    s_weight_last_sample_ms = 0u;
+    app_event_port_init();
+}
+
+bool app_step(void)
+{
+    app_event_t ev;
+    bool handled = false;
+
+    while (app_event_try_receive(&ev)) {
+        app_dispatch(&ev);
+        app_event_release(&ev);
+        handled = true;
+    }
+
+    return handled;
+}

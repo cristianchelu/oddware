@@ -15,6 +15,7 @@ typedef struct display_port {
     port_err_t (*power_off)(void);
     port_err_t (*show_fill)(uint8_t segment_byte);
     port_err_t (*show_grids)(const uint8_t grids[TM1637_GRID_COUNT]);
+    port_err_t (*try_show_grids)(const uint8_t grids[TM1637_GRID_COUNT]);
     port_err_t (*blank)(void);
     port_err_t (*set_brightness)(uint8_t level);
 } display_port_t;

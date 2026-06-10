@@ -8,6 +8,7 @@
 #include "syslog.h"
 #include "system_mt7682.h"
 
+#include "app.h"
 #include "app_cli.h"
 #include "boot_bank_target.h"
 #include "ota_client.h"
@@ -16,7 +17,6 @@
 #include "provision.h"
 #include "wifi_cred.h"
 #include "wifi_sta.h"
-#include "display_presentation.h"
 #include "mqtt_client.h"
 
 log_create_module(petfeeder, PRINT_LEVEL_INFO);
@@ -28,8 +28,8 @@ int main(void)
     LOG_I(petfeeder, "FreeRTOS Running (bank %c)",
           (boot_bank_query_active() == BOOT_BANK_B) ? 'B' : 'A');
 
+    app_start();
     app_cli_start();
-    display_presentation_start();
     wifi_sta_start();
     provision_start();
     ota_rollback_on_boot();

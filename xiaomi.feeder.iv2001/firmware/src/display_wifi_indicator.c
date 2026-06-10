@@ -15,8 +15,6 @@ static void display_wifi_indicator_blink(uint16_t on_ms, uint16_t off_ms)
 {
     (void)display_presentation_icon_set(DISPLAY_ICON_WIFI, false);
     (void)display_presentation_icon_blink(DISPLAY_ICON_WIFI, on_ms, off_ms);
-    (void)display_presentation_tick(0u);
-    (void)display_presentation_refresh();
 }
 
 void display_wifi_indicator_connecting(void)
@@ -35,12 +33,10 @@ void display_wifi_indicator_connected(void)
 {
     (void)display_presentation_icon_blink_stop(DISPLAY_ICON_WIFI);
     (void)display_presentation_icon_set(DISPLAY_ICON_WIFI, true);
-    (void)display_presentation_refresh();
 }
 
 void display_wifi_indicator_off(void)
 {
     (void)display_presentation_icon_blink_stop(DISPLAY_ICON_WIFI);
     (void)display_presentation_icon_set(DISPLAY_ICON_WIFI, false);
-    (void)display_presentation_refresh();
 }

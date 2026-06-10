@@ -147,9 +147,12 @@ not by offsets inside this port.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `power_on` | `() -> err` | EXPANDER loan → P0.2 high → release → 1100 ms boot settle (no loan) |
+| `boot_begin` | `() -> err` | EXPANDER loan → P0.2 high → release; arm non-blocking 1100 ms settle (`app` boot FSM) |
+| `boot_poll` | `() -> err` | `PORT_ERR_BUSY` until settle elapses; then `boot_done` |
+| `power_on` | `() -> err` | `boot_begin` + blocking `boot_poll` loop (CLI / `weigh power on`) |
 | `power_off` | `() -> err` | Disable CS1270 |
 | `read_grams` | `(int32_t *grams) -> err` | Absolute food grams now (requires host cal; empty bowl = 0) |
+| `try_read_grams` | `(int32_t *grams) -> err` | Same as `read_grams` but `try_acquire` on WFCI `WEIGH` — `PORT_ERR_BUSY` when Wi-Fi holds the bus (idle loop; CLI uses blocking `read_grams`) |
 | `read_raw_grams` | `(int32_t *grams) -> err` | Uncorrected CS1270 count (bench) |
 | `calibrate_zero` | `() -> err` | Capture raw with bowl removed → NVDM `calib/zero` |
 | `calibrate_span` | `() -> err` | Capture raw with bowl installed → NVDM `calib/span_*` (350 g) |
@@ -231,7 +234,8 @@ Bootstrap subset implemented; full API grows with display features.
 | `power_on` | `() -> err` | Expander bootstrap + rail on + 100 ms settle + TM1637 init |
 | `power_off` | `() -> err` | P0.5 low via expander |
 | `show_fill` | `(segment_byte) -> err` | Requires rail settled; grids 0–4 same byte, grid 5 `0x00`; uses stored brightness |
-| `show_grids` | `(grids[5]) -> err` | Five payload bytes (grids 0–4); `tm1637_refresh` clears grid 5 — see [display-tm1637.md](../10-hardware/components/display-tm1637.md) |
+| `show_grids` | `(grids[5]) -> err` | Five payload bytes (grids 0–4); blocking WFCI `DISPLAY` loan (CLI) |
+| `try_show_grids` | `(grids[5]) -> err` | Same as `show_grids` but `try_acquire` — skip frame on `PORT_ERR_BUSY` (presentation tick) |
 | `blank` | `() -> err` | `show_fill(0x00)` |
 | `set_brightness` | `(level) -> err` | Brightness 1–4 → `0x88`–`0x8B`; persists until next call |
 

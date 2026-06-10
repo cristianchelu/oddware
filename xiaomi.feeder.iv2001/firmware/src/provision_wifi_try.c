@@ -3,11 +3,12 @@
  */
 
 #include <stddef.h>
+#include <string.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "display_wifi_indicator.h"
+#include "app_event.h"
 #include "provision_wifi_try.h"
 
 bool provision_wifi_try_connect(const char *ssid,
@@ -29,7 +30,13 @@ bool provision_wifi_try_connect(const char *ssid,
         (void)deps->ap_stop();
     }
 
-    display_wifi_indicator_connecting();
+    {
+        app_event_t ev;
+
+        memset(&ev, 0, sizeof(ev));
+        ev.type = EVT_WIFI_STA_CONNECTING;
+        (void)app_event_post(&ev);
+    }
 
     if (deps->sta_connect == NULL || deps->sta_connect(ssid, pass) != PORT_OK) {
         goto restore_ap;
@@ -50,7 +57,13 @@ restore_ap:
         (void)deps->ap_start(ap_ssid, ap_channel);
     }
 
-    display_wifi_indicator_ap_mode();
+    {
+        app_event_t ev;
+
+        memset(&ev, 0, sizeof(ev));
+        ev.type = EVT_WIFI_STA_AP_MODE;
+        (void)app_event_post(&ev);
+    }
 
     if (deps->http_start != NULL) {
         (void)deps->http_start(PROVISION_WIFI_TRY_HTTP_PORT);

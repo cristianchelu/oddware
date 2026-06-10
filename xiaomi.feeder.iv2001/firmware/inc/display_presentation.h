@@ -40,6 +40,7 @@ void display_presentation_reset(void);
 void display_presentation_note_expander_reset(void);
 
 port_err_t display_presentation_set_digits(uint16_t value);
+port_err_t display_presentation_set_digits_dash(void);
 port_err_t display_presentation_clear_digits(void);
 port_err_t display_presentation_set_unit(display_unit_t unit);
 port_err_t display_presentation_icon_set(display_icon_t icon, bool on);
@@ -69,7 +70,5 @@ uint32_t display_presentation_tick(uint32_t now_ms);
 bool display_presentation_parse_icon(const char *name, display_icon_t *out);
 bool display_presentation_parse_builtin_anim(const char *name,
                                              display_builtin_anim_t *out);
-
-void display_presentation_start(void);
 
 #endif /* DISPLAY_PRESENTATION_H */

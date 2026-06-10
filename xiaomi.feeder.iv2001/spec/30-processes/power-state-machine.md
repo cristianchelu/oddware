@@ -77,7 +77,7 @@ serves:
 | 4 | — | Wi-Fi firmware download (`connsys_init`) |
 | 5 | — | Load config from NVDM |
 | 6 | — | Attempt Wi-Fi connection (non-blocking) |
-| 7 | — | Start scheduler, idle weight sampling, display update |
+| 7 | `app` | Start scheduler; `app` task owns idle weight sampling and weight-mode display refresh at `[tune]` 500 ms (2 Hz) — see [app-event-loop.md](app-event-loop.md) |
 | 8 | — | Ready state |
 
 Boot self-test steps 3 mechanics: [display-driver.md](display-driver.md) § Boot self-test.

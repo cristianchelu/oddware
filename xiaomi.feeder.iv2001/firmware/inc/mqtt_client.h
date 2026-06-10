@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+const char *mqtt_client_device_id(void);
 void mqtt_client_start(void);
 bool mqtt_client_wifi_is_ready(void);
 bool mqtt_client_connect_in_progress(void);

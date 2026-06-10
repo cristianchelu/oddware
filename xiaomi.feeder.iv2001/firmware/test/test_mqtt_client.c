@@ -7,6 +7,12 @@
 #include "fake_mqtt_port.h"
 #include "fake_time.h"
 #include "fake_wifi_port.h"
+#include <string.h>
+
+#include "app.h"
+#include "app_event.h"
+#include "display_presentation.h"
+#include "fake_display_port.h"
 #include "mqtt_client.h"
 #include "mqtt_client_test.h"
 #include "mqtt_cred.h"
@@ -18,6 +24,16 @@ static void seed_broker_config(void)
     fake_config_port_reset();
     TEST_ASSERT_EQUAL(PORT_OK, mqtt_cred_save_host(cfg, "broker.local"));
     TEST_ASSERT_EQUAL(PORT_OK, mqtt_cred_save_port(cfg, 1883));
+}
+
+static void post_display_tick(uint32_t now_ms)
+{
+    app_event_t ev;
+
+    memset(&ev, 0, sizeof(ev));
+    ev.type = EVT_DISPLAY_TICK;
+    ev.u.display_tick.now_ms = now_ms;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
 }
 
 static void setup_wifi_up(void)
@@ -44,6 +60,28 @@ void test_client_idle_when_not_armed(void)
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
 }
 
+void test_request_connect_posts_connecting_session(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    fake_display_port_reset();
+    display_presentation_reset();
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    app_step();
+    post_display_tick(0u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x01u, grids[4]);
+}
+
 void test_request_connect_requires_wifi(void)
 {
     fake_time_reset();
@@ -67,6 +105,7 @@ void test_connect_subscribes_and_publishes_online(void)
 
     TEST_ASSERT_TRUE(mqtt_client_request_connect());
     mqtt_client_step();
+    app_step();
 
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
@@ -168,6 +207,48 @@ void test_bootstrap_without_autoconnect_flag_does_not_connect(void)
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
 }
 
+void test_mqtt_stop_clears_connect_in_progress(void)
+{
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    TEST_ASSERT_TRUE(mqtt_client_connect_in_progress());
+
+    mqtt_client_stop();
+    TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+
+    mqtt_client_step();
+    TEST_ASSERT_EQUAL_UINT(0, fake_mqtt_port_state()->connect_calls);
+}
+
+void test_mqtt_connect_posts_connected_session_indicator(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    fake_display_port_reset();
+    display_presentation_reset();
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+    app_step();
+    post_display_tick(0u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x02u, grids[4]);
+    TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+}
+
 void test_stored_host_autoconnects_on_wifi_ready(void)
 {
     const fake_mqtt_port_state_t *mqtt;
@@ -181,5 +262,5 @@ void test_stored_host_autoconnects_on_wifi_ready(void)
     mqtt_client_step();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_GREATER_OR_EQUAL_UINT(1, mqtt->connect_calls);
+    TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
 }

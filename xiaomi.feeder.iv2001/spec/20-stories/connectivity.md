@@ -58,4 +58,7 @@ The feeder subscribes to commands for:
 The feeder shows MQTT session state on the status lightbar (see
 [display.md](display.md) § MQTT / broker indicator): green when the broker
 session is up, orange patterns while connecting or after a failed connect
-during reconnect backoff.
+during reconnect backoff. Bowl-gram digits keep updating on the default
+**weight** display mode during the connecting phase (see
+[app-event-loop.md](../30-processes/app-event-loop.md) § Coexistence with MQTT
+connect).

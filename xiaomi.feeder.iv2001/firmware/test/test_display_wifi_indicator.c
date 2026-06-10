@@ -18,6 +18,7 @@ void test_display_wifi_indicator_connected_steady_on(void)
 
     wifi_indicator_test_setup();
     display_wifi_indicator_connected();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x02u, grids[3]);
@@ -29,6 +30,7 @@ void test_display_wifi_indicator_off_steady_off(void)
 
     wifi_indicator_test_setup();
     display_wifi_indicator_off();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x00u, grids[3]);
@@ -83,6 +85,7 @@ void test_display_wifi_indicator_connected_stops_prior_blink(void)
     wifi_indicator_test_setup();
     display_wifi_indicator_connecting();
     display_wifi_indicator_connected();
+    (void)display_presentation_tick(0u);
 
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x02u, grids[3]);
