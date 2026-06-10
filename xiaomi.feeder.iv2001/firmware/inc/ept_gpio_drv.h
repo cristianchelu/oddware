@@ -50,10 +50,14 @@
 #define GPIO_PORT10_MODE  MODE_0
 #define GPIO_PORT11_MODE  MODE_0   /* CS1270 UART2 — mux deferred to weighing bring-up */
 #define GPIO_PORT12_MODE  MODE_0
-#define GPIO_PORT13_MODE  MODE_0   /* TM1637 CLK */
-#define GPIO_PORT14_MODE  MODE_0   /* AW9523B RST (active-low, held deasserted) */
-#define GPIO_PORT15_MODE  MODE_0   /* AW9523B I2C SCL — I2C1 mux in i2c_bus_adapter */
-#define GPIO_PORT16_MODE  MODE_0   /* AW9523B I2C SDA — I2C1 mux in i2c_bus_adapter */
+/*
+ * GPIO13–16: leave NC/input at EPT apply — mux in drivers (TM1637, AW9523B I2C, RST).
+ * Driving GPIO14 output-high or GPIO13/15/16 as GPIO at boot breaks AW9523B I2C `[probe]`.
+ */
+#define GPIO_PORT13_MODE  MODE_NC   /* TM1637 CLK — display_adapter */
+#define GPIO_PORT14_MODE  MODE_NC   /* AW9523B RST — gpio_expander_adapter */
+#define GPIO_PORT15_MODE  MODE_NC   /* I2C1 SCL — i2c_bus_adapter */
+#define GPIO_PORT16_MODE  MODE_NC   /* I2C1 SDA — i2c_bus_adapter */
 #define GPIO_PORT17_MODE  MODE_6   /* AUXADC0 — battery/motor sense mux */
 #define GPIO_PORT18_MODE  MODE_NC
 #define GPIO_PORT19_MODE  MODE_NC  /* EVK UART0 — not used on IV2001 */
@@ -74,8 +78,8 @@
 #define GPIO_PORT10_DIR  DIR_INPUT
 #define GPIO_PORT11_DIR  DIR_INPUT
 #define GPIO_PORT12_DIR  DIR_INPUT
-#define GPIO_PORT13_DIR  DIR_OUTPUT
-#define GPIO_PORT14_DIR  DIR_OUTPUT
+#define GPIO_PORT13_DIR  DIR_INPUT
+#define GPIO_PORT14_DIR  DIR_INPUT
 #define GPIO_PORT15_DIR  DIR_INPUT
 #define GPIO_PORT16_DIR  DIR_INPUT
 #define GPIO_PORT17_DIR  DIR_INPUT
@@ -99,7 +103,7 @@
 #define GPIO_PORT11_OUTPUT_LEVEL  0
 #define GPIO_PORT12_OUTPUT_LEVEL  0
 #define GPIO_PORT13_OUTPUT_LEVEL  0
-#define GPIO_PORT14_OUTPUT_LEVEL  1   /* AW9523B reset inactive */
+#define GPIO_PORT14_OUTPUT_LEVEL  0
 #define GPIO_PORT15_OUTPUT_LEVEL  0
 #define GPIO_PORT16_OUTPUT_LEVEL  0
 #define GPIO_PORT17_OUTPUT_LEVEL  0
@@ -122,10 +126,10 @@
 #define GPIO_PORT10_PU  0
 #define GPIO_PORT11_PU  0
 #define GPIO_PORT12_PU  0
-#define GPIO_PORT13_PU  1   /* TM1637 CLK pull-up */
+#define GPIO_PORT13_PU  0   /* pull-ups set in display_adapter / i2c_bus_adapter */
 #define GPIO_PORT14_PU  0
-#define GPIO_PORT15_PU  1
-#define GPIO_PORT16_PU  1
+#define GPIO_PORT15_PU  0
+#define GPIO_PORT16_PU  0
 #define GPIO_PORT17_PU  0
 #define GPIO_PORT18_PU  0
 #define GPIO_PORT19_PU  0

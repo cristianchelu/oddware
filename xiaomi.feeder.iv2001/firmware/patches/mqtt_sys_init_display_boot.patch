@@ -1,5 +1,5 @@
 diff --git a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
-index 0cfbc782..5df360d4 100644
+index 0cfbc782..a8f3e21b 100644
 --- a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
 +++ b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
 @@ -50,6 +50,7 @@
@@ -10,14 +10,14 @@ index 0cfbc782..5df360d4 100644
  
  
  extern uint32_t chip_hardware_code(void);
-@@ -338,6 +339,10 @@ void system_init(void)
+@@ -327,6 +328,10 @@ void system_init(void)
+ #ifdef MTK_WIFI_ROM_ENABLE
+     move_iot_rom_data_to_ram();
  #endif
- 
-     /* Connsys init will download FW, MT5932 need download N9 FW before any task created, to init ucHeap early */
-+    /* WFCI SPI (wfcm_spi.c) claims GPIO12-16 at connsys_init; AW9523B needs I2C1 first. */
++    /* Display boot (0xFF test, rail off) before WFCI SPI claims GPIO12-16. */
 +    {
 +        (void)display_boot_run();
 +    }
-     connsys_init(NULL);
  
  #ifndef MTK_DEBUG_LEVEL_NONE
+     log_init(NULL, NULL, syslog_control_blocks);

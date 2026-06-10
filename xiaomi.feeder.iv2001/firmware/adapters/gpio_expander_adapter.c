@@ -23,13 +23,12 @@ static bool s_exp_ready;
 
 static void gpio_expander_adapter_hw_reset(void)
 {
-    /* 100 ms active-low pulse on GPIO14 — bench-verified on IV2001 `[probe]`. */
+    /* Factory / display_hello: level → direction → 100 ms; RST released via EPT input. */
     hal_gpio_init(AW9523B_RST_GPIO);
     hal_pinmux_set_function(AW9523B_RST_GPIO, HAL_GPIO_14_GPIO14);
-    hal_gpio_set_direction(AW9523B_RST_GPIO, HAL_GPIO_DIRECTION_OUTPUT);
     hal_gpio_set_output(AW9523B_RST_GPIO, HAL_GPIO_DATA_LOW);
+    hal_gpio_set_direction(AW9523B_RST_GPIO, HAL_GPIO_DIRECTION_OUTPUT);
     hal_gpt_delay_ms(100);
-    hal_gpio_set_output(AW9523B_RST_GPIO, HAL_GPIO_DATA_HIGH);
 }
 
 static port_err_t gpio_exp_reset_once(void)
@@ -38,7 +37,6 @@ static port_err_t gpio_exp_reset_once(void)
     port_err_t err;
 
     gpio_expander_adapter_hw_reset();
-    i2c_bus_adapter_deinit();
     i2c_bus_adapter_init();
 
     if (!s_exp_ready) {

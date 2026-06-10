@@ -34,5 +34,12 @@ port_err_t display_boot_run(void)
     }
 
     display_boot_delay_ms(DISPLAY_BOOT_LIGHT_TEST_MS);
-    return dp->blank();
+
+    err = dp->blank();
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    /* Rail off + I2C release before connsys_init / WFCI SPI on GPIO12–16. */
+    return dp->power_off();
 }

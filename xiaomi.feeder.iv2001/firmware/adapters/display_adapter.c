@@ -9,6 +9,7 @@
 #include "display_driver.h"
 #include "display_port.h"
 #include "gpio_expander_port.h"
+#include "i2c_bus_adapter.h"
 #include "tm1637.h"
 
 #define TM1637_DIO_GPIO  HAL_GPIO_1
@@ -86,8 +87,16 @@ static port_err_t port_power_on(void)
 
 static port_err_t port_power_off(void)
 {
+    port_err_t err;
+
     display_adapter_ensure_init();
-    return display_power_off(&s_state);
+    err = display_power_off(&s_state);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    i2c_bus_adapter_deinit();
+    return PORT_OK;
 }
 
 static port_err_t port_show_fill(uint8_t segment_byte)

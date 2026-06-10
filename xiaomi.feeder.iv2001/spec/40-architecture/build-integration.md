@@ -135,9 +135,13 @@ AW9523B shares GPIO14 (reset), GPIO15 (I2C SCL), and GPIO16 (I2C SDA).
 `connsys_init()` reclaims those pins; AW9523B I2C NACKs if touched afterward.
 
 Patch `firmware/patches/mqtt_sys_init_display_boot.patch` calls
-`display_boot_run()` in SDK `system_init()` after `bsp_ept_gpio_setting_init()`
-and `prvSetupHardware()`, **before** `connsys_init()`. `main.c` does not call
-`display_boot_run()` — the hook lives only in the patched SDK copy.
+`display_boot_run()` in SDK `system_init()` after `move_iot_rom_data_to_ram()`
+and **before** `log_init()` / `connsys_init()`. Boot self-test blanks the panel
+and drops the display rail before WFCI SPI claims GPIO12–16. `main.c` does not
+call `display_boot_run()` — the hook lives only in the patched SDK copy.
+
+GPIO13–16 must stay `MODE_NC` / input in `ept_gpio_drv.h`; muxing them at EPT
+apply breaks AW9523B I2C (`[probe]` 2026-06-10).
 
 Verify after `source tools/build-env.sh`:
 

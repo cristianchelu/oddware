@@ -26,11 +26,12 @@ void test_display_boot_run_sequence(void)
     TEST_ASSERT_EQUAL(PORT_OK, display_boot_run());
 
     ops = fake_display_port_ops(&count);
-    TEST_ASSERT_EQUAL(3, count);
+    TEST_ASSERT_EQUAL(4, count);
     TEST_ASSERT_EQUAL(FAKE_DISPLAY_OP_POWER_ON, ops[0].kind);
     TEST_ASSERT_EQUAL(FAKE_DISPLAY_OP_SHOW_FILL, ops[1].kind);
     TEST_ASSERT_EQUAL(0xFFu, ops[1].segment_byte);
     TEST_ASSERT_EQUAL(FAKE_DISPLAY_OP_BLANK, ops[2].kind);
+    TEST_ASSERT_EQUAL(FAKE_DISPLAY_OP_POWER_OFF, ops[3].kind);
 
     TEST_ASSERT_EQUAL(2, s_delay_count);
     TEST_ASSERT_EQUAL(DISPLAY_BOOT_PRE_POWER_MS, s_delay_log[0]);
