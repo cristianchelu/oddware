@@ -170,6 +170,45 @@ static port_err_t gpio_exp_set_pin(uint8_t port, uint8_t pin, bool level)
     return gpio_exp_with_loan(gpio_exp_set_pin_body);
 }
 
+static uint8_t s_int_mask_p0;
+static uint8_t s_int_mask_p1;
+
+static port_err_t gpio_exp_read_inputs(uint8_t *p0, uint8_t *p1)
+{
+    port_err_t err;
+    bool nested = gpio_expander_loan_is_held();
+
+    if (p0 == NULL || p1 == NULL || !s_exp_ready) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    if (!nested) {
+        err = gpio_expander_loan_begin();
+        if (err != PORT_OK) {
+            return err;
+        }
+    }
+
+    err = aw9523b_read_inputs(&s_aw9523b, p0, p1);
+
+    if (!nested) {
+        gpio_expander_loan_end();
+    }
+    return err;
+}
+
+static port_err_t gpio_exp_set_int_mask_body(void)
+{
+    return aw9523b_set_int_mask(&s_aw9523b, s_int_mask_p0, s_int_mask_p1);
+}
+
+static port_err_t gpio_exp_set_int_mask(uint8_t mask_p0, uint8_t mask_p1)
+{
+    s_int_mask_p0 = mask_p0;
+    s_int_mask_p1 = mask_p1;
+    return gpio_exp_with_loan(gpio_exp_set_int_mask_body);
+}
+
 static port_err_t gpio_exp_get_pin(uint8_t port, uint8_t pin, bool *level)
 {
     uint8_t reg;
@@ -205,6 +244,8 @@ static const gpio_expander_port_t s_gpio_expander = {
     .configure = gpio_exp_configure,
     .set_pin = gpio_exp_set_pin,
     .get_pin = gpio_exp_get_pin,
+    .read_inputs = gpio_exp_read_inputs,
+    .set_int_mask = gpio_exp_set_int_mask,
 };
 
 const gpio_expander_port_t *gpio_expander_port_get(void)

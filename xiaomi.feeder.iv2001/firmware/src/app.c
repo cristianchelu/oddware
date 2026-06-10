@@ -9,6 +9,8 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
+#include "button_input.h"
+#include "button_port.h"
 #include "config_port.h"
 #include "display_mqtt_indicator.h"
 #include "display_presentation.h"
@@ -187,6 +189,69 @@ static void app_weight_boot_arm(void)
     s_bowl_valid = false;
 }
 
+static const char *app_button_press_label(button_id_t id)
+{
+    switch (id) {
+    case BUTTON_ID_POWER:
+        return "power";
+    case BUTTON_ID_RESET:
+        return "reset";
+    case BUTTON_ID_DISPENSE:
+        return "dispense";
+    default:
+        return "unknown";
+    }
+}
+
+static char s_test_btn_log[48];
+
+static void app_button_log_press(button_id_t id)
+{
+    const char *label = app_button_press_label(id);
+
+    printf("[btn] %s pressed\r\n", label);
+    (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "[btn] %s pressed", label);
+}
+
+void app_test_clear_btn_log(void)
+{
+    s_test_btn_log[0] = '\0';
+}
+
+bool app_test_take_btn_log(char *buf, size_t len)
+{
+    size_t n;
+
+    if (buf == NULL || len == 0u || s_test_btn_log[0] == '\0') {
+        return false;
+    }
+
+    n = strlen(s_test_btn_log);
+    if (n >= len) {
+        n = len - 1u;
+    }
+
+    memcpy(buf, s_test_btn_log, n);
+    buf[n] = '\0';
+    s_test_btn_log[0] = '\0';
+    return true;
+}
+
+static void app_button_drain_logs(void)
+{
+    button_id_t id;
+
+    while (button_input_pop_press(&id)) {
+        app_button_log_press(id);
+    }
+}
+
+static void app_button_poll(uint32_t now_ms)
+{
+    button_input_poll(now_ms);
+    app_button_drain_logs();
+}
+
 void app_dispatch(const app_event_t *ev)
 {
     if (ev == NULL) {
@@ -238,6 +303,12 @@ void app_dispatch(const app_event_t *ev)
     case EVT_DISPLAY_TICK:
         app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
         (void)display_presentation_tick(ev->u.display_tick.now_ms);
+        app_button_poll(ev->u.display_tick.now_ms);
+        break;
+
+    case EVT_BUTTON_IRQ:
+        button_input_notify_irq(ev->u.button_irq.now_ms);
+        app_button_poll(ev->u.button_irq.now_ms);
         break;
 
     case EVT_TIMER_TICK:
@@ -257,6 +328,7 @@ void app_test_reset(void)
     s_bowl_g = 0;
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
+    button_input_init(button_port_get());
     app_event_port_init();
 }
 

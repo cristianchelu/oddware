@@ -24,6 +24,7 @@ HOST_SRCS := ../src/port_err.c \
              ../src/mqtt_route.c \
              ../src/app.c \
              ../src/app_mqtt_dispatch.c \
+             ../src/button_input.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
              ../src/ota_url.c \
@@ -52,6 +53,7 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_i2c_bus.c \
              fakes/fake_wfci_bus_port.c \
              fakes/fake_gpio_expander_port.c \
+             fakes/fake_button_port.c \
              fakes/fake_tm1637_gpio.c \
              fakes/fake_display_port.c \
              fakes/fake_weight_port.c \

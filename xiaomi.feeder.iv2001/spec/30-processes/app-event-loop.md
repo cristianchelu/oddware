@@ -34,16 +34,17 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
 | `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `ota_client_on_mqtt_connected()` (rollback confirm + idle `ota/status`); no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (OTA live; other routes log-only stub) |
-| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` in one handler |
+| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` (includes P0.4 reset sampling) in one handler |
 | `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_rollback_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
+| `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 
 The `app` task waits on the queue with a `[tune]` 50 ms timeout; on timeout it
 runs the same `EVT_DISPLAY_TICK` handler locally (weight sample + presentation
 refresh) so display stays live when the timer daemon or queue is backlogged
 during MQTT connect.
 
-`app_event_post` coalesces duplicate `EVT_DISPLAY_TICK` and `EVT_TIMER_TICK`
-entries (at most one of each pending). Queue depth is `[tune]` 32 items — see
+`app_event_post` coalesces duplicate `EVT_DISPLAY_TICK`, `EVT_TIMER_TICK`, and
+`EVT_BUTTON_IRQ` entries (at most one of each pending). Queue depth is `[tune]` 32 items — see
 [task-model.md](../40-architecture/task-model.md).
 
 ## Coexistence with MQTT connect
@@ -70,8 +71,8 @@ alone misses samples when that event is dropped; clearing the cached gram
 reading on `PORT_ERR_BUSY` blanks the scene while TM1637 may still show stale
 pixels.
 
-Reserved for later phases (handlers are no-ops when posted): motor, button,
-dispense, provisioning submit, OTA progress/complete.
+Reserved for later phases (handlers are no-ops when posted): motor, dispense
+actions, provisioning submit, OTA progress/complete.
 
 ## MQTT session phase payload
 

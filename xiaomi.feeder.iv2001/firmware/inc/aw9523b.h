@@ -17,6 +17,8 @@
 #define AW9523B_REG_OUTPUT_P1  0x03u
 #define AW9523B_REG_DIR_P0     0x04u
 #define AW9523B_REG_DIR_P1     0x05u
+#define AW9523B_REG_INT_MASK_P0  0x06u
+#define AW9523B_REG_INT_MASK_P1  0x07u
 #define AW9523B_REG_ID         0x10u
 #define AW9523B_REG_CTL        0x11u
 #define AW9523B_ID_EXPECTED    0x23u
@@ -50,6 +52,10 @@ port_err_t aw9523b_configure(aw9523b_t *dev,
 port_err_t aw9523b_set_output_bit(aw9523b_t *dev, uint8_t port, uint8_t pin, bool level);
 
 port_err_t aw9523b_flush(aw9523b_t *dev);
+
+port_err_t aw9523b_read_inputs(const aw9523b_t *dev, uint8_t *p0, uint8_t *p1);
+
+port_err_t aw9523b_set_int_mask(aw9523b_t *dev, uint8_t mask_p0, uint8_t mask_p1);
 
 uint8_t aw9523b_output_get(const aw9523b_t *dev, uint8_t port);
 

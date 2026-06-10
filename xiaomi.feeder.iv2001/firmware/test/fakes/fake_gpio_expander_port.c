@@ -8,6 +8,8 @@ static aw9523b_t s_dev;
 static port_err_t s_reset_err = PORT_OK;
 static bool s_dev_ready;
 static bool s_id_pinned;
+static uint8_t s_input_p0 = 0xFFu;
+static uint8_t s_input_p1 = 0xFFu;
 
 static port_err_t fake_exp_reset(void)
 {
@@ -65,13 +67,33 @@ static port_err_t fake_exp_set_pin(uint8_t port, uint8_t pin, bool level)
 
 static port_err_t fake_exp_get_pin(uint8_t port, uint8_t pin, bool *level)
 {
-    (void)port;
-    (void)pin;
+    uint8_t sample;
+
     if (level == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
-    *level = false;
-    return PORT_ERR_NOT_SUPPORTED;
+
+    sample = (port == 0u) ? s_input_p0 : s_input_p1;
+    *level = (sample & (uint8_t)(1u << pin)) != 0u;
+    return PORT_OK;
+}
+
+static port_err_t fake_exp_read_inputs(uint8_t *p0, uint8_t *p1)
+{
+    if (p0 == NULL || p1 == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    *p0 = s_input_p0;
+    *p1 = s_input_p1;
+    return PORT_OK;
+}
+
+static port_err_t fake_exp_set_int_mask(uint8_t mask_p0, uint8_t mask_p1)
+{
+    (void)mask_p0;
+    (void)mask_p1;
+    return PORT_OK;
 }
 
 static const gpio_expander_port_t s_fake_exp = {
@@ -79,6 +101,8 @@ static const gpio_expander_port_t s_fake_exp = {
     .configure = fake_exp_configure,
     .set_pin = fake_exp_set_pin,
     .get_pin = fake_exp_get_pin,
+    .read_inputs = fake_exp_read_inputs,
+    .set_int_mask = fake_exp_set_int_mask,
 };
 
 void fake_gpio_expander_reset(void)
@@ -86,8 +110,16 @@ void fake_gpio_expander_reset(void)
     s_reset_err = PORT_OK;
     s_dev_ready = false;
     s_id_pinned = false;
+    s_input_p0 = 0xFFu;
+    s_input_p1 = 0xFFu;
     fake_i2c_bus_reset();
     fake_i2c_bus_set_read_result(PORT_OK, AW9523B_ID_EXPECTED);
+}
+
+void fake_gpio_expander_set_inputs(uint8_t p0, uint8_t p1)
+{
+    s_input_p0 = p0;
+    s_input_p1 = p1;
 }
 
 void fake_gpio_expander_set_reset_err(port_err_t err)
@@ -115,4 +147,9 @@ bool fake_gpio_expander_pin(uint8_t port, uint8_t pin)
 const gpio_expander_port_t *fake_gpio_expander_port_get(void)
 {
     return &s_fake_exp;
+}
+
+const gpio_expander_port_t *gpio_expander_port_get(void)
+{
+    return fake_gpio_expander_port_get();
 }

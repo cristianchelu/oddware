@@ -211,6 +211,22 @@ Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
 `wfci_bus_port` when Wi-Fi SPI is active; boot-time access before
 `connsys_init()` calls `i2c_bus_adapter_init()` directly.
 
+### `button_port.h`
+
+**Process boundary** for user-facing tactile buttons ([button-handling.md](../30-processes/button-handling.md)).
+`[design]` The AW9523B expander is shared infrastructure (display rail, motor
+lines, hopper IR, tactiles). Application and debounce logic depend on
+`button_port`, not `gpio_expander_port`. Today’s adapter reads expander input
+registers and maps active-low pins to `button_sample_t`; hopper broken-beam IR
+will use a separate adapter on the same GPIO4 IRQ line.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `read_sample` | `(&sample) -> err` | Fill `power_pressed`, `reset_pressed`, `dispense_pressed` (`true` = down) |
+
+Adapter: `button_port_adapter.c` — `gpio_expander_port.read_inputs` +
+`board_gpio_iv2001.h` masks. HAL IRQ wiring: `button_adapter.c` (GPIO4 EINT).
+
 ### `gpio_expander_port.h`
 
 | Function | Signature | Behavior |
@@ -219,6 +235,8 @@ Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
 | `configure` | `(dir_p0, dir_p1, out_p0, out_p1) -> err` | Write direction and output registers |
 | `set_pin` | `(port, pin, level) -> err` | Set one expander pin (0=output, 1=input per AW9523B) |
 | `get_pin` | `(port, pin, &level) -> err` | Read one expander input pin |
+| `read_inputs` | `(&p0, &p1) -> err` | Read input registers 0x00 and 0x01 in one `EXPANDER` loan |
+| `set_int_mask` | `(mask_p0, mask_p1) -> err` | Write IRQ mask registers 0x06/0x07 (`0` = enabled, `1` = masked) |
 
 Adapter: `gpio_expander_adapter.c` — AW9523B register model + `i2c_bus_port`.
 Bootstrap bitmaps: `board_gpio_iv2001.h`. Micro-session helpers

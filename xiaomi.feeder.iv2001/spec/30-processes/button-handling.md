@@ -15,26 +15,46 @@ All three are inputs on the AW9523B GPIO expander (I2C @ 0x58).
 
 ## IRQ dispatch
 
-All button IRQs arrive via a single AW9523B INT line → MT7682 GPIO4 (EINT).
+Tactile power (P0.3) and dispense (P1.0) share the AW9523B INT line with motor
+index, mains sense, and hopper IR — all routed to MT7682 GPIO4 (EINT). The ISR
+posts `EVT_BUTTON_IRQ` only; no I2C in the ISR (`wfci-bus-arbitration.md`).
+The `app` task samples `button_port` after debounce (see below). AW9523B input
+register reads clear the expander interrupt. `[ds:AW9523B]`
 
-On GPIO4 interrupt:
-
-1. Read AW9523B input register P0 (addr 0x00) and P1 (addr 0x01) via I2C.
-2. Compare with previous state to determine which pin(s) changed.
-3. Dispatch to the appropriate button handler.
-4. Interrupt is cleared by the register read. `[ds:AW9523B]`
-
-IRQ-enabled pins: P0.3 (mask bit 3), P0.7 (motor index), P1.0 (mask bit 0),
-P1.1 (mains), P1.4 (hopper IR). Configured via registers 0x06/0x07
-(0 = enabled, 1 = masked).
+IRQ mask registers 0x06/0x07 enable expander IRQ sources (`0` = enabled,
+`1` = masked). Defaults in `board_gpio_iv2001.h`. Hopper broken-beam IR will
+use the same GPIO4 wake path with its own adapter — not `gpio_expander_port`
+from application code.
 
 ## Software debounce
 
 All buttons debounced in software:
 
 - Require `[tune]` 50 ms of stable state before registering a press or release.
-- On IRQ, start debounce timer; re-read pin state after timer expires.
-- If state still matches, register the event. If not, discard.
+- On `EVT_BUTTON_IRQ`, arm `[tune]` 50 ms before IRQ-backed buttons (power,
+  dispense) accept new samples; pin-hole reset (no expander IRQ) is sampled on
+  every `EVT_DISPLAY_TICK` without that gate.
+- Two consecutive identical `button_port` reads satisfy the stable-state
+  requirement for bring-up (typically two `[tune]` 50 ms polls).
+
+## Bring-up UART logging
+
+Until gesture actions (dispense, sleep, provisioning) are wired, a debounced
+**press** edge on any of the three buttons prints one UART line on the console
+(`spec/30-processes/uart-console.md`):
+
+| Button | AW9523B pin | Line |
+|--------|-------------|------|
+| Rear power | P0.3 | `[btn] power pressed` |
+| Pin-hole reset | P0.4 | `[btn] reset pressed` |
+| Manual dispense | P1.0 | `[btn] dispense pressed` |
+
+- Active-low switches: **pressed** is `true` on `button_port` (`read_sample`).
+- P0.4 has no expander IRQ; it is sampled on each `[tune]` 50 ms
+  `EVT_DISPLAY_TICK` (same cadence as presentation refresh).
+- P0.3 and P1.0 also wake `EVT_BUTTON_IRQ` from GPIO4; `button_input` reads
+  `button_port` after the IRQ debounce window — not in the ISR.
+- Release edges and long-press gestures are ignored in this phase.
 
 ## Gesture detection
 

@@ -8,6 +8,7 @@
 #include "app.h"
 #include "app_event.h"
 #include "config_keys.h"
+#include "fake_button_port.h"
 #include "fake_config_port.h"
 #include "fake_display_port.h"
 #include "fake_mqtt_port.h"
@@ -419,6 +420,41 @@ void test_app_event_coalesces_timer_ticks(void)
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_EQUAL_UINT(1u, fake_app_event_q_depth());
+}
+
+void test_app_event_coalesces_button_irq(void)
+{
+    app_event_t ev;
+
+    fake_app_event_q_reset();
+    memset(&ev, 0, sizeof(ev));
+    ev.type = EVT_BUTTON_IRQ;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_EQUAL_UINT(1u, fake_app_event_q_depth());
+}
+
+void test_app_button_press_logs_on_display_tick(void)
+{
+    char log[48];
+    button_sample_t sample = {
+        .power_pressed = true,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+
+    app_test_reset();
+    fake_button_port_reset();
+    fake_button_port_set_sample(&sample);
+    app_test_clear_btn_log();
+
+    post_display_tick(0u);
+    app_step();
+    post_display_tick(50u);
+    app_step();
+
+    TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
+    TEST_ASSERT_EQUAL_STRING("[btn] power pressed", log);
 }
 
 void test_app_weight_updates_during_mqtt_connecting(void)

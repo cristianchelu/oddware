@@ -21,6 +21,7 @@ typedef enum {
     EVT_MQTT_MESSAGE,
     EVT_DISPLAY_TICK,
     EVT_TIMER_TICK,
+    EVT_BUTTON_IRQ,
 } app_event_type_t;
 
 typedef enum {
@@ -49,12 +50,17 @@ typedef struct {
 } app_display_tick_t;
 
 typedef struct {
+    uint32_t now_ms;
+} app_button_irq_t;
+
+typedef struct {
     app_event_type_t type;
     union {
         app_wifi_ready_t wifi_ready;
         app_mqtt_session_t mqtt_session;
         app_mqtt_message_t mqtt_message;
         app_display_tick_t display_tick;
+        app_button_irq_t button_irq;
     } u;
 } app_event_t;
 

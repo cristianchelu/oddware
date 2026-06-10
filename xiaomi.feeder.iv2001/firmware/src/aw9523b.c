@@ -154,6 +154,38 @@ port_err_t aw9523b_flush(aw9523b_t *dev)
     return PORT_OK;
 }
 
+port_err_t aw9523b_read_inputs(const aw9523b_t *dev, uint8_t *p0, uint8_t *p1)
+{
+    port_err_t err;
+
+    if (dev == NULL || dev->i2c == NULL || p0 == NULL || p1 == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = dev->i2c->read_reg(dev->addr, AW9523B_REG_INPUT_P0, p0);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    return dev->i2c->read_reg(dev->addr, AW9523B_REG_INPUT_P1, p1);
+}
+
+port_err_t aw9523b_set_int_mask(aw9523b_t *dev, uint8_t mask_p0, uint8_t mask_p1)
+{
+    port_err_t err;
+
+    if (dev == NULL || dev->i2c == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = dev->i2c->write_reg(dev->addr, AW9523B_REG_INT_MASK_P0, mask_p0);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    return dev->i2c->write_reg(dev->addr, AW9523B_REG_INT_MASK_P1, mask_p1);
+}
+
 uint8_t aw9523b_output_get(const aw9523b_t *dev, uint8_t port)
 {
     if (dev == NULL) {

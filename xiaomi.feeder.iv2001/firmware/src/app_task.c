@@ -11,6 +11,9 @@
 #include "app.h"
 #include "app_event.h"
 #include "app_event_port.h"
+#include "button_adapter.h"
+#include "button_input.h"
+#include "button_port.h"
 #include "display_presentation.h"
 #include "task_def.h"
 
@@ -125,5 +128,7 @@ void app_start(void)
     }
 
     app_timers_start();
+    button_input_init(button_port_get());
+    (void)button_adapter_start();
     app_post_simple(EVT_APP_BOOT);
 }

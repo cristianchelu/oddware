@@ -13,6 +13,7 @@
 static QueueHandle_t s_app_event_q;
 static volatile uint8_t s_display_ticks_queued;
 static volatile uint8_t s_timer_ticks_queued;
+static volatile uint8_t s_button_irq_queued;
 
 void app_event_port_init(void)
 {
@@ -35,6 +36,10 @@ bool app_event_post(const app_event_t *ev)
         return true;
     }
 
+    if (ev->type == EVT_BUTTON_IRQ && s_button_irq_queued > 0u) {
+        return true;
+    }
+
     if (xQueueSend(s_app_event_q, ev, 0) != pdPASS) {
         return false;
     }
@@ -44,6 +49,30 @@ bool app_event_post(const app_event_t *ev)
     }
     if (ev->type == EVT_TIMER_TICK) {
         s_timer_ticks_queued++;
+    }
+    if (ev->type == EVT_BUTTON_IRQ) {
+        s_button_irq_queued++;
+    }
+
+    return true;
+}
+
+bool app_event_post_from_isr(const app_event_t *ev, BaseType_t *wake)
+{
+    if (ev == NULL || s_app_event_q == NULL) {
+        return false;
+    }
+
+    if (ev->type == EVT_BUTTON_IRQ && s_button_irq_queued > 0u) {
+        return true;
+    }
+
+    if (xQueueSendFromISR(s_app_event_q, ev, wake) != pdPASS) {
+        return false;
+    }
+
+    if (ev->type == EVT_BUTTON_IRQ) {
+        s_button_irq_queued++;
     }
 
     return true;
@@ -76,6 +105,9 @@ void app_event_release(app_event_t *ev)
     }
     if (ev->type == EVT_TIMER_TICK && s_timer_ticks_queued > 0u) {
         s_timer_ticks_queued--;
+    }
+    if (ev->type == EVT_BUTTON_IRQ && s_button_irq_queued > 0u) {
+        s_button_irq_queued--;
     }
 
     if (ev->type != EVT_MQTT_MESSAGE) {
