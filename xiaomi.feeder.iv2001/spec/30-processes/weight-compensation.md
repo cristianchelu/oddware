@@ -53,15 +53,24 @@ On give-up:
 
 ## Interaction with weighing subsystem
 
-- Compensation loop uses **dispense-rate** sampling (~500 ms) from CS1270.
+The dispense supervisor owns session state; the weigh driver does not (see
+[weighing.md](weighing.md) **Weigh driver boundary**).
+
+| Dispense supervisor | `weight_port` |
+|---------------------|---------------|
+| `weight_at_dispense_start` = `read_grams()` before motor | Stateless; no remembered zero |
+| `grams_delivered` = current `read_grams()` − start | Each read is absolute food g |
+| Extra bursts, give-up counters | Power rail + UART only |
+
+- Compensation loop uses **dispense-rate** sampling (~500 ms) via `read_grams`.
 - UART2 is serialized: idle weight sampling must not overlap with compensation reads.
 - CS1270 must remain powered throughout the dispense + compensation cycle;
   power-off only after final outcome determined.
 
 ## Data recorded
 
-| Field | Value |
-|-------|-------|
-| `last_dispense_actual` | Final `grams_delivered` after all batches |
-| `eaten_today` | Cumulative update: `eaten_today += last_dispense_actual` |
-| Published to | `.../weight` and `.../dispense/status` |
+| Field | Owner | Value |
+|-------|-------|-------|
+| `last_dispense_actual` | Dispense supervisor | Final `grams_delivered` after all batches |
+| `eaten_today` | Monitoring | Updated from dispense history + bowl snapshots (not weigh driver) |
+| Published to | — | `.../weight` and `.../dispense/status` |

@@ -37,6 +37,7 @@ typedef enum {
 } display_builtin_anim_t;
 
 void display_presentation_reset(void);
+void display_presentation_note_expander_reset(void);
 
 port_err_t display_presentation_set_digits(uint16_t value);
 port_err_t display_presentation_clear_digits(void);

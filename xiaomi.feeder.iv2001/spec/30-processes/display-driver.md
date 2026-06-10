@@ -45,6 +45,12 @@ presentation code is the sole caller of `display_port` for user-visible behavior
 **Physical seam:** AW9523B P0.5 energizes the TM1637 module; segment data uses
 SoC GPIO only. Only `display_driver.c` sequences rail-on before TM1637 traffic.
 
+`gpio_expander_bootstrap()` resets all expander outputs to boot defaults
+(including P0.5 off). Only display boot / `display_power_on` may call it.
+Other consumers (e.g. weigh scale P0.2) use `set_pin` only. After bootstrap,
+`display_driver` and `display_presentation` invalidate their powered state so
+the next refresh re-asserts P0.5.
+
 ## TM1637 on-wire protocol
 
 Two-wire serial (I²C-like but not standard I²C). Bit-banged on GPIO1/GPIO13.

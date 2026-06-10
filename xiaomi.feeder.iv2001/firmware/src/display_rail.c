@@ -52,6 +52,13 @@ port_err_t display_rail_off(display_rail_ctx_t *ctx)
                                   false);
 }
 
+void display_rail_invalidate(display_rail_ctx_t *ctx)
+{
+    if (ctx != NULL) {
+        ctx->settled = false;
+    }
+}
+
 bool display_rail_is_settled(const display_rail_ctx_t *ctx)
 {
     if (ctx == NULL) {

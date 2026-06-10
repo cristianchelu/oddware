@@ -38,9 +38,11 @@ port_err_t display_power_on(display_driver_state_t *state)
         return PORT_ERR_INVALID_ARG;
     }
 
-    if (state->powered) {
+    if (state->powered && display_rail_is_settled(&state->rail)) {
         return PORT_OK;
     }
+
+    state->powered = false;
 
     err = gpio_expander_bootstrap(state->hw.expander);
     if (err != PORT_OK) {

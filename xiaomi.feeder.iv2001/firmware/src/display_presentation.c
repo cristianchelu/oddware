@@ -197,6 +197,11 @@ void display_presentation_reset(void)
     s_pres.brightness = 4u;
 }
 
+void display_presentation_note_expander_reset(void)
+{
+    s_pres.powered = false;
+}
+
 port_err_t display_presentation_set_digits(uint16_t value)
 {
     if (value > 999u) {

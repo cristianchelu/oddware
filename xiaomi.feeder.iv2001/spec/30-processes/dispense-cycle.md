@@ -17,6 +17,10 @@ A dispense request carries a **target_grams** value (clamped to 5–150 g).
 | **Open-loop** | Run all planned bursts, check bowl changed, done | Default (`feed/mode = open_loop`) |
 | **Compensated** | After each batch, compare bowl delta to target; compute extra bursts if under | Opt-in via MQTT (`feed/mode = compensated`) |
 
+Bowl **deltas** (`bowl_after − bowl_before`) are computed by the dispense
+supervisor using two `read_grams` calls — not by runtime tare or offsets in the
+weigh driver ([weighing.md](weighing.md) **Weigh driver boundary**).
+
 ## Motor sequencing per burst
 
 Motor is controlled through AW9523B (I2C @ 0x58) driving SGM42507.

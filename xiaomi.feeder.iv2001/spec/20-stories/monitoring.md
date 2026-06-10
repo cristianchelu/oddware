@@ -8,14 +8,17 @@ device is doing and whether it needs attention.
 ## Bowl weight
 
 - The feeder reports the current weight of food in the bowl (in grams).
-- The weight reading is tare-referenced (empty bowl = 0 g).
-- The user can trigger a tare reset via MQTT or a button combo.
+- The provided stainless bowl weighs 350 g; the weigh driver subtracts this
+  so an empty installed bowl reads 0 g (`weight_port.read_grams`).
+- This is an **absolute** reading — not a relative zero from a prior tare.
 
 ## Eaten-today tracking
 
-- The feeder tracks cumulative food consumed since midnight (local time):
-  total dispensed minus what remains in the bowl.
-- Resets at midnight.
+- **Not** computed inside the weigh driver. The monitoring task derives
+  consumption from dispense history and/or `read_grams` snapshots before and
+  after feeding (see [weighing.md](../30-processes/weighing.md) **Weigh driver
+  boundary**).
+- Cumulative food consumed since midnight (local time); resets at midnight.
 
 ## Hopper fill level
 
@@ -26,8 +29,8 @@ device is doing and whether it needs attention.
 ## Calibration
 
 - The user can calibrate the weight sensor via MQTT:
-  - **Tare:** set current load as zero.
-  - **Span:** place a known weight on the bowl and confirm.
+  - **Zero:** capture with bowl removed.
+  - **Span:** capture with the provided bowl installed (350 g reference).
 - Calibration values are persisted and survive power cycles.
 - The feeder may suggest recalibration if it detects drift.
 

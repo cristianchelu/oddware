@@ -40,6 +40,11 @@ HOST_SRCS := ../src/port_err.c \
              ../src/display_anim_builtin.c \
              ../src/display_boot.c \
              ../src/display_cli.c \
+             ../src/weigh_cli.c \
+             ../src/cs1270.c \
+             ../src/weight_rail.c \
+             ../src/weight_driver.c \
+             ../src/weigh_cal.c \
              ../src/gpio_expander_loan.c \
              ../src/wfci_bus_state.c \
              fakes/fake_i2c_bus.c \
@@ -47,6 +52,7 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_gpio_expander_port.c \
              fakes/fake_tm1637_gpio.c \
              fakes/fake_display_port.c \
+             fakes/fake_weight_port.c \
              fakes/fake_config_port.c \
              fakes/ota_rollback_host_stubs.c \
              fakes/fake_mqtt_port.c \

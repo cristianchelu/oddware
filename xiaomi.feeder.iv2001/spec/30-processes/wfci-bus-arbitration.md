@@ -16,9 +16,9 @@ association must stay up during motor, display, weighing, and button work.
 | CLK | 16 | I2C1 SDA |
 | CS | 17 | NC7SB3157 COM (battery / motor ADC) |
 | SIO_2 | 13 | TM1637 CLK |
-| SIO_3 | 12 | CS1270 UART2 RX |
+| SIO_3 | 12 | CS1270 UART2 TX (UTXD2) |
 
-GPIO1 (TM1637 DIO), GPIO4 (AW9523B INT), GPIO11 (UART2 TX), and GPIO0
+GPIO1 (TM1637 DIO), GPIO4 (AW9523B INT), GPIO11 (UART2 RX / URXD2), and GPIO0
 (hopper IR) are outside the WFCI block and need no loan.
 
 Cold boot runs `display_boot_run()` before `connsys_init()` — pins are still
@@ -51,7 +51,7 @@ ADC samples only.
 | `EXPANDER` | GPIO14–16, I2C1 | AW9523B reset, configure, read/write |
 | `DISPLAY` | `EXPANDER` + GPIO13 TM1637 CLK | `display_port` refresh (~1 ms) |
 | `ADC` | GPIO17 AUXADC | Jam detect, battery |
-| `WEIGH` | `EXPANDER` + GPIO12 UART2 RX | CS1270 sample window |
+| `WEIGH` | `EXPANDER` + GPIO12 UART2 TX | CS1270 sample window |
 | `FULL` | All contested pins | Sleep entry / wake |
 
 Application code uses profiles only — not raw GPIO numbers.

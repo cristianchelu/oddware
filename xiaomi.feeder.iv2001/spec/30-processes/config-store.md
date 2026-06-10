@@ -29,8 +29,9 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | schedule | slots | blob | [] | Serialized schedule array (up to 32 slots) |
 | time | tz_rule | blob | UTC default | Packed DST rule struct (see `scheduler-engine.md`) |
 | time | tz_label | string | "" | IANA name for display only; not used by scheduler |
-| calib | tare | int32 | 0 | Load cell tare offset |
-| calib | span | int32 | 1000 | Load cell span factor |
+| calib | zero | int32 | — | Raw CS1270 count with bowl removed |
+| calib | span_g | int32 | 350 | Provided bowl mass in grams (`[product]`) |
+| calib | span_raw | int32 | — | Raw CS1270 count at span_g |
 | power | battery_wifi | enum | on | Wi-Fi on battery: on / off / scheduled_only |
 | system | boot_count | uint32 | 0 | Incremented each post-OTA boot while `ota_pending` is set; cleared on successful post-OTA MQTT connect |
 | system | ota_pending | bool | 0 | Set to `1` before bank swap; cleared on successful post-OTA MQTT connect (OTA rollback health check) |

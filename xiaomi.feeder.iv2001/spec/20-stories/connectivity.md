@@ -42,7 +42,7 @@ The feeder subscribes to commands for:
 
 - **Dispense** — trigger with a gram amount, or cancel.
 - **Schedule CRUD** — create, update, delete schedule slots.
-- **Calibrate** — tare or span the weight sensor.
+- **Calibrate** — zero or span the weight sensor.
 - **Display** — set mode and brightness.
 - **Config** — update user-facing settings.
 - **Reboot** — restart the device.

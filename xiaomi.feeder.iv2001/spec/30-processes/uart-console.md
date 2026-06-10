@@ -46,6 +46,11 @@ display icon <name> steady
 display anim <ota|lock> [loop]
 display anim stop
 display brightness <1-4>
+weigh power on|off
+weigh read
+weigh cal zero
+weigh cal span
+weigh cal status
 config factory-reset
 ```
 
@@ -521,6 +526,77 @@ Stops animation and restores steady scene.
 | Missing level | `usage: display brightness <1-4>` |
 | Invalid level | `invalid brightness` |
 | Presentation failure | `display brightness failed (<reason>)` |
+
+## `weigh` commands
+
+Bench helpers for CS1270 load-cell exercise (WFCI `WEIGH` bus loan after
+Wi-Fi init). Uses `weight_port`. Not a product interface. `[design]`
+
+`weigh read` returns **absolute** food grams now (stateless weigh driver
+except NVDM cal). There is no `weigh tare` — deltas belong in dispense/monitoring
+([weighing.md](weighing.md) **Weigh driver boundary**).
+
+Scale-off and missing-calibration cases use explicit messages (see below).
+Other `weight_port` failures include the `port_err_t` reason in parentheses,
+e.g. `weigh read failed (io)`.
+
+### `weigh power on`
+
+Powers CS1270 via AW9523B P0.2, releases the expander loan, then waits boot
+settle (`[tune]` 1100 ms with WFCI restored).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weigh power on ok` |
+| Failure | `weigh power on failed (<reason>)` |
+
+### `weigh power off`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weigh power off ok` |
+| Failure | `weigh power off failed (<reason>)` |
+
+### `weigh read`
+
+Queries food grams (empty installed bowl = 0 g). Auto power-on on first use.
+After `weigh power off`, does **not** re-power the rail — operator must run
+`weigh power on` first.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weight: <signed grams> g` |
+| Rail off (after `weigh power off`) | `weigh read: scale off (weigh power on first)` |
+| No calibration | `weigh read: no calibration (weigh cal zero, then weigh cal span)` then, if the chip returns a weight frame, `weight: <n> g (raw, no calibration)` |
+| Zero only (span pending) | `weigh read: calibration incomplete (install bowl, weigh cal span)` then optional raw line as above |
+| Failure | `weigh read failed (<reason>)` |
+
+### `weigh cal zero`
+
+Capture raw count with bowl **removed**; save `calib/zero` to NVDM. Clears
+span coefficients.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weigh cal zero ok` then `install provided bowl, then: weigh cal span` |
+| Failure | `weigh cal zero failed (<reason>)` |
+
+### `weigh cal span`
+
+Capture raw count with provided bowl installed (350 g reference); save
+`calib/span_g` + `calib/span_raw`. Requires prior `weigh cal zero`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weigh cal span ok` |
+| Zero not captured / chip not ready | `weigh cal span failed (not_supported)` or `invalid_arg` |
+| Failure | `weigh cal span failed (<reason>)` |
+
+### `weigh cal status`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `weigh cal: idle`, `capturing_span`, `success`, or `uncalibrated` |
 
 ## `config` commands
 

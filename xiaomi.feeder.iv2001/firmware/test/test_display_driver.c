@@ -6,7 +6,6 @@
 #include "display_driver.h"
 #include "fake_gpio_expander_port.h"
 #include "fake_tm1637_gpio.h"
-
 static uint32_t s_delay_total_ms;
 static bool s_tm1637_before_settle;
 
@@ -169,6 +168,34 @@ void test_display_show_grids_uses_stored_brightness(void)
     bytes = fake_tm1637_gpio_bytes(&count);
     TEST_ASSERT_TRUE(count > 0u);
     TEST_ASSERT_EQUAL_HEX8(0x88u, bytes[count - 1u]);
+}
+
+void test_display_power_on_restores_rail_when_stale_powered(void)
+{
+    display_driver_state_t state;
+    display_hw_t hw = {
+        .expander = fake_gpio_expander_port_get(),
+        .tm1637_gpio = fake_tm1637_gpio_ops_get(),
+        .delay_ms = test_delay_ms,
+    };
+
+    fake_gpio_expander_reset();
+    fake_tm1637_gpio_reset();
+    display_driver_init(&state, &hw);
+    TEST_ASSERT_EQUAL(PORT_OK, display_power_on(&state));
+    TEST_ASSERT_TRUE(fake_gpio_expander_pin(BOARD_GPIO_DISPLAY_RAIL_PORT,
+                                            BOARD_GPIO_DISPLAY_RAIL_PIN));
+
+    /* Expander outputs were reset (P0.5 off) but driver still thinks it is on. */
+    TEST_ASSERT_EQUAL(PORT_OK, hw.expander->set_pin(BOARD_GPIO_DISPLAY_RAIL_PORT,
+                                                    BOARD_GPIO_DISPLAY_RAIL_PIN,
+                                                    false));
+    display_rail_invalidate(&state.rail);
+    TEST_ASSERT_TRUE(state.powered);
+
+    TEST_ASSERT_EQUAL(PORT_OK, display_power_on(&state));
+    TEST_ASSERT_TRUE(fake_gpio_expander_pin(BOARD_GPIO_DISPLAY_RAIL_PORT,
+                                            BOARD_GPIO_DISPLAY_RAIL_PIN));
 }
 
 void test_display_power_off_clears_rail(void)

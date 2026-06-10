@@ -32,7 +32,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../cmd/dispense/cancel` | `{}` | 1 |
 | `.../cmd/schedule/set` | `{"hour":8,"min":0,"days":127,"g":30,"enabled":true}` | 1 |
 | `.../cmd/schedule/delete` | `{"hour":8,"min":0}` | 1 |
-| `.../cmd/calibrate` | `{"action": "tare"}` or `{"action": "span", "g": 200}` | 1 |
+| `.../cmd/calibrate` | `{"action": "zero"}` or `{"action": "span"}` | 1 |
 | `.../cmd/display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../cmd/config` | `{"key": "value", ...}` | 1 |
 | `.../cmd/reboot` | `{}` | 1 |

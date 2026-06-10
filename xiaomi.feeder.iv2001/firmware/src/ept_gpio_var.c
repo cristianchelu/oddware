@@ -1,7 +1,8 @@
 /*
  * IV2001 GPIO pin variables — spec/10-hardware/pinmap.md
  *
- * UART0 console @ GPIO21 (RX) / GPIO22 (TX). Other BSP pins disabled (div).
+ * UART0 console @ GPIO21 (TX) / GPIO22 (RX).
+ * UART2 CS1270 @ GPIO11 (URXD2) / GPIO12 (UTXD2) per HAL pinmux.
  */
 
 const char HAL_UART0_TXD_PIN = 21;

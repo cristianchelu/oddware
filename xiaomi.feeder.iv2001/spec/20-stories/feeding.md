@@ -20,6 +20,10 @@ The user can choose between two modes (persistent setting):
 | **Open-loop** | Run the planned motor sequence and finish. No weight-based adjustment. |
 | **Compensated** | After each batch, compare delivered weight to the target and add more if under. |
 
+Delivered grams come from `read_grams` before and after each batch (dispense
+supervisor), not from a zero offset inside the weigh driver — see
+[weighing.md](../30-processes/weighing.md) **Weigh driver boundary**.
+
 ## Progress reporting
 
 While a dispense is in progress the feeder publishes a 0–100 %

@@ -16,8 +16,8 @@ Pins used by the application firmware. Directly exposed on the module.
 | 3     | UART1 RX         | Factory/debug UART RX                  | `[bootlog]`           |
 | 4     | EINT Input       | AW9523B INT (expander interrupt)       | `[probe]`             |
 | 5–10  | —                | No application use identified          | —                     |
-| 11    | UART2 TX         | CS1270 weigh ASSP TX                   | `[probe]` `[bootlog]` |
-| 12    | UART2 RX         | CS1270 weigh ASSP RX                   | `[probe]` `[bootlog]` |
+| 11    | UART2 RX (URXD2) | CS1270 TX (MCU receives)               | `[probe]` `[bootlog]` |
+| 12    | UART2 TX (UTXD2) | CS1270 RX (MCU transmits)              | `[probe]` `[bootlog]` |
 | 13    | Output           | TM1637 CLK (bit-bang)                  | `[probe]`             |
 | 14    | Output           | AW9523B hardware RESET (active-low)    | `[probe]`             |
 | 15    | I2C1 SCL         | AW9523B clock (`HAL_GPIO_15_SCL1`)     | `[probe]`             |

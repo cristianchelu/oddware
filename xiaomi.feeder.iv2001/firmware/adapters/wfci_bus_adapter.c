@@ -11,6 +11,7 @@
 
 #include "board_gpio_iv2001.h"
 #include "i2c_bus_adapter.h"
+#include "uart2_adapter.h"
 #include "wfci_bus_adapter.h"
 #include "wfci_bus_port.h"
 #include "wfci_bus_state.h"
@@ -48,6 +49,10 @@ static void profile_hw_setup(wfci_bus_profile_t profile)
     if (profile == WFCI_BUS_PROFILE_DISPLAY || profile == WFCI_BUS_PROFILE_FULL) {
         tm1637_clk_pin_init();
     }
+
+    if (profile == WFCI_BUS_PROFILE_WEIGH) {
+        uart2_adapter_init();
+    }
 }
 
 static void profile_hw_teardown(wfci_bus_profile_t profile)
@@ -64,6 +69,10 @@ static void profile_hw_teardown(wfci_bus_profile_t profile)
     }
 
     (void)profile;
+
+    if (profile == WFCI_BUS_PROFILE_WEIGH) {
+        uart2_adapter_deinit();
+    }
 }
 
 static void arbiter_ensure(void)

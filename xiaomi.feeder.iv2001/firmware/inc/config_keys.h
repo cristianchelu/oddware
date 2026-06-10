@@ -21,4 +21,9 @@
 #define CONFIG_KEY_BOOT_COUNT      "boot_count"
 #define CONFIG_KEY_OTA_PENDING     "ota_pending"
 
+#define CONFIG_GROUP_CALIB         "calib"
+#define CONFIG_KEY_CALIB_ZERO      "zero"
+#define CONFIG_KEY_CALIB_SPAN_G    "span_g"
+#define CONFIG_KEY_CALIB_SPAN_RAW  "span_raw"
+
 #endif /* CONFIG_KEYS_H */

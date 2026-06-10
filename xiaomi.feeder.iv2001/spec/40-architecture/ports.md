@@ -137,17 +137,26 @@ Adapter: wraps SDK NVDM API. Groups map to NVDM groups (e.g. `wifi`,
 Adapter: sends commands to `motor_ctrl` task. Results arrive as
 `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in `app_event_q`.
 
-### `weight_port.h` (future, with dispense features)
+### `weight_port.h`
+
+**Weigh driver boundary** ([weighing.md](../30-processes/weighing.md)): the
+driver is stateless except NVDM cal. `read_grams` returns absolute food in the
+bowl now. Deltas (`eaten_today`, dispense delivered grams) are computed by
+dispense/monitoring tasks that snapshot `read_grams` before and after events —
+not by offsets inside this port.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `power_on` | `() -> err` | Enable CS1270 via AW9523B P0.2 |
+| `power_on` | `() -> err` | EXPANDER loan → P0.2 high → release → 1100 ms boot settle (no loan) |
 | `power_off` | `() -> err` | Disable CS1270 |
-| `read_grams` | `() -> int32` | Blocking UART2 command/response, returns weight in grams |
-| `tare` | `() -> err` | Zero-point calibration |
-| `calibrate_span` | `(known_grams) -> err` | Span calibration with known weight |
+| `read_grams` | `(int32_t *grams) -> err` | Absolute food grams now (requires host cal; empty bowl = 0) |
+| `read_raw_grams` | `(int32_t *grams) -> err` | Uncorrected CS1270 count (bench) |
+| `calibrate_zero` | `() -> err` | Capture raw with bowl removed → NVDM `calib/zero` |
+| `calibrate_span` | `() -> err` | Capture raw with bowl installed → NVDM `calib/span_*` (350 g) |
+| `get_cal_status` | `() -> weight_cal_status_t` | Host cal state from NVDM |
 
-Adapter: wraps UART2 serial protocol to CS1270.
+Adapter: wraps UART2 serial protocol to CS1270 via WFCI `WEIGH` bus loan.
+See [weigh-assp-cs1270.md](../10-hardware/components/weigh-assp-cs1270.md).
 
 ### `wfci_bus_port.h`
 

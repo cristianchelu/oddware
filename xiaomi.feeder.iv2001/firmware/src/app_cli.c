@@ -17,6 +17,7 @@
 
 #include "boot_bank_target.h"
 #include "app_display_cli.h"
+#include "app_weigh_cli.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
 #include "provision.h"
@@ -88,6 +89,7 @@ static cmd_t app_cli_cmds[] = {
     { "wifi",   "wifi show|set|connect",      NULL, wifi_cli_subcmds },
     { "mqtt",   "mqtt show|set|connect",      NULL, mqtt_cli_subcmds },
     { "display", "display test|fill|off",     NULL, display_cli_subcmds },
+    { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },
     { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
     { NULL, NULL, NULL, NULL },
 };

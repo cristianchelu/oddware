@@ -25,6 +25,7 @@ void display_rail_ctx_init(display_rail_ctx_t *ctx,
 
 port_err_t display_rail_on(display_rail_ctx_t *ctx);
 port_err_t display_rail_off(display_rail_ctx_t *ctx);
+void display_rail_invalidate(display_rail_ctx_t *ctx);
 bool display_rail_is_settled(const display_rail_ctx_t *ctx);
 
 #endif /* DISPLAY_RAIL_H */

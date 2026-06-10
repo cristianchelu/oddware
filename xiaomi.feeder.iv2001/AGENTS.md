@@ -229,8 +229,10 @@ the user's USB-serial adapter, bench wiring, and manual reset during download.
 Agents cannot access that hardware directly.
 
 When a task needs a firmware image on the board — smoke test after a build,
-BROM probe, boot-log capture, or reflash — **ask the user** to run the
-commands. Reference `README.md` (Flashing) and `spec/10-hardware/flash.md`.
+BROM probe, boot-log capture, or reflash — the **agent** runs
+`build-firmware.sh` first (see [Green = host + cross-compile](#green--host--cross-compile));
+the **user** runs UART flash. Reference `README.md` (Flashing) and
+`spec/10-hardware/flash.md`.
 Download starts CODA first; the user resets the feeder (power-cycle or TP15)
 within the timed prompt.
 
@@ -265,10 +267,13 @@ Broker must be reachable from both the dev machine and the feeder.
 From `xiaomi.feeder.iv2001/`:
 
 ```bash
+# Both required after every firmware/ edit — host tests alone are not green.
 make test-host
 source tools/build-env.sh && ./tools/build-firmware.sh
-./tools/ota/mqtt-ota.sh --device-id <ID>          # serves inactive-bank .bin, waits for swap
-./tools/ota/mqtt-ota.sh --device-id <ID> --skip-build   # when images already built
+
+# Deploy (after green) — agent-run when device is MQTT-online:
+./tools/ota/mqtt-ota.sh --device-id <ID>          # builds + serves inactive-bank .bin
+./tools/ota/mqtt-ota.sh --device-id <ID> --skip-build   # only if no firmware/ edits since last build
 ```
 
 `mqtt-ota.sh` reads the active bank from `petfeeder/<ID>/state`, serves
@@ -362,14 +367,38 @@ For **each** testable behavior (one assertion or tightly related group):
    logging expectations, NVDM semantics. Commit or stage the spec delta
    **before** the test and code that implement it.
 2. **Red** — host test fails against the spec.
-3. **Green** — minimal `firmware/` change to pass **both** `make test-host`
-   **and** a cross-compile (`source tools/build-env.sh` then
-   `./tools/build-firmware.sh`) when any `firmware/` source, `GCC/`, or patch
-   changed. Host tests alone are not green for shippable firmware.
-4. **Refactor** — cleanup; tests and build still pass.
+3. **Green** — minimal `firmware/` change; then satisfy
+   [Green = host + cross-compile](#green--host--cross-compile) before moving on.
+4. **Refactor** — cleanup; re-run host tests **and** cross-compile if `firmware/`
+   still changed.
 
 Then the next behavior. Do not batch “implement the whole plan” in code and
 spec/tests later.
+
+### Green = host + cross-compile
+
+**Green** always means **both** gates pass:
+
+1. `make test-host` — PASS
+2. `source tools/build-env.sh && ./tools/build-firmware.sh` — PASS
+
+Run **(2)** whenever `firmware/` source, adapters, `GCC/`, or patches change.
+If you edited `firmware/` **after** the last successful `(2)`, you are **not
+green** until `(2)` passes again — an earlier build in the same session does
+not carry forward.
+
+Host tests exercise fakes and the host toolchain; they do **not** prove the ARM
+image links. Outputs land in `firmware/flash/petfeeder_{a,b}.bin`; flash/OTA
+must use binaries from the **latest** successful `(2)`.
+
+When wrapping up work that touched `firmware/`, state that both gates passed
+(e.g. test count and `TOTAL BUILD: PASS`). Do not report “green” or “ready to
+flash” after host tests only.
+
+| Who | Responsibility |
+|-----|----------------|
+| Agent | `make test-host`, `build-firmware.sh`, `mqtt-ota.sh` when online |
+| User | UART flash (`iot-flash.sh`) when OTA is unavailable |
 
 ### Hard stops (no escape hatches)
 
@@ -382,8 +411,12 @@ spec/tests later.
 | “Debug first, TDD when it works” (any urgency: UART, portal, OTA, crash) | Same conga — urgency changes **deploy** order (flash to verify), not **test** order |
 | Spike patch kept because bench looked good | Revert spike or extract testable logic; spec → red → green → re-apply minimal diff |
 | Tests added after a debug fix to “lock it in” | Invalid backfill — delete or rewrite as step 2 on a **new** spec’d behaviour |
+| Bugfix committed with no test, or a test that would pass on broken code | [Bugfixes](#bugfixes): repro → failing test → fix; “would this test have caught it?” must be yes |
+| Driver/helper test only when the bug was adapter routing | Extract testable glue to `src/`, link adapter on host, or encode full repro sequence |
 | Partial spec (“CLI is documented, lifecycle isn’t”) as permission to code | List missing assertions; write them in the canonical Tier 3 file, then conga |
 | `#ifdef UNIT_TEST` or duplicate logic to make tests pass | Port fakes and shims (see below) |
+| “Green” / done after `make test-host` only | Re-run `build-firmware.sh`; host-only is **red** for `firmware/` changes |
+| Treat an earlier session build as still valid after more `firmware/` edits | Re-run `build-firmware.sh` before flash, OTA, or claiming done |
 
 If a spec gap blocks you, **stop and report it** — or write the spec
 yourself in the same session **before** any application code. Guessing from
@@ -414,9 +447,11 @@ When the user is at the hardware (UART spam, flash failure, reconnect bug):
 2. **Spec** — if the correct behavior is not already in Tier 3, add it now
    (e.g. “idle yield does not drop session”, “countdown ends on `Done.` only”).
 3. **Red** — host test that fails with the bug (or documents the invariant).
-4. **Green** — fix in `firmware/` or `tools/`.
+4. **Green** — fix in `firmware/` or `tools/`; then
+   `make test-host` **and** `build-firmware.sh` (see
+   [Green = host + cross-compile](#green--host--cross-compile)).
 5. **Deploy** — OTA via `mqtt-ota.sh` when the device is MQTT-online; otherwise
-   ask the user to UART-flash.
+   ask the user to UART-flash the binaries from the latest green build.
 
 Flash/OTA is **verification after green**, not a substitute for red. Never ship
 a bench-only patch with “tests coming in the next commit”.
@@ -424,6 +459,40 @@ a bench-only patch with “tests coming in the next commit”.
 Skipping step 2 because “we’ll fix spec before commit” is the same violation
 as backfill. The commit must not be the first time Tier 3 mentions the
 behavior.
+
+### Bugfixes
+
+Bugfixes use the **same conga** as features. A UART transcript or bench repro
+is step 0 (evidence), not permission to patch and “add tests if there’s time.”
+
+**Before closing a bugfix**, all of the following must be true:
+
+1. **Spec** — Tier 3 already states the correct behavior on the broken path (one
+   sentence is enough when the happy path was already documented).
+2. **Red** — a host test **failed on pre-fix code** and passes after the fix.
+3. **Layer** — the test exercises the module that actually contained the defect
+   (see table below). “We added a test” is not done if it would still pass on
+   broken code.
+4. **Repro shape** — the test encodes the **sequence** from the repro (e.g.
+   read → power off → read blocked → power on → read ok), not only that an
+   internal helper works in isolation.
+
+Ask explicitly: **“Would this test have caught the bug?”** If no, add, move, or
+extract logic until the answer is yes.
+
+| Where the bug lived | Host test target | When adapter code is not in `make test-host` |
+|---------------------|------------------|-----------------------------------------------|
+| `firmware/src/` | Same `.c` file + port fakes | — |
+| Adapter routing / orchestration (`firmware/adapters/`) | Extract the branch into `src/` **or** extend the host harness to link the adapter with fakes | Prefer moving testable glue (e.g. “power on clears `scale_off`; read rejects `scale_off`”) into `src/` so one test covers adapter and driver |
+| CLI strings / dispatch only | `test_*_cli.c` | Enough only if the bug was in CLI — not if the port fake masks adapter behavior |
+
+**Fake ports are not adapters.** `fake_weight_port` proves the CLI calls
+`weight_port` function pointers; it does **not** compile or run
+`weight_adapter.c`. A CLI test through a fake port is **not** sufficient when
+the defect is which port entry point runs which driver path.
+
+Regression tests: add a short comment naming the failure mode (not the session),
+e.g. `/* Regression: power on must not use the read-only scale_off guard */`.
 
 ### Corner cases and optional config
 
@@ -544,12 +613,14 @@ Verify the conga actually happened — do not use this list to backfill:
 1. **Spec first** — Tier 2 stories and Tier 3 processes already describe
    every new/changed user-visible behavior; grep `spec/` for stale copies;
    **no** `Step N` or plan-only wording in committed `spec/` or `firmware/`.
-2. **Tests** — `make test-host` green; new tests existed **before** or
-   alongside the code they assert (not a post-hoc coverage pass).
-3. **Build** — `source tools/build-env.sh` then `./tools/build-firmware.sh`
-   succeeds whenever `firmware/` logic, adapters, `GCC/`, or patches changed.
-   A session is not green until this passes — host tests exercise fakes, not
-   the ARM link. Outputs land in `firmware/flash/petfeeder_{a,b}.bin`.
+2. **Tests** — `make test-host` green; for bugfixes, a test **failed before**
+   the fix and targets the layer that held the defect ([Bugfixes](#bugfixes));
+   not a post-hoc coverage pass.
+3. **Build** — re-run `source tools/build-env.sh` then `./tools/build-firmware.sh`
+   after the **last** `firmware/` edit in the session (see
+   [Green = host + cross-compile](#green--host--cross-compile)). A session is
+   not green until this passes **after** all firmware changes — not only once
+   mid-session. Outputs: `firmware/flash/petfeeder_{a,b}.bin`.
 4. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
    Grep `firmware/src/` for `tm1637`, `aw9523b`, or `gpio_expander` includes
    outside the display driver stack; `display_boot.c` must not appear in hits.

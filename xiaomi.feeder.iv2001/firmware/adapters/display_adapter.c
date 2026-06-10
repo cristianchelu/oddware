@@ -11,6 +11,8 @@
 
 #include "display_driver.h"
 #include "display_port.h"
+#include "display_presentation.h"
+#include "display_rail.h"
 #include "gpio_expander_port.h"
 #include "tm1637.h"
 #include "wfci_bus_port.h"
@@ -49,6 +51,13 @@ static const tm1637_gpio_ops_t s_tm1637_gpio = {
 };
 
 static bool s_display_ready;
+
+void gpio_expander_outputs_reset_hook(void)
+{
+    s_state.powered = false;
+    display_rail_invalidate(&s_state.rail);
+    display_presentation_note_expander_reset();
+}
 
 static void tm1637_prepare_pins(void)
 {

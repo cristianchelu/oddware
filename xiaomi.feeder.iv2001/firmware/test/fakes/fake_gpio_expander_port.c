@@ -7,6 +7,7 @@
 static aw9523b_t s_dev;
 static port_err_t s_reset_err = PORT_OK;
 static bool s_dev_ready;
+static bool s_id_pinned;
 
 static port_err_t fake_exp_reset(void)
 {
@@ -22,6 +23,9 @@ static port_err_t fake_exp_reset(void)
         s_dev_ready = true;
     }
 
+    if (!s_id_pinned) {
+        fake_i2c_bus_set_read_result(PORT_OK, AW9523B_ID_EXPECTED);
+    }
     err = aw9523b_read_id(&s_dev, &id);
     if (err != PORT_OK) {
         return err;
@@ -81,6 +85,7 @@ void fake_gpio_expander_reset(void)
 {
     s_reset_err = PORT_OK;
     s_dev_ready = false;
+    s_id_pinned = false;
     fake_i2c_bus_reset();
     fake_i2c_bus_set_read_result(PORT_OK, AW9523B_ID_EXPECTED);
 }
@@ -92,6 +97,7 @@ void fake_gpio_expander_set_reset_err(port_err_t err)
 
 void fake_gpio_expander_set_id(uint8_t id)
 {
+    s_id_pinned = true;
     fake_i2c_bus_set_read_result(PORT_OK, id);
 }
 

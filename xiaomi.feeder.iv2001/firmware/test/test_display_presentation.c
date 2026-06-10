@@ -13,10 +13,38 @@ static void presentation_test_setup(void)
     display_presentation_reset();
 }
 
+static size_t presentation_count_ops(fake_display_op_kind_t kind)
+{
+    size_t total;
+    size_t n = 0u;
+    const fake_display_op_t *ops = fake_display_port_ops(&total);
+
+    for (size_t i = 0u; i < total; i++) {
+        if (ops[i].kind == kind) {
+            n++;
+        }
+    }
+    return n;
+}
+
 void test_display_presentation_set_digits_rejects_overflow(void)
 {
     presentation_test_setup();
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, display_presentation_set_digits(1000u));
+}
+
+void test_display_presentation_refresh_repowers_after_expander_reset(void)
+{
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_set_digits(15u));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+    TEST_ASSERT_EQUAL(1u, presentation_count_ops(FAKE_DISPLAY_OP_POWER_ON));
+    TEST_ASSERT_EQUAL(1u, presentation_count_ops(FAKE_DISPLAY_OP_SHOW_GRIDS));
+
+    display_presentation_note_expander_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+    TEST_ASSERT_EQUAL(2u, presentation_count_ops(FAKE_DISPLAY_OP_POWER_ON));
+    TEST_ASSERT_EQUAL(2u, presentation_count_ops(FAKE_DISPLAY_OP_SHOW_GRIDS));
 }
 
 void test_display_presentation_refresh_shows_number_with_unit(void)
