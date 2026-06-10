@@ -71,6 +71,7 @@ are heap-allocated by the producer; the consumer frees after processing.
 | `EVT_OTA_ERROR` | `ota_dl` | Publish error, clean up |
 | `EVT_PROVISION_SUBMIT` | HTTP server callback | Validate creds, save to NVDM, reboot |
 | `EVT_TIMER_TICK` | Software timer | Periodic housekeeping |
+| `EVT_DISPLAY_TICK` | Display presentation timer (`[tune]` 50 ms) | `display_presentation_tick()` — blink phases and animation frames |
 | `EVT_DISPENSE_START` | MQTT cmd or button | Init dispense state machine, send first burst |
 | `EVT_BURST_DONE` | `motor_ctrl` | Read weight, update display, send next burst or park |
 | `EVT_MOTOR_FAULT` | `motor_ctrl` | Abort dispense, display error, publish fault |

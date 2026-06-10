@@ -74,9 +74,35 @@ void test_display_cli_run_off_calls_power_off(void)
     size_t count;
 
     fake_display_port_reset();
+    display_presentation_reset();
     TEST_ASSERT_EQUAL(PORT_OK, display_cli_run_off());
 
     ops = fake_display_port_ops(&count);
     TEST_ASSERT_EQUAL(1u, count);
     TEST_ASSERT_EQUAL(FAKE_DISPLAY_OP_POWER_OFF, ops[0].kind);
+}
+
+void test_display_cli_run_number_shows_value(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    fake_display_port_reset();
+    display_presentation_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, display_cli_run_number(42u, DISPLAY_UNIT_GRAM));
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x5Bu, grids[2]);
+    TEST_ASSERT_EQUAL_HEX8(0x10u, grids[3]);
+}
+
+void test_display_cli_run_icon_blink_starts_wifi(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    fake_display_port_reset();
+    display_presentation_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, display_cli_run_icon_blink(DISPLAY_ICON_WIFI, 200u, 800u));
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x02u, grids[3]);
 }

@@ -14,4 +14,6 @@ typedef enum {
     PORT_ERR_BUSY,
 } port_err_t;
 
+const char *port_err_name(port_err_t err);
+
 #endif /* PORT_ERR_H */

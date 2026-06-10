@@ -23,6 +23,7 @@ typedef struct display_driver_state {
     display_hw_t hw;
     display_rail_ctx_t rail;
     bool powered;
+    uint8_t brightness_cmd;
 } display_driver_state_t;
 
 void display_driver_init(display_driver_state_t *state, const display_hw_t *hw);
@@ -33,5 +34,6 @@ port_err_t display_show_fill(display_driver_state_t *state, uint8_t segment_byte
 port_err_t display_show_grids(display_driver_state_t *state,
                               const uint8_t grids[TM1637_GRID_COUNT]);
 port_err_t display_blank(display_driver_state_t *state);
+port_err_t display_set_brightness(display_driver_state_t *state, uint8_t level);
 
 #endif /* DISPLAY_DRIVER_H */

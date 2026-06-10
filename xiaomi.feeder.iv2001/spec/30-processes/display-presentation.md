@@ -18,7 +18,9 @@ power policy, lock spinner, connectivity indicators.
 | Firmware module | Role |
 |-----------------|------|
 | `display_boot.c` | Boot light-test policy (0xFF fill, hold, blank) |
-| `display_presentation.c` | Future idle modes, periodic refresh |
+| `display_glyph.c` | Digit LUT and icon-label → grid-byte composition (pure, no I/O) |
+| `display_presentation.c` | Scene state, blink, animation, periodic refresh |
+| `display_anim_builtin.c` | Const frame tables for OTA and lock-busy animations |
 | MQTT `cmd/display` handler | Future mode/brightness commands |
 
 **Dependency rule:** presentation modules call `display_port` only. They must
@@ -31,9 +33,142 @@ for `[tune]` 1000 ms, then black. Driver provides `show_fill` / `blank`; policy
 lives here and in `display_boot.c`. Hardware steps:
 [display-driver.md](display-driver.md) § Boot self-test.
 
-**Wi-Fi connecting blinker (future):** Toggle the Wi-Fi pictograph (grid 3
-bit `0x02`) from the presentation layer via `set_icons`, driven by Wi-Fi port
-state — not in the display driver.
+**Wi-Fi connecting blinker (future):** Call
+`display_presentation_icon_blink(DISPLAY_ICON_WIFI, on_ms, off_ms)` from
+application code when Wi-Fi is associating — not in the display driver.
+
+## Logical API (`display_presentation.h`)
+
+Business code and UART CLI use `display_presentation_*` — never raw grid bytes
+or pin masks.
+
+### Steady state
+
+| Function | Behavior |
+|----------|----------|
+| `display_presentation_set_digits(value)` | 0–999; leading-zero suppression on hundreds and tens; marks digits active |
+| `display_presentation_clear_digits()` | Blanks grids 0–2 until the next `set_digits` |
+| `display_presentation_set_unit(unit)` | `NONE`, `PERCENT`, or `GRAM` — lights unit pictograph on grid 3 |
+| `display_presentation_icon_set(icon, on)` | Toggle one pictograph by `display_icon_t` label |
+| `display_presentation_set_brightness(level)` | 1–4; default `[tune]` 4 |
+
+Values above 999 are rejected with `PORT_ERR_INVALID_ARG`.
+
+**Digits default:** After reset, grids 0–2 are **blank** — no implicit `0`. Digits
+appear only after `set_digits` (e.g. idle weight refresh or `display number`).
+Icon-only updates (`icon_set`, `icon_blink`) do not change digit state.
+`set_digits(0)` is explicit zero (`  0`), not the same as unset.
+
+### Temporal effects
+
+| Function | Behavior |
+|----------|----------|
+| `display_presentation_icon_blink(icon, on_ms, off_ms)` | Square-wave toggle; each duration 50–5000 ms; overrides steady visibility while active |
+| `display_presentation_icon_blink_stop(icon)` | Cancel blink only; visibility reverts to steady `icon_set` state (does not force on) |
+| `display_presentation_play_builtin(id, loop)` | Play built-in frame table (`ota`, `lock`) |
+| `display_presentation_play_animation(anim, loop)` | Play caller-supplied frame table |
+| `display_presentation_stop_animation()` | Restore composed steady scene |
+
+Up to `[tune]` **4** icons may blink concurrently.
+
+### Drive and power
+
+| Function | Behavior |
+|----------|----------|
+| `display_presentation_tick(now_ms)` | Advance blink phases and animation; refresh when needed; returns ms until next tick (`UINT32_MAX` if idle) |
+| `display_presentation_refresh()` | Compose scene and call `display_port.show_grids` immediately |
+| `display_presentation_power_on/off()` | Wrap port power; first logical update auto-powers on |
+
+`display_glyph.c` maps `display_icon_t` labels to grid 3/4 wire bits per
+[display-tm1637.md](../10-hardware/components/display-tm1637.md).
+
+### Steady state vs blink
+
+- **Steady** (`icon_set`): resting on/off per icon; used when nothing temporal
+  is overriding that icon.
+- **Blink** (`icon_blink`): timed override; while active, the icon alternates
+  visible/hidden regardless of steady state. `icon_blink_stop` ends the override
+  only — the icon then shows steady on or steady off, whichever was last set.
+
+`icon_blink_stop` is **not** `icon_set(..., true)`. UART: `display icon wifi
+steady` vs `display icon wifi on` — see [uart-console.md](uart-console.md) §
+Icon commands.
+
+### Effect priority
+
+1. **Animation active** — raw frame bytes replace the composed scene; blinks
+   paused.
+2. **No animation** — compose digits + unit + steady icons, then apply blink
+   masks (icons in off-phase cleared from effective mask).
+3. **Bench `display fill`** — bypasses presentation; does not alter scene
+   state.
+
+### Timing `[tune]`
+
+| Parameter | Range | Default |
+|-----------|-------|---------|
+| Blink on/off | 50–5000 ms each | — |
+| Presentation tick | 50 ms | FreeRTOS soft timer → `EVT_DISPLAY_TICK` |
+| OTA animation frame period | 150 ms | — |
+| Lock-busy animation frame period | 125 ms | — |
+
+### WFCI refresh policy
+
+Each `refresh()` is one `DISPLAY` profile bus loan (~1 ms). If
+`try_acquire` fails, skip the frame and retry on the next tick — no blocking
+wait in presentation.
+
+## Icon labels (`display_icon_t`)
+
+| Label | CLI name |
+|-------|----------|
+| `DISPLAY_ICON_CHILD_LOCK` | `child_lock` |
+| `DISPLAY_ICON_WIFI` | `wifi` |
+| `DISPLAY_ICON_DISPENSING` | `dispensing` |
+| `DISPLAY_ICON_PERCENT` | `percent` |
+| `DISPLAY_ICON_GRAM` | `gram` |
+| `DISPLAY_ICON_BLOCKAGE` | `blockage` |
+| `DISPLAY_ICON_INSUFFICIENT_FOOD` | `insufficient_food` |
+| `DISPLAY_ICON_BOWL_ERROR` | `bowl_error` |
+| `DISPLAY_ICON_BAR_ORANGE` | `bar_orange` |
+| `DISPLAY_ICON_BAR_GREEN` | `bar_green` |
+
+## Built-in animations
+
+Animations are opaque five-byte grid arrays (grids 0–4). No logical labels
+inside frame data.
+
+### OTA loading (`DISPLAY_ANIM_OTA`)
+
+Six frames, `[tune]` 150 ms each. One outer segment lit per digit, phases
+offset so the lit segment appears to chase clockwise around the three-digit
+oval. Segment order per digit: A, B, C, D, E, F (`0x01`, `0x02`, `0x04`,
+`0x08`, `0x10`, `0x20`). Grids 3–4 are `0x00` in every frame.
+
+| Frame | Grid 0 | Grid 1 | Grid 2 |
+|-------|--------|--------|--------|
+| 0 | `0x01` | `0x04` | `0x10` |
+| 1 | `0x02` | `0x08` | `0x20` |
+| 2 | `0x04` | `0x10` | `0x01` |
+| 3 | `0x08` | `0x20` | `0x02` |
+| 4 | `0x10` | `0x01` | `0x04` |
+| 5 | `0x20` | `0x02` | `0x08` |
+
+### Lock busy (`DISPLAY_ANIM_LOCK_BUSY`)
+
+Eight frames, `[tune]` 125 ms each. Segment chase on the tens digit (grid 1)
+only; grids 0, 2, 3, 4 are `0x00`.
+
+| Frame | Grid 1 |
+|-------|--------|
+| 0 | `0x01` |
+| 1 | `0x02` |
+| 2 | `0x04` |
+| 3 | `0x08` |
+| 4 | `0x10` |
+| 5 | `0x20` |
+| 6 | `0x40` |
+| 7 | `0x20` |
 
 ## Display modes
 

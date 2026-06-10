@@ -221,12 +221,14 @@ Bootstrap subset implemented; full API grows with display features.
 |----------|-----------|----------|
 | `power_on` | `() -> err` | Expander bootstrap + rail on + 100 ms settle + TM1637 init |
 | `power_off` | `() -> err` | P0.5 low via expander |
-| `show_fill` | `(segment_byte) -> err` | Requires rail settled; grids 0–4 same byte, grid 5 `0x00`, brightness 4 |
+| `show_fill` | `(segment_byte) -> err` | Requires rail settled; grids 0–4 same byte, grid 5 `0x00`; uses stored brightness |
 | `show_grids` | `(grids[5]) -> err` | Five payload bytes (grids 0–4); `tm1637_refresh` clears grid 5 — see [display-tm1637.md](../10-hardware/components/display-tm1637.md) |
 | `blank` | `() -> err` | `show_fill(0x00)` |
-| `show_number` | `(value, unit) -> err` | *(future)* Render 0–999 on digits with unit icon |
-| `show_icons` | `(icon_mask) -> err` | *(future)* Set/clear pictograph and status bar bits |
-| `set_brightness` | `(level) -> err` | *(future)* Brightness 1–4 |
+| `set_brightness` | `(level) -> err` | Brightness 1–4 → `0x88`–`0x8B`; persists until next call |
+
+Logical composition (digits, units, icon labels) lives in `display_glyph.c` and
+`display_presentation.c` — not on `display_port`. See
+[display-presentation.md](../30-processes/display-presentation.md).
 
 Adapter: `display_adapter.c` binds `display_driver.c` to HAL GPIO and
 `gpio_expander_port`. Full refresh takes ~1 ms. See

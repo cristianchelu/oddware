@@ -131,6 +131,46 @@ void test_display_show_grids_after_power_on(void)
     TEST_ASSERT_TRUE(count > 0u);
 }
 
+void test_display_set_brightness_maps_level(void)
+{
+    display_driver_state_t state;
+    display_hw_t hw = {
+        .expander = fake_gpio_expander_port_get(),
+        .tm1637_gpio = fake_tm1637_gpio_ops_get(),
+        .delay_ms = test_delay_ms,
+    };
+
+    display_driver_init(&state, &hw);
+    TEST_ASSERT_EQUAL(PORT_OK, display_set_brightness(&state, 2u));
+    TEST_ASSERT_EQUAL_HEX8(0x89u, state.brightness_cmd);
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, display_set_brightness(&state, 0u));
+}
+
+void test_display_show_grids_uses_stored_brightness(void)
+{
+    display_driver_state_t state;
+    display_hw_t hw = {
+        .expander = fake_gpio_expander_port_get(),
+        .tm1637_gpio = fake_tm1637_gpio_ops_get(),
+        .delay_ms = test_delay_ms,
+    };
+    const uint8_t grids[TM1637_GRID_COUNT] = {0x3Fu, 0x06u, 0x5Bu, 0x00u, 0x00u};
+    const uint8_t *bytes;
+    size_t count;
+
+    fake_gpio_expander_reset();
+    fake_tm1637_gpio_reset();
+    display_driver_init(&state, &hw);
+    TEST_ASSERT_EQUAL(PORT_OK, display_power_on(&state));
+    TEST_ASSERT_EQUAL(PORT_OK, display_set_brightness(&state, 1u));
+
+    fake_tm1637_gpio_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, display_show_grids(&state, grids));
+    bytes = fake_tm1637_gpio_bytes(&count);
+    TEST_ASSERT_TRUE(count > 0u);
+    TEST_ASSERT_EQUAL_HEX8(0x88u, bytes[count - 1u]);
+}
+
 void test_display_power_off_clears_rail(void)
 {
     display_driver_state_t state;

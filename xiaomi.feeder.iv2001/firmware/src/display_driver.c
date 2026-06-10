@@ -19,7 +19,7 @@ static port_err_t display_refresh(display_driver_state_t *state, uint8_t segment
         grids[i] = segment_byte;
     }
 
-    return tm1637_refresh(state->hw.tm1637_gpio, grids, TM1637_BRIGHTNESS_MAX);
+    return tm1637_refresh(state->hw.tm1637_gpio, grids, state->brightness_cmd);
 }
 
 void display_driver_init(display_driver_state_t *state, const display_hw_t *hw)
@@ -27,6 +27,7 @@ void display_driver_init(display_driver_state_t *state, const display_hw_t *hw)
     state->hw = *hw;
     display_rail_ctx_init(&state->rail, hw->expander, hw->delay_ms);
     state->powered = false;
+    state->brightness_cmd = TM1637_BRIGHTNESS_MAX;
 }
 
 port_err_t display_power_on(display_driver_state_t *state)
@@ -35,6 +36,10 @@ port_err_t display_power_on(display_driver_state_t *state)
 
     if (state == NULL) {
         return PORT_ERR_INVALID_ARG;
+    }
+
+    if (state->powered) {
+        return PORT_OK;
     }
 
     err = gpio_expander_bootstrap(state->hw.expander);
@@ -100,10 +105,23 @@ port_err_t display_show_grids(display_driver_state_t *state,
         return PORT_ERR_BUSY;
     }
 
-    return tm1637_refresh(state->hw.tm1637_gpio, grids, TM1637_BRIGHTNESS_MAX);
+    return tm1637_refresh(state->hw.tm1637_gpio, grids, state->brightness_cmd);
 }
 
 port_err_t display_blank(display_driver_state_t *state)
 {
     return display_show_fill(state, 0x00u);
+}
+
+port_err_t display_set_brightness(display_driver_state_t *state, uint8_t level)
+{
+    if (state == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+    if (level < 1u || level > 4u) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    state->brightness_cmd = (uint8_t)(0x87u + level);
+    return PORT_OK;
 }

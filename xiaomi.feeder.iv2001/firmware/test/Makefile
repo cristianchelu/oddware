@@ -8,7 +8,8 @@ BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
 UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
-HOST_SRCS := ../src/boot_bank.c \
+HOST_SRCS := ../src/port_err.c \
+             ../src/boot_bank.c \
              ../src/wifi_cred.c \
              ../src/provision_form.c \
              ../src/provision_scan_list.c \
@@ -32,6 +33,9 @@ HOST_SRCS := ../src/boot_bank.c \
              ../src/display_rail.c \
              ../src/tm1637.c \
              ../src/display_driver.c \
+             ../src/display_glyph.c \
+             ../src/display_presentation.c \
+             ../src/display_anim_builtin.c \
              ../src/display_boot.c \
              ../src/display_cli.c \
              ../src/gpio_expander_loan.c \

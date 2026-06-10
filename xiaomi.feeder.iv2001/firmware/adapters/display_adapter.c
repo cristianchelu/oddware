@@ -2,6 +2,9 @@
  * Display port adapter — spec/40-architecture/ports.md
  */
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 #include "hal_gpio.h"
 #include "hal_gpt.h"
 #include "hal_pinmux_define.h"
@@ -81,19 +84,35 @@ static void display_adapter_ensure_init(void)
 
 typedef port_err_t (*display_op_fn_t)(void);
 
+static SemaphoreHandle_t s_display_bus_mutex;
+
+static void display_bus_mutex_ensure(void)
+{
+    if (s_display_bus_mutex == NULL) {
+        s_display_bus_mutex = xSemaphoreCreateMutex();
+    }
+}
+
 static port_err_t display_with_bus(display_op_fn_t fn)
 {
     const wfci_bus_port_t *bus = wfci_bus_port_get();
     port_err_t err;
 
+    display_bus_mutex_ensure();
+    if (xSemaphoreTake(s_display_bus_mutex, pdMS_TO_TICKS(5000)) != pdPASS) {
+        return PORT_ERR_BUSY;
+    }
+
     err = bus->acquire(WFCI_BUS_PROFILE_DISPLAY, WFCI_BUS_PRIORITY_NORMAL, 5000u);
     if (err != PORT_OK) {
+        (void)xSemaphoreGive(s_display_bus_mutex);
         return err;
     }
 
     display_adapter_ensure_init();
     err = fn();
     bus->release(WFCI_BUS_PROFILE_DISPLAY);
+    (void)xSemaphoreGive(s_display_bus_mutex);
     return err;
 }
 
@@ -153,12 +172,27 @@ static port_err_t port_blank(void)
     return display_with_bus(port_blank_body);
 }
 
+static uint8_t s_brightness_level;
+
+static port_err_t port_set_brightness_body(void)
+{
+    return display_set_brightness(&s_state, s_brightness_level);
+}
+
+static port_err_t port_set_brightness(uint8_t level)
+{
+    s_brightness_level = level;
+    display_adapter_ensure_init();
+    return port_set_brightness_body();
+}
+
 static const display_port_t s_display_port = {
     .power_on = port_power_on,
     .power_off = port_power_off,
     .show_fill = port_show_fill,
     .show_grids = port_show_grids,
     .blank = port_blank,
+    .set_brightness = port_set_brightness,
 };
 
 const display_port_t *display_port_get(void)

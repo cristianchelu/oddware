@@ -39,6 +39,13 @@ mqtt disconnect
 display test
 display fill <hex_byte>
 display off
+display number <0-999> [g|%]
+display icon <name> on|off
+display icon <name> blink <on_ms> <off_ms>
+display icon <name> steady
+display anim <ota|lock> [loop]
+display anim stop
+display brightness <1-4>
 config factory-reset
 ```
 
@@ -352,8 +359,14 @@ Subscription scope, online/LWT behavior, and command routing are defined in
 
 ## `display` commands
 
-Bench helpers for runtime display exercise through `display_port` (WFCI bus
-loans after Wi-Fi init). Not a product interface. `[design]`
+Bench helpers for runtime display exercise (WFCI bus loans after Wi-Fi init).
+Logical commands use `display_presentation`; raw `fill` / `test` use
+`display_port` directly. Not a product interface. `[design]`
+
+On `display_port` or `display_presentation` failure, UART responses include the
+`port_err_t` reason in parentheses, e.g. `display icon failed (busy)` or
+`display number failed (invalid_arg)`. Reasons: `io`, `busy`, `invalid_arg`,
+`not_found`, `not_supported`, `unknown`.
 
 ### `display test`
 
@@ -371,7 +384,7 @@ so each step uses the pin arbiter.
 | Outcome | UART response |
 |---------|---------------|
 | Success | `display test ok` |
-| Any `display_port` failure | `display test failed` |
+| Any `display_port` failure | `display test failed (<reason>)` |
 
 ### `display fill <hex_byte>`
 
@@ -387,14 +400,123 @@ display on until `display off`.
 | Success | `display fill ok` |
 | Missing argument | `usage: display fill <hex_byte>` |
 | Invalid hex | `invalid hex byte` |
-| `display_port` failure | `display fill failed` |
+| `display_port` failure | `display fill failed (<reason>)` |
 
 ### `display off`
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `display off ok` |
-| `display_port` failure | `display off failed` |
+| `display_port` failure | `display off failed (<reason>)` |
+
+### `display number <0-999> [g|%]`
+
+Sets digits and optional unit via `display_presentation`. Powers on if needed.
+
+| Argument | Rule |
+|----------|------|
+| value | Decimal 0–999 |
+| unit | Optional: `g` or `%` (case-sensitive); omitted = no unit icon |
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display number ok` |
+| Missing value | `usage: display number <0-999> [g|%]` |
+| Invalid value | `invalid number` |
+| Presentation failure | `display number failed (<reason>)` |
+
+### Icon commands: steady state vs blink
+
+Each pictograph has **two independent controls**:
+
+| Control | Commands | What it does |
+|---------|----------|--------------|
+| **Steady state** | `on`, `off` | Resting visibility when the icon is not blinking. `on` = lit at rest; `off` = dark at rest. Persists until the next `on` or `off`. |
+| **Blink** | `blink`, `steady` | Temporary square-wave override. `blink` toggles the icon on/off on a timer; `steady` **only** cancels that toggle. |
+
+`steady` is **not** a synonym for `on`. It does not force the icon lit — it ends
+blinking and returns to whatever steady state was already set.
+
+Example — Wi‑Fi associating indicator:
+
+```text
+display icon wifi on              # resting state: Wi‑Fi lit when idle
+display icon wifi blink 200 800  # while connecting: flash on that schedule
+display icon wifi steady          # done connecting: stop flashing, stay lit (on)
+```
+
+If steady state was `off` before `blink`, `steady` leaves the icon **off** even
+if the blink happened to be in its visible phase when you stopped it.
+
+### `display icon <name> on|off`
+
+Sets **steady state** only. Does not start or stop blink.
+
+| Argument | Rule |
+|----------|------|
+| name | One of: `child_lock`, `wifi`, `dispensing`, `percent`, `gram`, `blockage`, `insufficient_food`, `bowl_error`, `bar_orange`, `bar_green` |
+| state | `on` or `off` |
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display icon ok` |
+| Missing args | `usage: display icon <name> on|off` |
+| Unknown name | `unknown icon` |
+| Presentation failure | `display icon failed (<reason>)` |
+
+### `display icon <name> blink <on_ms> <off_ms>`
+
+Starts square-wave blink on the named icon. Overrides steady visibility while
+active. Each duration 50–5000 ms. Steady state (`on`/`off`) is remembered and
+restored by `steady`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display icon blink ok` |
+| Missing args | `usage: display icon <name> blink <on_ms> <off_ms>` |
+| Unknown name | `unknown icon` |
+| Invalid timing | `invalid blink timing` |
+| Presentation failure | `display icon blink failed (<reason>)` |
+
+### `display icon <name> steady`
+
+Stops blink on the named icon. **Does not change steady state** — icon visibility
+after `steady` is whatever `on` or `off` was set to before (or since) the blink
+started.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display icon steady ok` |
+| Unknown name | `unknown icon` |
+| Presentation failure | `display icon steady failed (<reason>)` |
+
+### `display anim <ota|lock> [loop]`
+
+Plays built-in animation. Optional `loop` repeats until `display anim stop`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display anim ok` |
+| Missing name | `usage: display anim <ota|lock> [loop]` |
+| Unknown name | `unknown animation` |
+| Presentation failure | `display anim failed (<reason>)` |
+
+### `display anim stop`
+
+Stops animation and restores steady scene.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display anim stop ok` |
+
+### `display brightness <1-4>`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display brightness ok` |
+| Missing level | `usage: display brightness <1-4>` |
+| Invalid level | `invalid brightness` |
+| Presentation failure | `display brightness failed (<reason>)` |
 
 ## `config` commands
 

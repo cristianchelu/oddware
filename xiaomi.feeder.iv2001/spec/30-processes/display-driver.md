@@ -38,9 +38,9 @@ rail settle, and rendering primitives behind `display_port`.
 boot UX timing (except hardware rail settle), connectivity blinkers. What to
 show and when: [display-presentation.md](display-presentation.md).
 
-**Port surface:** `display_port` primitives (`power_on`, `show_fill`, `blank`;
-later `show_number`, `set_icons`, `set_brightness`). Presentation code is the
-sole caller of `display_port` for user-visible behavior.
+**Port surface:** `display_port` primitives (`power_on`, `show_grids`, `blank`,
+`set_brightness`). Logical composition lives in `display_glyph.c`;
+presentation code is the sole caller of `display_port` for user-visible behavior.
 
 **Physical seam:** AW9523B P0.5 energizes the TM1637 module; segment data uses
 SoC GPIO only. Only `display_driver.c` sequences rail-on before TM1637 traffic.
@@ -85,16 +85,16 @@ Key-scan readback is not used (key pins unconnected) `[probe]`.
 | Hundreds digit | 0 | segment byte | Spinner/animation may replace this byte |
 | Tens digit | 1 | segment byte | |
 | Ones digit | 2 | segment byte | |
-| Colon / separator | 3 | `0x01` | |
-| Blink phase A | 3 | `0x02` | Auxiliary |
+| Child lock | 3 | `0x01` | |
+| Wi‑Fi | 3 | `0x02` | |
 | Dispense pictograph | 3 | `0x04` | |
 | Percent pictograph | 3 | `0x08` | |
 | Gram pictograph | 3 | `0x10` | |
-| Jam (main) | 3 | `0x20` | |
-| Underfill (main) | 3 | `0x40` | |
-| Yellow status bar | 4 | `0x01` | Full-width bar, not a bowl icon |
-| Green status bar | 4 | `0x02` | |
-| Jam / blockage (side) | 4 | `0x04` | |
+| Blockage | 3 | `0x20` | |
+| Insufficient food | 3 | `0x40` | |
+| Status lightbar (orange) | 4 | `0x01` | Full-width bar |
+| Status lightbar (green) | 4 | `0x02` | |
+| Food bowl error | 4 | `0x04` | |
 | Grid 5 | 5 | always `0x00` | Cleared each refresh |
 
 Digit segment encoding: bit 0 = A … bit 6 = G. Digit LUT: `3F 06 5B 4F 66 6D
