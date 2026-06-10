@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "display_wifi_indicator.h"
 #include "provision_wifi_try.h"
 
 bool provision_wifi_try_connect(const char *ssid,
@@ -28,6 +29,8 @@ bool provision_wifi_try_connect(const char *ssid,
         (void)deps->ap_stop();
     }
 
+    display_wifi_indicator_connecting();
+
     if (deps->sta_connect == NULL || deps->sta_connect(ssid, pass) != PORT_OK) {
         goto restore_ap;
     }
@@ -46,6 +49,8 @@ restore_ap:
     if (deps->ap_start != NULL) {
         (void)deps->ap_start(ap_ssid, ap_channel);
     }
+
+    display_wifi_indicator_ap_mode();
 
     if (deps->http_start != NULL) {
         (void)deps->http_start(PROVISION_WIFI_TRY_HTTP_PORT);

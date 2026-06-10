@@ -126,9 +126,9 @@ App NVDM `wifi/*` is untouched — only the SDK HAL profile is cleared.
 
 | Phase | Action |
 |-------|--------|
-| Enter STA test | Stop HTTP, leave AP (`stop_ap`), `connect` + wait up to `[tune]` 15 s for IP |
+| Enter STA test | Stop HTTP, leave AP (`stop_ap`), `display_wifi_indicator_connecting()`, `connect` + wait up to `[tune]` 15 s for IP |
 | Success | Return true — caller saves credentials |
-| Failure | `wifi_adapter_clear_sdk_sta_profile()`, 200 ms settle, `start_ap`, restart HTTP on port 80 — **no** scan refresh |
+| Failure | `wifi_adapter_clear_sdk_sta_profile()`, 200 ms settle, `start_ap`, `display_wifi_indicator_ap_mode()`, restart HTTP on port 80 — **no** scan refresh |
 
 Restore runs even when `connect` returns an error or `stop_ap` fails (best effort).
 AP/HTTP restore after a failed POST is scheduled **after** the CGI response

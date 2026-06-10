@@ -20,6 +20,32 @@ time readout is possible.
 | **Off**         | Blank.                                               | Sleep or user preference.       |
 
 
+## Status pictographs
+
+The panel has fixed pictographs beside the digits. They show device status
+independently of the idle digit mode (weight / eaten today) — digits may be
+blank while a pictograph is active.
+
+### Wi-Fi indicator
+
+- **Steady on** when connected to the home Wi-Fi network.
+- **Blinking** (slower cadence) while connecting to Wi-Fi.
+- **Faster blink** while in setup / AP provisioning mode.
+- **Off** when not connected (failed connect, no link).
+
+### MQTT / broker indicator (status lightbar)
+
+The orange and green segments below the digits show MQTT broker status.
+Wi-Fi and MQTT indicators are independent — both may be active at once.
+
+- **Green steady on** when connected to the MQTT broker.
+- **Orange mostly on** with a brief off-blip while connecting to the broker
+  (inverted blink — lit most of the time).
+- **Orange signature blink** when the broker is unreachable or the session
+  failed (two short off-blips, then a longer on, repeating).
+- **Both off** when MQTT is not in use (no broker configured, provisioning,
+  or Wi-Fi not ready).
+
 ## Brightness
 
 - Configurable via MQTT: 4 levels (1 = dimmest, 4 = brightest).

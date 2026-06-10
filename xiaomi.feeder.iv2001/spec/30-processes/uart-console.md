@@ -437,13 +437,17 @@ Each pictograph has **two independent controls**:
 `steady` is **not** a synonym for `on`. It does not force the icon lit — it ends
 blinking and returns to whatever steady state was already set.
 
-Example — Wi‑Fi associating indicator:
+Example — Wi‑Fi associating indicator (production uses `[tune]` 500/500 ms;
+see [display-presentation.md](display-presentation.md) § Wi-Fi indicator):
 
 ```text
 display icon wifi on              # resting state: Wi‑Fi lit when idle
-display icon wifi blink 200 800  # while connecting: flash on that schedule
+display icon wifi blink 500 500   # while connecting: flash on that schedule
 display icon wifi steady          # done connecting: stop flashing, stay lit (on)
 ```
+
+AP provisioning blink on the device uses `[tune]` 150/150 ms (not exposed as a
+separate UART preset).
 
 If steady state was `off` before `blink`, `steady` leaves the icon **off** even
 if the blink happened to be in its visible phase when you stopped it.

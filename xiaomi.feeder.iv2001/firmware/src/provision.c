@@ -24,6 +24,7 @@
 #include "provision_form.h"
 #include "provision_portal.h"
 #include "provision_wifi_try.h"
+#include "display_wifi_indicator.h"
 #include "provision.h"
 #include "provision_reset.h"
 #include "task_def.h"
@@ -372,6 +373,7 @@ static void provision_task(void *param)
     }
 
     s_active = true;
+    display_wifi_indicator_ap_mode();
     LOG_I(provision, "AP provisioning active — SSID %s", s_ap_ssid);
     printf("[provision] AP %s — open http://192.168.4.1/\r\n", s_ap_ssid);
 

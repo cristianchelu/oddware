@@ -52,3 +52,10 @@ The feeder subscribes to commands for:
 - Broker address, port, and credentials are set during provisioning.
 - TLS is optional (configurable).
 - Automatic reconnect with exponential backoff on disconnect.
+
+## On-panel broker status
+
+The feeder shows MQTT session state on the status lightbar (see
+[display.md](display.md) § MQTT / broker indicator): green when the broker
+session is up, orange patterns while connecting or after a failed connect
+during reconnect backoff.

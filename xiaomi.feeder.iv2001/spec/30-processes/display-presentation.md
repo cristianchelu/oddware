@@ -20,6 +20,8 @@ power policy, lock spinner, connectivity indicators.
 | `display_boot.c` | Boot light-test policy (0xFF fill, hold, blank) |
 | `display_glyph.c` | Digit LUT and icon-label → grid-byte composition (pure, no I/O) |
 | `display_presentation.c` | Scene state, blink, animation, periodic refresh |
+| `display_wifi_indicator.c` | Wi-Fi pictograph policy (connecting, AP, connected, off) |
+| `display_mqtt_indicator.c` | MQTT status lightbar policy (connecting, connected, error, off) |
 | `display_anim_builtin.c` | Const frame tables for OTA and lock-busy animations |
 | MQTT `cmd/display` handler | Future mode/brightness commands |
 
@@ -33,9 +35,59 @@ for `[tune]` 1000 ms, then black. Driver provides `show_fill` / `blank`; policy
 lives here and in `display_boot.c`. Hardware steps:
 [display-driver.md](display-driver.md) § Boot self-test.
 
-**Wi-Fi connecting blinker (future):** Call
-`display_presentation_icon_blink(DISPLAY_ICON_WIFI, on_ms, off_ms)` from
-application code when Wi-Fi is associating — not in the display driver.
+## Wi-Fi indicator
+
+`display_wifi_indicator.c` drives `DISPLAY_ICON_WIFI` from Wi-Fi lifecycle
+events (`wifi_sta.c`, `provision.c`, `provision_wifi_try.c`). User-facing
+semantics: [display.md](../20-stories/display.md) § Wi-Fi indicator.
+
+| State | Presentation | `[tune]` blink on/off |
+|-------|--------------|----------------------|
+| STA connecting | `display_wifi_indicator_connecting()` | 500 ms / 500 ms |
+| AP provisioning active | `display_wifi_indicator_ap_mode()` | 150 ms / 150 ms |
+| STA connected (DHCP OK) | `display_wifi_indicator_connected()` | steady on |
+| Not connected / connect failed | `display_wifi_indicator_off()` | steady off |
+
+Transitions:
+
+| Event | From → To |
+|-------|-----------|
+| `wifi_sta_request_connect()` | off or prior → connecting blink |
+| DHCP OK + valid IP | connecting → steady on |
+| `connect()` or IP failure | connecting → steady off |
+| AP + HTTP up (`provision_task`) | off → AP blink |
+| Portal STA test (`provision_wifi_try_connect`) | AP blink → connecting blink |
+| Portal STA test failed (AP restored) | connecting → AP blink |
+| Successful portal save + reboot | (reboot) → connecting blink → steady on |
+
+Portal STA test display steps: [provisioning-flow.md](provisioning-flow.md) §
+Provisioning STA test-connect.
+
+## MQTT indicator (status lightbar)
+
+`display_mqtt_indicator.c` drives `DISPLAY_ICON_BAR_ORANGE` and
+`DISPLAY_ICON_BAR_GREEN` from MQTT session events (`mqtt_client.c`).
+User-facing semantics: [display.md](../20-stories/display.md) § MQTT / broker
+indicator.
+
+| State | Presentation | Effect |
+|-------|--------------|--------|
+| MQTT connecting | `display_mqtt_indicator_connecting()` | Orange inverted blink (`[tune]` 1800 ms on / 200 ms off) |
+| MQTT connected | `display_mqtt_indicator_connected()` | Green steady on; orange off |
+| MQTT error / reconnect backoff | `display_mqtt_indicator_error()` | Orange pattern: off 150 ms, off 150 ms, on 600 ms (loop) |
+| MQTT inactive | `display_mqtt_indicator_off()` | Both bars off |
+
+Transitions (derived in `mqtt_client.c` from session state):
+
+| Condition | Indicator |
+|-----------|-----------|
+| Not armed, suspended, or Wi-Fi not ready | off |
+| Broker session connected | connected |
+| Reconnect backoff armed (`reconnect_at` in future) | error |
+| Connect pending or in progress | connecting |
+| Otherwise (armed, Wi-Fi up, not connected) | off |
+
+Session lifecycle: [mqtt-protocol.md](mqtt-protocol.md) § Session display.
 
 ## Logical API (`display_presentation.h`)
 
@@ -65,6 +117,8 @@ Icon-only updates (`icon_set`, `icon_blink`) do not change digit state.
 |----------|----------|
 | `display_presentation_icon_blink(icon, on_ms, off_ms)` | Square-wave toggle; each duration 50–5000 ms; overrides steady visibility while active |
 | `display_presentation_icon_blink_stop(icon)` | Cancel blink only; visibility reverts to steady `icon_set` state (does not force on) |
+| `display_presentation_icon_pattern(icon, phases, count, loop)` | Multi-phase visibility sequence; each phase 50–5000 ms; up to 8 phases; cancels blink on that icon |
+| `display_presentation_icon_pattern_stop(icon)` | Cancel pattern only; visibility reverts to steady `icon_set` state |
 | `display_presentation_play_builtin(id, loop)` | Play built-in frame table (`ota`, `lock`) |
 | `display_presentation_play_animation(anim, loop)` | Play caller-supplied frame table |
 | `display_presentation_stop_animation()` | Restore composed steady scene |
@@ -108,6 +162,10 @@ Icon commands.
 | Parameter | Range | Default |
 |-----------|-------|---------|
 | Blink on/off | 50–5000 ms each | — |
+| Wi-Fi connecting blink | 50–5000 ms each | 500 ms on / 500 ms off |
+| Wi-Fi AP provisioning blink | 50–5000 ms each | 150 ms on / 150 ms off |
+| MQTT connecting blink (orange bar) | 50–5000 ms each | 1800 ms on / 200 ms off |
+| MQTT error pattern (orange bar) | 50–5000 ms per phase | off 150 ms, off 150 ms, on 600 ms (loop) |
 | Presentation tick | 50 ms | FreeRTOS soft timer → `EVT_DISPLAY_TICK` |
 | OTA animation frame period | 150 ms | — |
 | Lock-busy animation frame period | 125 ms | — |

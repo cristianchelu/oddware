@@ -16,6 +16,13 @@
 #define DISPLAY_PRESENTATION_BLINK_MIN_MS  50u
 #define DISPLAY_PRESENTATION_BLINK_MAX_MS  5000u
 #define DISPLAY_PRESENTATION_MAX_BLINKS    4u
+#define DISPLAY_PRESENTATION_MAX_PATTERNS  4u
+#define DISPLAY_PRESENTATION_MAX_PATTERN_PHASES  8u
+
+typedef struct {
+    uint16_t duration_ms;
+    bool visible;
+} display_pattern_phase_t;
 
 typedef struct display_animation {
     const uint8_t (*frames)[TM1637_GRID_COUNT];
@@ -41,6 +48,12 @@ port_err_t display_presentation_icon_blink(display_icon_t icon,
                                          uint16_t on_ms,
                                          uint16_t off_ms);
 port_err_t display_presentation_icon_blink_stop(display_icon_t icon);
+
+port_err_t display_presentation_icon_pattern(display_icon_t icon,
+                                             const display_pattern_phase_t *phases,
+                                             uint8_t phase_count,
+                                             bool loop);
+port_err_t display_presentation_icon_pattern_stop(display_icon_t icon);
 
 port_err_t display_presentation_play_animation(const display_animation_t *anim,
                                                bool loop);

@@ -362,8 +362,11 @@ For **each** testable behavior (one assertion or tightly related group):
    logging expectations, NVDM semantics. Commit or stage the spec delta
    **before** the test and code that implement it.
 2. **Red** — host test fails against the spec.
-3. **Green** — minimal `firmware/` change to pass.
-4. **Refactor** — cleanup; tests still pass.
+3. **Green** — minimal `firmware/` change to pass **both** `make test-host`
+   **and** a cross-compile (`source tools/build-env.sh` then
+   `./tools/build-firmware.sh`) when any `firmware/` source, `GCC/`, or patch
+   changed. Host tests alone are not green for shippable firmware.
+4. **Refactor** — cleanup; tests and build still pass.
 
 Then the next behavior. Do not batch “implement the whole plan” in code and
 spec/tests later.
@@ -496,6 +499,23 @@ implement it — spec is the changelog entry, not an afterword.
 When architecture changes (new port, task, event), update Tier 4 first, then
 Tier 3 behavior that uses it, then conga.
 
+### Keep Tier 2 stories in sync
+
+When planning or implementing a user-visible feature, update the relevant
+`spec/20-stories/` files **before or alongside** Tier 3 process specs — not
+after the code lands. Stories describe **what the user sees or can do** (no
+`[tune]` values, no register addresses, no function names). Tier 3 owns
+mechanism, timings, and testable assertions.
+
+| Check | Action |
+|-------|--------|
+| Process `serves:` field | Read every story listed there; extend if the feature adds user-visible behavior |
+| Cross-story facts | Grep `spec/20-stories/` for related keywords; avoid contradicting another story |
+| Provisioning / display overlap | Put panel feedback in `display.md`; put setup-flow context in `provisioning.md` with a cross-link — do not duplicate timing tables |
+
+If a story file has no `serves:` back-link yet, grep Tier 3 for references to
+that story name when touching the feature.
+
 ### No behavior without a process spec
 
 Every testable behavior belongs in a Tier 3 file **before** tests and code.
@@ -521,16 +541,18 @@ tests and spec align — not “document what shipped and call it done.”
 
 Verify the conga actually happened — do not use this list to backfill:
 
-1. **Spec first** — Tier 3 already describes every new/changed behavior;
-   grep `spec/` for stale copies; **no** `Step N` or plan-only wording in
-   committed `spec/` or `firmware/`.
+1. **Spec first** — Tier 2 stories and Tier 3 processes already describe
+   every new/changed user-visible behavior; grep `spec/` for stale copies;
+   **no** `Step N` or plan-only wording in committed `spec/` or `firmware/`.
 2. **Tests** — `make test-host` green; new tests existed **before** or
    alongside the code they assert (not a post-hoc coverage pass).
-3. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
+3. **Build** — `source tools/build-env.sh` then `./tools/build-firmware.sh`
+   succeeds whenever `firmware/` logic, adapters, `GCC/`, or patches changed.
+   A session is not green until this passes — host tests exercise fakes, not
+   the ARM link. Outputs land in `firmware/flash/petfeeder_{a,b}.bin`.
+4. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
    Grep `firmware/src/` for `tm1637`, `aw9523b`, or `gpio_expander` includes
    outside the display driver stack; `display_boot.c` must not appear in hits.
-4. **Build** — `source tools/build-env.sh` then `./tools/build-firmware.sh`
-   when touching adapters, `GCC/`, or patches.
 5. **Bench** — when hardware is available and the change is not host-test-only,
    run `mqtt-ota.sh`. UART flash only when OTA is not an option.
 

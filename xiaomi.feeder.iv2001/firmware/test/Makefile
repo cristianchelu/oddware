@@ -35,6 +35,8 @@ HOST_SRCS := ../src/port_err.c \
              ../src/display_driver.c \
              ../src/display_glyph.c \
              ../src/display_presentation.c \
+             ../src/display_wifi_indicator.c \
+             ../src/display_mqtt_indicator.c \
              ../src/display_anim_builtin.c \
              ../src/display_boot.c \
              ../src/display_cli.c \

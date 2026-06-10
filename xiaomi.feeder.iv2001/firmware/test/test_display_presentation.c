@@ -148,3 +148,33 @@ void test_display_presentation_parse_icon_names(void)
     TEST_ASSERT_EQUAL(DISPLAY_ICON_WIFI, icon);
     TEST_ASSERT_FALSE(display_presentation_parse_icon("unknown", &icon));
 }
+
+void test_display_presentation_icon_pattern_advances_phases(void)
+{
+    static const display_pattern_phase_t phases[] = {
+        { 100u, false },
+        { 100u, false },
+        { 200u, true },
+    };
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      display_presentation_icon_pattern(DISPLAY_ICON_BAR_ORANGE,
+                                                      phases,
+                                                      3u,
+                                                      true));
+    TEST_ASSERT_EQUAL(100u, display_presentation_tick(0u));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+
+    (void)display_presentation_tick(200u);
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x01u, grids[4]);
+
+    (void)display_presentation_tick(400u);
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}

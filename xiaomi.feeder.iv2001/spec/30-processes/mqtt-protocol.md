@@ -96,6 +96,19 @@ Bench and runtime behavior (UART details in
 | Connected idle | Process inbound commands via `MQTTYield`; route known `cmd/*` topics silently (handlers `[design]`) |
 | Session loss while armed | Exponential backoff reconnect (see below) |
 
+### Session display
+
+Status lightbar updates from `mqtt_client.c` via
+`display_mqtt_indicator.c` — see [display-presentation.md](display-presentation.md)
+§ MQTT indicator. Summary:
+
+| Session phase | Lightbar |
+|---------------|----------|
+| Connecting (armed, connect in flight) | Orange inverted blink |
+| Connected | Green steady on |
+| Backoff after failed connect (armed) | Orange error pattern |
+| Disarmed, suspended, or Wi-Fi not ready | Both off |
+
 Subscription is a single wildcard `.../cmd/#` covering the nine command topics
 below — not `#`, not other devices' namespaces.
 

@@ -13,6 +13,7 @@
 #include "wifi_port.h"
 #include "task_def.h"
 #include "wifi_adapter.h"
+#include "display_wifi_indicator.h"
 #include "mqtt_client.h"
 #include "wifi_sta.h"
 
@@ -29,6 +30,7 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
         LOG_E(wifi_sta, "connect failed");
+        display_wifi_indicator_off();
         return;
     }
 
@@ -40,6 +42,9 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
         if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
             LOG_I(wifi_sta, "STA ready, IP %s", ip);
             mqtt_client_notify_wifi_ready();
+            display_wifi_indicator_connected();
+        } else {
+            display_wifi_indicator_off();
         }
     }
 }
@@ -97,6 +102,7 @@ bool wifi_sta_request_connect(void)
     }
 
     s_connect_busy = true;
+    display_wifi_indicator_connecting();
     xTaskNotifyGive(s_connect_task);
     return true;
 }
