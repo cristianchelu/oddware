@@ -78,6 +78,7 @@ all: test-host
 
 test-host: $(BUILD)/test_host
 	./$(BUILD)/test_host
+	@../../tools/host-green-nudge.sh
 
 $(BUILD)/test_host: $(RUNNER) $(TEST_SRCS) $(HOST_SRCS) $(UNITY_SRC) Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ $(RUNNER) $(TEST_SRCS) $(HOST_SRCS) $(UNITY_SRC) $(LDFLAGS)

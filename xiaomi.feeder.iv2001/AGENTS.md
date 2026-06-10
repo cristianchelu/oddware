@@ -267,7 +267,6 @@ Broker must be reachable from both the dev machine and the feeder.
 From `xiaomi.feeder.iv2001/`:
 
 ```bash
-# Both required after every firmware/ edit — host tests alone are not green.
 make test-host
 source tools/build-env.sh && ./tools/build-firmware.sh
 
@@ -382,7 +381,8 @@ spec/tests later.
 1. `make test-host` — PASS
 2. `source tools/build-env.sh && ./tools/build-firmware.sh` — PASS
 
-Run **(2)** whenever `firmware/` source, adapters, `GCC/`, or patches change.
+Run **(1)** often during development. Run **(2)** before wrap-up, flash, or OTA
+whenever adapters, `GCC/`, patches, or other ARM-only `firmware/` paths change.
 If you edited `firmware/` **after** the last successful `(2)`, you are **not
 green** until `(2)` passes again — an earlier build in the same session does
 not carry forward.
