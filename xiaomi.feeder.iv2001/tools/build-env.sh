@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Source this file to set up the build environment:
 #   source tools/build-env.sh
+#
+# Set FORCE_SDK_SYNC=1 before sourcing to reset/re-apply patches (used by build-firmware.sh).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FIRMWARE_DIR="$REPO_ROOT/firmware"
-PATCHES_DIR="$FIRMWARE_DIR/patches"
 
 export SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
 
@@ -15,7 +16,13 @@ if [ ! -d "$SDK_ROOT" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# Shallow git clones often drop the executable bit on SDK helper scripts.
+# --- Sync SDK patches before symlinks (reset drops bridge files) ---
+if [ "${FORCE_SDK_SYNC:-0}" = "1" ]; then
+    "$SCRIPT_DIR/sync-sdk-patches.sh"
+else
+    "$SCRIPT_DIR/sync-sdk-patches.sh" --if-needed
+fi
+
 if [ ! -x "$SDK_ROOT/build.sh" ]; then
     echo "Fixing execute permission on SDK build scripts"
     chmod +x "$SDK_ROOT/build.sh" 2>/dev/null || true
@@ -75,33 +82,6 @@ ln -sfn "$FIRMWARE_DIR/inc/memory_map.h" "$MQTT_CLIENT_INC/memory_map.h"
 IV2001_DOWNLOAD_CFG="$SDK_ROOT/tools/config/iv2001/download/default"
 mkdir -p "$IV2001_DOWNLOAD_CFG"
 ln -sfn "$FIRMWARE_DIR/flash/flash_download.cfg" "$IV2001_DOWNLOAD_CFG/flash_download.cfg"
-
-# --- Apply SDK patches (idempotent) ---
-if [ -d "$PATCHES_DIR" ]; then
-    shopt -s nullglob
-    patches=("$PATCHES_DIR"/*.patch)
-    shopt -u nullglob
-
-    if [ "${#patches[@]}" -gt 0 ]; then
-        echo "Applying SDK patches from $PATCHES_DIR ..."
-        for patch_file in "${patches[@]}"; do
-            echo "  $(basename "$patch_file")"
-            applied=0
-            if command -v patch >/dev/null 2>&1; then
-                if patch -p1 --forward --dry-run -d "$SDK_ROOT" -i "$patch_file" >/dev/null 2>&1; then
-                    patch -p1 --forward -d "$SDK_ROOT" -i "$patch_file"
-                    applied=1
-                fi
-            elif git -C "$SDK_ROOT" apply --check "$patch_file" >/dev/null 2>&1; then
-                git -C "$SDK_ROOT" apply "$patch_file"
-                applied=1
-            fi
-            if [ "$applied" -eq 0 ]; then
-                echo "    already applied or not applicable — skipping"
-            fi
-        done
-    fi
-fi
 
 # --- Toolchain (LinkIt does not bundle Linux GCC) ---
 if ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then

@@ -73,6 +73,10 @@ if [ "$WITH_FLASH_TOOL" -eq 1 ]; then
 fi
 
 echo ""
+echo "==> Installing git hooks (SDK patch re-sync on checkout/merge)"
+"$SCRIPT_DIR/install-git-hooks.sh"
+
+echo ""
 echo "Setup complete."
 echo ""
 echo "Next steps:"

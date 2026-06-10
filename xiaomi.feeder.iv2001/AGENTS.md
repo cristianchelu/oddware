@@ -191,6 +191,11 @@ Read `spec/40-architecture/build-integration.md` and
    Do not commit SDK sources, prebuilt `.a`/`.bin`, or copy example apps into
    the repo. Unity (test harness) is the only third-party C code committed under
    `firmware/`.
+   **Never edit files under `external/` directly.** SDK changes are **patches
+   only**: add or update `firmware/patches/<name>.patch`, list it in
+   `firmware/patches/series`, run `source tools/build-env.sh` or
+   `./tools/sync-sdk-patches.sh`. `./tools/build-firmware.sh` resets and
+   re-applies patches automatically before each build.
 2. **MT7682, no PSRAM.** IV2001 module is MHCW05P-B. Build with
    `IC_CONFIG=mt7682`, `PRODUCT_VERSION=7682`, `MTK_NO_PSRAM_ENABLE=y`.
    Linker uses SYSRAM/TCM — not PSRAM regions.
@@ -205,8 +210,16 @@ Read `spec/40-architecture/build-integration.md` and
    (GPIO14) conflict with WFCI SPI on the same pins. `display_boot_run()` runs
    from patched `system_init()` before `connsys_init()`, not from `main.c`.
    Do not move display boot after Wi-Fi init without a pin-arbitration design.
-6. **Single SDK.** LinkIt v4.6.2 houndify tree only.
-7. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
+   Hook patch: `firmware/patches/mqtt_sys_init_display_boot.patch`.
+6. **SDK patches are reset-synced, not sticky.** The LinkIt tree under
+   `external/` is a **separate git repo**. `git stash` / branch checkout in
+   oddware does not revert SDK edits. Never apply patches by hand or edit
+   tracked SDK files — only add/remove `firmware/patches/*.patch` (and
+   `firmware/patches/series`) and sync. Install `./tools/install-git-hooks.sh`
+   once so checkout/merge re-syncs when the tree drifts. See
+   `spec/40-architecture/build-integration.md` § SDK patches.
+7. **Single SDK.** LinkIt v4.6.2 houndify tree only.
+8. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 
 ## Bench flashing
@@ -308,6 +321,24 @@ When the SDK ships its own NVDM groups (e.g. `STA` radio profile from
 `wifi_nvdm_config`), treat them as HAL defaults. Application config uses
 the namespaces in `config-store.md` (`wifi`, `mqtt`, …). See
 `build-integration.md` — Wi-Fi NVDM namespaces.
+
+### Display and GPIO expander layering
+
+`[design]` Three concerns, three homes:
+
+| Concern | Modules | Spec |
+|---------|---------|------|
+| **Infrastructure driver** | `aw9523b.c`, `gpio_expander_port`, `i2c_bus_port` | `gpio-expander-aw9523b.md`, `pinmap.md` |
+| **Display driver** | `display_driver.c`, `display_rail.c`, `tm1637.c`, `display_adapter.c` | `display-driver.md` |
+| **Display presentation** | `display_boot.c`, future `display_presentation.c` | `display-presentation.md` |
+
+**Dependency rule:** presentation → `display_port` only. Display driver →
+`gpio_expander_port` + TM1637 GPIO ops. Presentation **never** includes
+`gpio_expander_port`, `tm1637.h`, `aw9523b.h`, or SDK I2C/GPIO headers.
+
+**Anti-patterns:** business logic in `display_driver.c`; TM1637 code touching
+I2C/AW9523B; hard-coding boot light test in the driver stack; presentation
+calling `gpio_expander_port` or `i2c_bus_port` directly.
 
 ## Test-driven development (mandatory)
 
@@ -496,6 +527,8 @@ Verify the conga actually happened — do not use this list to backfill:
 2. **Tests** — `make test-host` green; new tests existed **before** or
    alongside the code they assert (not a post-hoc coverage pass).
 3. **Layering** — no new `#include` of SDK headers under `firmware/src/`.
+   Grep `firmware/src/` for `tm1637`, `aw9523b`, or `gpio_expander` includes
+   outside the display driver stack; `display_boot.c` must not appear in hits.
 4. **Build** — `source tools/build-env.sh` then `./tools/build-firmware.sh`
    when touching adapters, `GCC/`, or patches.
 5. **Bench** — when hardware is available and the change is not host-test-only,

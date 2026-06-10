@@ -1,6 +1,9 @@
 # LinkIt SDK — fetched by tools/fetch-sdk.sh, never committed to git
 external/
 
+# Local SDK patch sync stamp (tools/sync-sdk-patches.sh)
+.sdk-patches-stamp
+
 # Session summaries (local memory, not committed)
 summaries/
 
@@ -25,8 +28,11 @@ out/
 *-backups/
 *.kicad_prl
 
-# Editor/IDE
-.cursor/
+# Editor/IDE (commit agent rules; keep plans local)
+.cursor/*
+!.cursor/
+!.cursor/rules/
+!.cursor/rules/**
 .vscode/
 .idea/
 *.swp

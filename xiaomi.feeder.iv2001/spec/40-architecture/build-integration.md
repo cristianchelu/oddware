@@ -90,13 +90,34 @@ firmware/
 
 ## SDK patches
 
+Patches live in `firmware/patches/*.patch` and modify the **gitignored**
+LinkIt SDK checkout under `external/`. That tree is a **separate git
+repository** — `git stash`, `git checkout`, and branch switches in oddware
+do **not** revert SDK edits on their own.
+
+`tools/sync-sdk-patches.sh` keeps the SDK deterministic:
+
+1. `git reset --hard HEAD` inside the SDK tree (drops orphaned edits).
+2. Apply patches listed in `firmware/patches/series` (one basename per line,
+   in dependency order).
+
+A local stamp (`.sdk-patches-stamp`, gitignored) lets `build-env.sh` skip
+redundant work when the patch set and SDK HEAD are unchanged and the tree is
+clean. `./tools/build-firmware.sh` always re-syncs before building and drops
+stale `out/.../obj` when the SDK was reset.
+
+After `git checkout` or `git pull`, run `source tools/build-env.sh` or install
+hooks once: `./tools/install-git-hooks.sh` (post-checkout / post-merge).
+
+**Never** edit tracked SDK files by hand or apply patches manually; add or
+remove files under `firmware/patches/` (and `series`) and re-sync.
+
 ### Flash combo (W25Q16DW)
 
 JEDEC `0xEF, 0x60, 0x15` is missing from the default `driver/chip/mt7686/`
 combo headers. Without it, `hal_flash_init()` fails on IV2001 hardware.
 
-Maintained as `firmware/patches/flash_combo_w25q16dw.patch`, applied by
-`build-env.sh` (idempotent).
+Maintained as `firmware/patches/flash_combo_w25q16dw.patch`.
 
 ### Wi-Fi NVDM namespaces
 
@@ -131,7 +152,7 @@ design (not yet implemented).
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.
 2. Symlink IV2001 board config into SDK `config/` and `driver/board/`.
-3. Apply patches from `firmware/patches/`.
+3. Sync patches via `tools/sync-sdk-patches.sh` (reset SDK + apply `series`).
 4. Wire `arm-none-eabi-gcc` into PATH and SDK-expected symlink paths.
 
 ## Test-driven development

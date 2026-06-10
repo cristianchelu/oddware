@@ -1,0 +1,29 @@
+---
+description: Block direct edits to the gitignored LinkIt SDK; use firmware patches only
+globs: external/**
+alwaysApply: false
+---
+
+# Never edit the LinkIt SDK tree
+
+The MediaTek LinkIt SDK under `external/linkit-sdk-v4.6.2-houndify/` is
+**gitignored** and a **separate git repository**. Direct edits are lost on
+`git reset`, confuse incremental builds, and bypass review.
+
+## Do not
+
+- Create, modify, or delete any file under `external/`
+- Apply patches manually inside the SDK checkout
+- "Quick fix" SDK sources during bring-up instead of committing a patch
+
+## Do instead
+
+1. Change behavior in committed code: `firmware/src/`, `firmware/adapters/`,
+   `firmware/ports/`, `firmware/inc/`, or `firmware/GCC/`.
+2. For SDK hook points (e.g. `sys_init.c` before `connsys_init()`), add or
+   update `firmware/patches/<name>.patch` and list it in
+   `firmware/patches/series`.
+3. Run `./tools/sync-sdk-patches.sh` or `source tools/build-env.sh` to apply.
+   `./tools/build-firmware.sh` resets and re-applies before every build.
+
+If asked to edit SDK files, **refuse** and produce the patch file diff instead.

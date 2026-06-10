@@ -146,7 +146,11 @@ static port_err_t ota_adapter_fetch_range(const char *url,
         return PORT_ERR_IO;
     }
 
-    httpclient_set_recv_timeout(&client, 20000);
+    {
+        struct timeval tv = { .tv_sec = 20, .tv_usec = 0 };
+
+        (void)setsockopt(client.socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    }
 
     ret = httpclient_send_request(&client, (char *)url, HTTPCLIENT_GET, &client_data);
     if (ret != HTTPCLIENT_OK) {

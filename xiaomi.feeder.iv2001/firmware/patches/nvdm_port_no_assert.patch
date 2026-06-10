@@ -1,20 +1,25 @@
+diff --git a/middleware/MTK/nvdm/src/nvdm_port.c b/middleware/MTK/nvdm/src/nvdm_port.c
+index fd5115cc..e2895e96 100644
 --- a/middleware/MTK/nvdm/src/nvdm_port.c
 +++ b/middleware/MTK/nvdm/src/nvdm_port.c
-@@ -66,7 +66,6 @@ void nvdm_port_log_error(const char *message, ...)
+@@ -65,8 +65,6 @@ void nvdm_port_log_error(const char *message, ...)
+     va_start(ap, message);
      vprint_module_log(&log_control_block_common, __FUNCTION__, __LINE__, PRINT_LEVEL_ERROR, message, ap);
      va_end(ap);
- 
+-
 -    assert(0);
  }
  #else
  void nvdm_port_log_notice(const char *message, ...)
-@@ -75,12 +74,24 @@ void nvdm_port_log_info(const char *message, ...)
+@@ -75,7 +73,6 @@ void nvdm_port_log_info(const char *message, ...)
+ {}
  void nvdm_port_log_error(const char *message, ...)
  {
 -    assert(0);
  }
  #endif
-@@ -92,11 +103,23 @@ void nvdm_port_flash_write(uint32_t address, const uint8_t *buffer, uint32_t le
+ 
+@@ -93,9 +90,19 @@ void nvdm_port_flash_write(uint32_t address, const uint8_t *buffer, uint32_t len
  {
      hal_flash_status_t status;
  
@@ -36,3 +41,4 @@
 +        length -= chunk;
      }
  }
+ 

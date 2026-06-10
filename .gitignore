@@ -1,2 +1,4 @@
 # Cursor IDE / agent plans (local only)
 .cursor/
+!xiaomi.feeder.iv2001/.cursor/rules/
+!xiaomi.feeder.iv2001/.cursor/rules/**

@@ -10,15 +10,26 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
 
+if [ ! -d "$SDK_ROOT" ]; then
+    echo "ERROR: SDK not found at $SDK_ROOT (run ./tools/fetch-sdk.sh)" >&2
+    exit 1
+fi
+
+# Reset SDK to known state, re-apply patches, then recreate app/board symlinks.
+export FORCE_SDK_SYNC=1
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/build-env.sh"
+
+echo "Cleaning SDK build objects after patch sync ..."
+rm -rf "$SDK_ROOT/out/mt7682_hdk/petfeeder/obj"
 
 cd "$SDK_ROOT"
 ./build.sh mt7682_hdk petfeeder bl
 
 OUTPUT="$SDK_ROOT/out/mt7682_hdk/petfeeder"
-FLASH_DIR="$FIRMWARE_DIR/flash"
+FLASH_DIR="$REPO_ROOT/firmware/flash"
 A_BIN="$OUTPUT/petfeeder.bin"
 B_BIN="$OUTPUT/binary_B/petfeeder.bin"
 

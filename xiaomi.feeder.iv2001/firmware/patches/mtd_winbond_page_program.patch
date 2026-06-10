@@ -1,7 +1,17 @@
+diff --git a/driver/chip/mt7686/src/hal_flash_mtd_dal.c b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
+index 4fed57bd..10559494 100644
 --- a/driver/chip/mt7686/src/hal_flash_mtd_dal.c
 +++ b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
-@@ -2576,6 +2576,11 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
-     /*
+@@ -1363,7 +1363,7 @@ ATTR_TEXT_IN_RAM void Flash_ReturnReady(void)
+  * Description
+       > Every program transaction consists of 1B of command, 3B of address,
+         and 1~256B of data in sequential.
+-      > If an interrupt comes during Local Buf.¡÷GPRAM and reads Flash status,
++      > If an interrupt comes during Local Buf.??GPRAM and reads Flash status,
+         it may corrput the program command and a part of program address.
+  *  Solution
+       > Always write first 4 bytes (command+address) to GPRAM after IRQs are disabled.
+@@ -2577,6 +2577,10 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
       *  Page program loop
       */
      while (0 != Length) {
@@ -12,11 +22,11 @@
          p_data_first    = p_data;
          /*
           * Calculate how many bytes to write this loop
-@@ -2589,6 +2594,14 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+@@ -2590,6 +2594,15 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
          // stpe2. If program Length is greater than the offset to the page boundary
          length = written = ((Length > length) ? length : Length);
  
-+        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet Â§7.2.20) */
++        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet ?7.2.20) */
 +        {
 +            uint32_t nor_page_remain = 256u - (address & 255u);
 +            if (written > nor_page_remain) {
@@ -28,7 +38,7 @@
          if ((uint32_t)p_data & SFC_GENERIC_FLASH_BANK_MASK) {
              //only copy data to RAM when data is on flash.
              uint32_t j;
-@@ -2599,10 +2612,6 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+@@ -2599,11 +2612,6 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
              p_data_first = tmp_data_buffer;
          }
  
@@ -36,10 +46,11 @@
 -            SF_DAL_Dev_WriteEnable(D);
 -        }
 -
- 
+-
          // step3. Handling 3/4 bytes address
  #if defined(__SFI_4BYTES_ADDRESS__)
-@@ -2621,6 +2630,9 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Da
+         if (D->AddressCycle == 4) {
+@@ -2621,6 +2629,9 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
          SF_Prog_Init();
          savedMask = SaveAndSetIRQMask();
          NOR_PROFILE_60Q_START();

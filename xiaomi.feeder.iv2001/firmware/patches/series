@@ -1,0 +1,18 @@
+# SDK patch apply order (one basename per line). See tools/sync-sdk-patches.sh.
+bootloader_dual_image.patch
+bootloader_thumb_func.patch
+bootloader_ctrl_slot.patch
+copy_firmware_iv2001.patch
+copy_firmware_iv2001_bl_board.patch
+flash_combo_w25q16dw.patch
+fota_config_dual_mt7682.patch
+fota_module_mt7682_dual.patch
+mtd_winbond_page_program.patch
+nvdm_port_no_assert.patch
+syslog_uart_115200.patch
+mqtt_sys_init_nvdm_order.patch
+mqtt_sys_init_display_boot.patch
+mqtt_quiet_debug.patch
+wifi_scan_time_t.patch
+task_def_httpd.patch
+httpd_provision.patch
