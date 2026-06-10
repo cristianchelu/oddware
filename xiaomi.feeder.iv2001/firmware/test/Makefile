@@ -33,7 +33,11 @@ HOST_SRCS := ../src/boot_bank.c \
              ../src/tm1637.c \
              ../src/display_driver.c \
              ../src/display_boot.c \
+             ../src/display_cli.c \
+             ../src/gpio_expander_loan.c \
+             ../src/wfci_bus_state.c \
              fakes/fake_i2c_bus.c \
+             fakes/fake_wfci_bus_port.c \
              fakes/fake_gpio_expander_port.c \
              fakes/fake_tm1637_gpio.c \
              fakes/fake_display_port.c \

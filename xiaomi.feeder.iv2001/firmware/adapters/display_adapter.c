@@ -9,8 +9,8 @@
 #include "display_driver.h"
 #include "display_port.h"
 #include "gpio_expander_port.h"
-#include "i2c_bus_adapter.h"
 #include "tm1637.h"
+#include "wfci_bus_port.h"
 
 #define TM1637_DIO_GPIO  HAL_GPIO_1
 #define TM1637_CLK_GPIO  HAL_GPIO_13
@@ -79,42 +79,78 @@ static void display_adapter_ensure_init(void)
     s_display_ready = true;
 }
 
-static port_err_t port_power_on(void)
-{
-    display_adapter_ensure_init();
-    return display_power_on(&s_state);
-}
+typedef port_err_t (*display_op_fn_t)(void);
 
-static port_err_t port_power_off(void)
+static port_err_t display_with_bus(display_op_fn_t fn)
 {
+    const wfci_bus_port_t *bus = wfci_bus_port_get();
     port_err_t err;
 
-    display_adapter_ensure_init();
-    err = display_power_off(&s_state);
+    err = bus->acquire(WFCI_BUS_PROFILE_DISPLAY, WFCI_BUS_PRIORITY_NORMAL, 5000u);
     if (err != PORT_OK) {
         return err;
     }
 
-    i2c_bus_adapter_deinit();
-    return PORT_OK;
+    display_adapter_ensure_init();
+    err = fn();
+    bus->release(WFCI_BUS_PROFILE_DISPLAY);
+    return err;
+}
+
+static port_err_t port_power_on_body(void)
+{
+    return display_power_on(&s_state);
+}
+
+static port_err_t port_power_on(void)
+{
+    return display_with_bus(port_power_on_body);
+}
+
+static port_err_t port_power_off_body(void)
+{
+    return display_power_off(&s_state);
+}
+
+static port_err_t port_power_off(void)
+{
+    return display_with_bus(port_power_off_body);
+}
+
+static uint8_t s_fill_byte;
+
+static port_err_t port_show_fill_body(void)
+{
+    return display_show_fill(&s_state, s_fill_byte);
 }
 
 static port_err_t port_show_fill(uint8_t segment_byte)
 {
-    display_adapter_ensure_init();
-    return display_show_fill(&s_state, segment_byte);
+    s_fill_byte = segment_byte;
+    return display_with_bus(port_show_fill_body);
+}
+
+static const uint8_t *s_grids_ptr;
+
+static port_err_t port_show_grids_body(void)
+{
+    return display_show_grids(&s_state, s_grids_ptr);
 }
 
 static port_err_t port_show_grids(const uint8_t grids[TM1637_GRID_COUNT])
 {
-    display_adapter_ensure_init();
-    return display_show_grids(&s_state, grids);
+    s_grids_ptr = grids;
+    return display_with_bus(port_show_grids_body);
+}
+
+static port_err_t port_blank_body(void)
+{
+    return display_blank(&s_state);
 }
 
 static port_err_t port_blank(void)
 {
-    display_adapter_ensure_init();
-    return display_blank(&s_state);
+    return display_with_bus(port_blank_body);
 }
 
 static const display_port_t s_display_port = {

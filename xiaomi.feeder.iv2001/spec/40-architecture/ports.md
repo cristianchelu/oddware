@@ -149,13 +149,37 @@ Adapter: sends commands to `motor_ctrl` task. Results arrive as
 
 Adapter: wraps UART2 serial protocol to CS1270.
 
+### `wfci_bus_port.h`
+
+Central bus-loan layer below peripheral ports and above WFCI HAL. Time-multiplexes
+GPIO12–17 between the Wi-Fi N9 SPI link and feeder peripherals while keeping
+association up. See [wfci-bus-arbitration.md](../30-processes/wfci-bus-arbitration.md).
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `acquire` | `(profile, priority, timeout_ms) -> err` | Block until WFCI SPI is idle; `wfcm_if_deinit()`; remux pins per profile; init HAL peripheral (I2C1 / UART2 / GPIO / AUXADC) |
+| `try_acquire` | `(profile, priority) -> err` | Non-blocking variant; returns `PORT_ERR_BUSY` when loan unavailable |
+| `release` | `(profile) -> void` | Deinit peripheral HAL; `wfcm_if_reinit()`; release SDK bus mutex |
+
+**Profiles:** `EXPANDER`, `DISPLAY`, `ADC`, `WEIGH`, `FULL` — encode board
+knowledge from [pinmap.md](../10-hardware/pinmap.md); application code does not
+use raw GPIO numbers.
+
+**Priorities:** `NORMAL`, `ABOVE_NORMAL`, `HIGH`.
+
+Adapter: `wfci_bus_adapter.c` coordinates with `wfcm_bus_loan.c`
+(`wfcm_bus_loan_begin()` / `wfcm_bus_loan_end()`). `wfci_bus_wifi_spi_active(true)`
+is called after `connsys_init()`; before that, acquire/release are no-ops.
+
 ### Display stack ports
 
 `[design]` Three ports separate infrastructure, driver, and presentation:
 
+- **`wfci_bus_port`** — arbitration for contested GPIO12–17 (see above).
 - **`i2c_bus_port`** + **`gpio_expander_port`** — infrastructure (AW9523B @
   `0x58`). Used by display rail and future motor/weight subsystems. **Not**
-  called from presentation code.
+  called from presentation code. After Wi-Fi init, every I2C transaction runs
+  inside an `EXPANDER` loan or nested micro-session.
 - **`display_port`** — presentation-facing rendering API.
 
 Physical seam: AW9523B **P0.5** switches display power (I2C); TM1637 segment
@@ -171,8 +195,9 @@ rail-on before TM1637 traffic. See [display-driver.md](../30-processes/display-d
 | `read_reg` | `(addr, reg, &val) -> err` | I2C read one register byte |
 
 Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
-[pinmap.md](../10-hardware/pinmap.md)). Boot-time access only before
-`connsys_init()` unless a future arbitration layer reclaims pins from WFCI SPI.
+[pinmap.md](../10-hardware/pinmap.md)). Init/deinit is driven by
+`wfci_bus_port` when Wi-Fi SPI is active; boot-time access before
+`connsys_init()` calls `i2c_bus_adapter_init()` directly.
 
 ### `gpio_expander_port.h`
 
@@ -184,7 +209,9 @@ Adapter: wraps HAL I2C master (I2C1: GPIO15 = SCL, GPIO16 = SDA per
 | `get_pin` | `(port, pin, &level) -> err` | Read one expander input pin |
 
 Adapter: `gpio_expander_adapter.c` — AW9523B register model + `i2c_bus_port`.
-Bootstrap bitmaps: `board_gpio_iv2001.h`.
+Bootstrap bitmaps: `board_gpio_iv2001.h`. Micro-session helpers
+`gpio_expander_loan_begin()` / `gpio_expander_loan_end()` acquire `EXPANDER`
+for batched register writes; never held across motor spin or wait loops.
 
 ### `display_port.h`
 

@@ -1,0 +1,20 @@
+diff --git a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+index a8f3e21b..c4b8e12a 100644
+--- a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
++++ b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+@@ -50,6 +50,7 @@
+ #include "memory_map.h"
+ #include "memory_attribute.h"
+ #include "nvdm_boot.h"
++#include "wfci_bus_adapter.h"
+ #include "display_boot.h"
+ 
+ 
+@@ -344,6 +345,7 @@ void system_init(void)
+ 
+     /* Connsys init will download FW, MT5932 need download N9 FW before any task created, to init ucHeap early */
+     connsys_init(NULL);
++    wfci_bus_wifi_spi_active(true);
+ 
+ #ifndef MTK_DEBUG_LEVEL_NONE
+ #ifdef MTK_NVDM_ENABLE

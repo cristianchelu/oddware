@@ -1,8 +1,9 @@
 /*
  * I2C bus port adapter — HAL I2C1 on GPIO15 (SCL) / GPIO16 (SDA) for AW9523B.
  *
- * Boot-time only: WFCI SPI (connsys_init) reclaims GPIO12–16. See
- * spec/40-architecture/build-integration.md § Display boot before Wi-Fi SPI.
+ * Init/deinit driven by wfci_bus_port when Wi-Fi SPI is active. Boot-time
+ * access before connsys_init() calls init directly. See
+ * spec/30-processes/wfci-bus-arbitration.md.
  */
 
 #include "hal_gpio.h"

@@ -149,8 +149,15 @@ Verify after `source tools/build-env.sh`:
 grep display_boot_run external/linkit-sdk-v4.6.2-houndify/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
 ```
 
-Runtime display updates after Wi-Fi start require a separate pin-arbitration
-design (not yet implemented).
+Runtime GPIO expander, display, ADC, and UART2 access after Wi-Fi start use
+`wfci_bus_port` — see [wfci-bus-arbitration.md](../30-processes/wfci-bus-arbitration.md)
+and `ports.md` § `wfci_bus_port`. `wfcm_bus_loan.c` implements
+`wfcm_bus_loan_begin()` / `wfcm_bus_loan_end()` (SPI deinit/reinit on
+GPIO14–17). `wfci_bus_wifi_spi_active(true)` runs after `connsys_init()` in
+`sys_init_wfci_bus.patch`.
+
+GPIO17 is WFCI SPI CS and AUXADC input — jam detection and battery reads use
+short `ADC` profile loans, not continuous GPIO17 hold.
 
 ## `tools/build-env.sh`
 

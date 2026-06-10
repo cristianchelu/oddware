@@ -36,6 +36,9 @@ mqtt set pass <password>
 mqtt set device_id <id>
 mqtt connect
 mqtt disconnect
+display test
+display fill <hex_byte>
+display off
 config factory-reset
 ```
 
@@ -346,6 +349,52 @@ Reboot with a stored host arms and auto-connects again.
 
 Subscription scope, online/LWT behavior, and command routing are defined in
 [mqtt-protocol.md](mqtt-protocol.md#session-lifecycle).
+
+## `display` commands
+
+Bench helpers for runtime display exercise through `display_port` (WFCI bus
+loans after Wi-Fi init). Not a product interface. `[design]`
+
+### `display test`
+
+Runs the same segment pattern as boot self-test, but **after** `connsys_init()`
+so each step uses the pin arbiter.
+
+| Step | Action |
+|------|--------|
+| 1 | `power_on` |
+| 2 | `show_fill(0xFF)` |
+| 3 | Hold ~1 s (`DISPLAY_BOOT_LIGHT_TEST_MS`) |
+| 4 | `blank` |
+| 5 | `power_off` |
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display test ok` |
+| Any `display_port` failure | `display test failed` |
+
+### `display fill <hex_byte>`
+
+Powers the rail, shows one segment byte on all digit grids, and leaves the
+display on until `display off`.
+
+| Argument | Rule |
+|----------|------|
+| `hex_byte` | One or two hex digits, value `0x00`–`0xFF` (case-insensitive) |
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display fill ok` |
+| Missing argument | `usage: display fill <hex_byte>` |
+| Invalid hex | `invalid hex byte` |
+| `display_port` failure | `display fill failed` |
+
+### `display off`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `display off ok` |
+| `display_port` failure | `display off failed` |
 
 ## `config` commands
 
