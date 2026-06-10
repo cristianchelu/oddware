@@ -21,6 +21,14 @@
 #define BOARD_GPIO_CS1270_PWR_PIN    2u
 #define BOARD_GPIO_DISPLAY_RAIL_MASK 0x20u
 #define BOARD_GPIO_INDEX_LED_MASK    0x40u
+#define BOARD_GPIO_INDEX_LED_PORT    0u
+#define BOARD_GPIO_INDEX_LED_PIN     6u
+#define BOARD_GPIO_INDEX_DET_MASK    0x80u   /* P0.7 */
+#define BOARD_GPIO_INDEX_BEAM_OPEN_HIGH  1u  /* [probe] */
+
+#define BOARD_GPIO_HOPPER_SENSE_MASK        0x10u   /* P1.4 */
+#define BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH 1u      /* [probe] */
+#define BOARD_GPIO_HOPPER_IR_PULSE_MS       1u      /* [tune] */
 
 #define BOARD_GPIO_DISPLAY_RAIL_PORT  0u
 #define BOARD_GPIO_DISPLAY_RAIL_PIN   5u

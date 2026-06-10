@@ -226,7 +226,41 @@ will use a separate adapter on the same GPIO4 IRQ line.
 | `read_sample` | `(&sample) -> err` | Fill `power_pressed`, `reset_pressed`, `dispense_pressed` (`true` = down) |
 
 Adapter: `button_port_adapter.c` — `gpio_expander_port.read_inputs` +
-`board_gpio_iv2001.h` masks. HAL IRQ wiring: `button_adapter.c` (GPIO4 EINT).
+`board_gpio_iv2001.h` masks. HAL IRQ wiring: `aw9523_irq_adapter.c` (GPIO4 EINT);
+`button_adapter.h` forwards to `aw9523_irq_adapter_start()`.
+
+### `motor_index_port.h`
+
+**Motor index broken-beam** ([motor-index.md](../30-processes/motor-index.md)).
+AW9523B P0.6 (LED) and P0.7 (detector). Application and `motor_ctrl` depend on
+`motor_index_port`, not `gpio_expander_port`.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `set_led` | `(on) -> err` | Drive P0.6 via expander loan; caller enables only during motor run |
+| `read_beam_open` | `(&beam_open) -> err` | Read P0.7; `true` = index hole aligned / beam restored |
+
+Adapter: `motor_index_port_adapter.c` — `gpio_expander_port` +
+`board_gpio_iv2001.h` masks. Polarity: `BOARD_GPIO_INDEX_BEAM_OPEN_HIGH`.
+
+IRQ bootstrap (outside port struct): `motor_index_adapter_arm_irq(task, bits)` /
+`motor_index_adapter_disarm_irq()` register a `xTaskNotifyFromISR` target on the
+shared GPIO4 AW9523B INT line via `aw9523_irq_adapter`. Used by `motor_ctrl` for
+low-latency pulse edges; no I2C in the ISR.
+
+### `hopper_ir_port.h`
+
+**Hopper low-fill broken-beam** ([hopper-sensing.md](../30-processes/hopper-sensing.md)).
+MT7682 GPIO0 (IR drive) and AW9523B P1.4 (sense). Polled only in this phase — no
+IRQ path on the process port.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `sense` | `(&beam_blocked) -> err` | Pulse GPIO0 for `[tune]` ~1 ms, read P1.4; `true` = food blocks beam |
+
+Adapter: `hopper_ir_port_adapter.c` — HAL GPIO0 + `gpio_expander_port.read_inputs`.
+Polarity: `BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH`. GPIO0 is outside WFCI — no bus
+loan for the drive pin.
 
 ### `gpio_expander_port.h`
 

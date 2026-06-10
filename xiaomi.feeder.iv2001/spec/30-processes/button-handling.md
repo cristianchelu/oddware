@@ -17,7 +17,9 @@ All three are inputs on the AW9523B GPIO expander (I2C @ 0x58).
 
 Tactile power (P0.3) and dispense (P1.0) share the AW9523B INT line with motor
 index, mains sense, and hopper IR — all routed to MT7682 GPIO4 (EINT). The ISR
-posts `EVT_BUTTON_IRQ` only; no I2C in the ISR (`wfci-bus-arbitration.md`).
+posts `EVT_BUTTON_IRQ` only (and optional `xTaskNotifyFromISR` for motor index
+when armed); no I2C in the ISR (`wfci-bus-arbitration.md`). GPIO4 EINT setup:
+`aw9523_irq_adapter.c`.
 The `app` task samples `button_port` after debounce (see below). AW9523B input
 register reads clear the expander interrupt. `[ds:AW9523B]`
 

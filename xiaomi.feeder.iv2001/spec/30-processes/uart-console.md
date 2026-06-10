@@ -51,6 +51,8 @@ weigh read
 weigh cal zero
 weigh cal span
 weigh cal status
+index read
+hopper read
 config factory-reset
 ```
 
@@ -597,6 +599,36 @@ Capture raw count with provided bowl installed (350 g reference); save
 | Outcome | UART response |
 |---------|---------------|
 | Success | `weigh cal: idle`, `capturing_span`, `success`, or `uncalibrated` |
+
+## `index` commands
+
+Bench helper for motor-index broken-beam IR (AW9523B P0.6 LED, P0.7
+detector). Uses `motor_index_port`. Not a product interface. `[design]`
+
+### `index read`
+
+Turns the index IR LED on, samples the detector, turns the LED off.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success, beam open (hole aligned) | `index beam: open` |
+| Success, beam blocked | `index beam: blocked` |
+| Failure | `index read failed (<reason>)` |
+
+## `hopper` commands
+
+Bench helper for hopper low-fill broken-beam IR (GPIO0 drive, AW9523B P1.4
+sense). Uses `hopper_ir_port`. Not a product interface. `[design]`
+
+### `hopper read`
+
+Pulses the hopper IR emitter, samples the detector, drives the emitter off.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success, food blocks beam | `hopper beam: blocked` |
+| Success, beam clear (low fill) | `hopper beam: clear` |
+| Failure | `hopper read failed (<reason>)` |
 
 ## `config` commands
 

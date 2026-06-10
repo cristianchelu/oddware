@@ -45,6 +45,7 @@ HOST_SRCS := ../src/port_err.c \
              ../src/display_boot.c \
              ../src/display_cli.c \
              ../src/weigh_cli.c \
+             ../src/beam_cli.c \
              ../src/cs1270.c \
              ../src/weight_rail.c \
              ../src/weight_driver.c \
@@ -55,6 +56,8 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_wfci_bus_port.c \
              fakes/fake_gpio_expander_port.c \
              fakes/fake_button_port.c \
+             fakes/fake_motor_index_port.c \
+             fakes/fake_hopper_ir_port.c \
              fakes/fake_tm1637_gpio.c \
              fakes/fake_display_port.c \
              fakes/fake_weight_port.c \

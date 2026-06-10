@@ -85,3 +85,16 @@ AW9523B P1.4 ──────── hopper low-fill IR sense
 AW9523B P1.7 ──────── NC7SB3157 S (mux select)
 ```
 
+## Firmware constants (`board_gpio_iv2001.h`)
+
+Port-local bit masks (per AW9523B input/output byte, not 16-bit combined):
+
+| Constant | Value | Pin |
+|----------|-------|-----|
+| `BOARD_GPIO_INDEX_LED_MASK` | `0x40` | P0.6 |
+| `BOARD_GPIO_INDEX_DET_MASK` | `0x80` | P0.7 |
+| `BOARD_GPIO_INDEX_BEAM_OPEN_HIGH` | `1` | P0.7 polarity `[probe]` |
+| `BOARD_GPIO_HOPPER_SENSE_MASK` | `0x10` | P1.4 |
+| `BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH` | `1` | P1.4 polarity `[probe]` |
+| `BOARD_GPIO_HOPPER_IR_PULSE_MS` | `1` | GPIO0 on-time `[tune]` |
+
