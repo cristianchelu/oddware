@@ -215,6 +215,37 @@ void test_motor_ctrl_session_fault_logs_timeout(void)
     TEST_ASSERT_NOT_NULL(strstr(log, "stuck: session timeout (20000 ms)"));
 }
 
+void test_motor_ctrl_timed_forward_posts_done(void)
+{
+    motor_ctrl_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, motor_ctrl_request_timed_forward_ms(500u));
+    motor_ctrl_test_poll();
+    TEST_ASSERT_TRUE(motor_ctrl_is_active());
+    fake_time_advance_ms(500u + MOTOR_CTRL_LOOP_SLICE_MS);
+    motor_ctrl_run_until_idle(50u);
+    TEST_ASSERT_TRUE(app_event_pending_type(EVT_TIMED_RUN_DONE));
+}
+
+void test_motor_ctrl_timed_reverse_posts_done(void)
+{
+    motor_ctrl_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, motor_ctrl_request_timed_reverse_ms(300u));
+    motor_ctrl_test_poll();
+    TEST_ASSERT_TRUE(motor_ctrl_is_active());
+    fake_time_advance_ms(300u + MOTOR_CTRL_LOOP_SLICE_MS);
+    motor_ctrl_run_until_idle(50u);
+    TEST_ASSERT_TRUE(app_event_pending_type(EVT_TIMED_RUN_DONE));
+}
+
+void test_motor_ctrl_timed_run_rejects_when_active(void)
+{
+    motor_ctrl_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      motor_ctrl_request_burst(1u, MOTOR_BURST_TIMEOUT_MS));
+    motor_ctrl_test_poll();
+    TEST_ASSERT_EQUAL(PORT_ERR_BUSY, motor_ctrl_request_timed_forward_ms(100u));
+}
+
 void test_motor_ctrl_park_survives_burst_index_timeout(void)
 {
     motor_ctrl_test_setup();

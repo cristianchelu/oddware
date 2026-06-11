@@ -129,25 +129,24 @@ Adapter: wraps SDK NVDM API. Groups map to NVDM groups (e.g. `wifi`,
 ### `motor_port.h`
 
 **Auger H-bridge** ([dispense-cycle.md](../30-processes/dispense-cycle.md) PH/EN
-sequencing). Two entry paths in `motor_adapter.c` — bench sync vs production
-async — not one mutex-wrapped blocking path for everything.
+sequencing). All CLI and product motor motion enqueues to `motor_ctrl`; the
+adapter does not block the CLI task on PH settle + spin.
 
 | Function | Signature | Blocking? | Behavior |
 |----------|-----------|-----------|----------|
-| `run_forward_ms` | `(duration_ms) -> err` | **Yes** (CLI bench) | PH forward, `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. `PORT_ERR_BUSY` if `motor_ctrl` active, adapter mutex not acquired within `[tune]` 5000 ms, or EXPANDER WFCI loan unavailable. `PORT_ERR_INVALID_ARG` if out of range (`1…20000` ms). |
-| `run_reverse_ms` | `(duration_ms) -> err` | **Yes** (CLI bench) | PH reverse; same busy/range semantics as `run_forward_ms`. |
+| `request_timed_forward_ms` | `(duration_ms) -> err` | **No** | Enqueue bench forward timed run to `motor_ctrl`. PH forward, `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. No index or ADC jam supervision. Posts `EVT_TIMED_RUN_DONE` or `EVT_MOTOR_FAULT`. `PORT_ERR_BUSY` if queue full or motor active. `PORT_ERR_INVALID_ARG` if out of range (`1…20000` ms). |
+| `request_timed_reverse_ms` | `(duration_ms) -> err` | **No** | Enqueue bench reverse timed run; same semantics as `request_timed_forward_ms` with PH reverse. |
 | `request_burst` | `(pulse_target, timeout_ms) -> err` | **No** | Enqueue burst to `motor_ctrl` command queue with send timeout 0. Index LED on, forward EN until `pulse_target` beam-open edges or `timeout_ms` (whichever first). Posts `EVT_BURST_DONE` or `EVT_MOTOR_FAULT`. `PORT_ERR_BUSY` if queue full or motor active. |
 | `request_park` | `(max_pulses) -> err` | **No** | Enqueue park to `motor_ctrl` (CLI recovery only in v1). Forward until beam-open or `max_pulses`. Posts `EVT_PARK_DONE` or `EVT_MOTOR_FAULT`. |
 | `stop` | `() -> err` | **No** | Enqueue preemptive stop to `motor_ctrl` (timeout 0). |
-| `is_active` | `() -> bool` | — | True while `motor_ctrl` owns a burst, park, or anti-jam sequence. |
+| `is_active` | `() -> bool` | — | True while `motor_ctrl` owns a burst, park, bench timed run, or anti-jam sequence. |
 
-Adapter: `motor_adapter.c` — bench `run_*` take adapter mutex and call
-`motor_driver_run_*_ms`; `request_*` / `stop` enqueue only. `motor_ctrl` holds
-the adapter mutex for the full burst/park/anti-jam sequence and calls
-`motor_driver_start_*` / `motor_driver_stop` directly.
+Adapter: `motor_adapter.c` — all entries enqueue to `motor_ctrl` only.
+`motor_ctrl` holds the adapter mutex for the full burst/park/bench/anti-jam
+sequence and calls `motor_driver_start_*` / `motor_driver_stop` directly.
 
-Results arrive as `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in
-`app_event_q` (`app_event_post` timeout 0).
+Results arrive as `EVT_BURST_DONE`, `EVT_TIMED_RUN_DONE`, `EVT_MOTOR_FAULT`, or
+`EVT_PARK_DONE` in `app_event_q` (`app_event_post` timeout 0).
 
 ### `adc_port.h`
 

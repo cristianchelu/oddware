@@ -49,34 +49,28 @@ port_err_t motor_cli_parse_duration_ms(const char *text, uint32_t *duration_ms)
     return PORT_OK;
 }
 
-port_err_t motor_cli_run_fwd_ms(uint32_t duration_ms)
+typedef enum {
+    MOTOR_TIMED_IDLE = 0,
+    MOTOR_TIMED_WAIT,
+} motor_timed_cli_state_t;
+
+static motor_timed_cli_state_t s_timed_state = MOTOR_TIMED_IDLE;
+static char s_timed_verb[8];
+static char s_timed_test_line[48];
+
+static void motor_cli_timed_emit(const char *line)
 {
-    const motor_port_t *port = motor_port_get();
-
-    if (port == NULL || port->run_forward_ms == NULL) {
-        return PORT_ERR_IO;
-    }
-
-    return port->run_forward_ms(duration_ms);
+    app_log_info("cli", "%s", line);
+    (void)snprintf(s_timed_test_line, sizeof(s_timed_test_line), "%s", line);
 }
 
-port_err_t motor_cli_run_rev_ms(uint32_t duration_ms)
-{
-    const motor_port_t *port = motor_port_get();
-
-    if (port == NULL || port->run_reverse_ms == NULL) {
-        return PORT_ERR_IO;
-    }
-
-    return port->run_reverse_ms(duration_ms);
-}
-
-uint8_t motor_cli_handle_run(const char *verb,
-                               port_err_t (*run_ms)(uint32_t),
-                               uint8_t argc, char *argv[])
+static uint8_t motor_cli_handle_timed_run(const char *verb,
+                                          port_err_t (*request_ms)(uint32_t),
+                                          uint8_t argc, char *argv[])
 {
     uint32_t duration_ms;
     port_err_t err;
+    const motor_port_t *port = motor_port_get();
 
     if (argc < 1 || argv == NULL || argv[0] == NULL) {
         app_log_info("cli", "usage: motor %s <ms>", verb);
@@ -89,14 +83,110 @@ uint8_t motor_cli_handle_run(const char *verb,
         return 1;
     }
 
-    err = run_ms(duration_ms);
+    if (port == NULL || request_ms == NULL) {
+        motor_cli_print_fail(verb, PORT_ERR_IO);
+        return 1;
+    }
+
+    if (port->is_active != NULL && port->is_active()) {
+        motor_cli_print_fail(verb, PORT_ERR_BUSY);
+        return 1;
+    }
+
+    if (s_timed_state != MOTOR_TIMED_IDLE) {
+        motor_cli_print_fail(verb, PORT_ERR_BUSY);
+        return 1;
+    }
+
+    err = request_ms(duration_ms);
     if (err != PORT_OK) {
         motor_cli_print_fail(verb, err);
         return 1;
     }
 
-    app_log_info("cli", "motor %s ok", verb);
+    (void)snprintf(s_timed_verb, sizeof(s_timed_verb), "%s", verb);
+    s_timed_state = MOTOR_TIMED_WAIT;
+    motor_cli_timed_emit(
+        (strcmp(verb, "fwd") == 0) ? "motor fwd started" : "motor rev started");
     return 0;
+}
+
+uint8_t motor_cli_handle_fwd(uint8_t argc, char *argv[])
+{
+    const motor_port_t *port = motor_port_get();
+
+    if (port == NULL || port->request_timed_forward_ms == NULL) {
+        motor_cli_print_fail("fwd", PORT_ERR_IO);
+        return 1u;
+    }
+
+    return motor_cli_handle_timed_run("fwd", port->request_timed_forward_ms,
+                                      argc, argv);
+}
+
+uint8_t motor_cli_handle_rev(uint8_t argc, char *argv[])
+{
+    const motor_port_t *port = motor_port_get();
+
+    if (port == NULL || port->request_timed_reverse_ms == NULL) {
+        motor_cli_print_fail("rev", PORT_ERR_IO);
+        return 1u;
+    }
+
+    return motor_cli_handle_timed_run("rev", port->request_timed_reverse_ms,
+                                      argc, argv);
+}
+
+void motor_cli_on_timed_run_done(void)
+{
+    char line[32];
+
+    if (s_timed_state != MOTOR_TIMED_WAIT) {
+        return;
+    }
+
+    s_timed_state = MOTOR_TIMED_IDLE;
+    (void)snprintf(line, sizeof(line), "motor %s ok", s_timed_verb);
+    motor_cli_timed_emit(line);
+}
+
+void motor_cli_on_timed_run_fault(void)
+{
+    char line[40];
+
+    if (s_timed_state != MOTOR_TIMED_WAIT) {
+        return;
+    }
+
+    s_timed_state = MOTOR_TIMED_IDLE;
+    (void)snprintf(line, sizeof(line), "motor %s fault: stuck", s_timed_verb);
+    motor_cli_timed_emit(line);
+}
+
+void motor_cli_test_reset_timed(void)
+{
+    s_timed_state = MOTOR_TIMED_IDLE;
+    s_timed_verb[0] = '\0';
+    s_timed_test_line[0] = '\0';
+}
+
+bool motor_cli_test_take_timed_line(char *buf, size_t len)
+{
+    size_t n;
+
+    if (buf == NULL || len == 0u || s_timed_test_line[0] == '\0') {
+        return false;
+    }
+
+    n = strlen(s_timed_test_line);
+    if (n >= len) {
+        n = len - 1u;
+    }
+
+    memcpy(buf, s_timed_test_line, n);
+    buf[n] = '\0';
+    s_timed_test_line[0] = '\0';
+    return true;
 }
 
 typedef enum {

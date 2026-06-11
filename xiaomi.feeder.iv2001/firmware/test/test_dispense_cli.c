@@ -20,6 +20,7 @@ static void dispense_cli_test_reset_all(void)
     fake_motor_port_reset();
     fake_app_event_q_reset();
     dispense_cli_test_reset();
+    motor_cli_test_reset_timed();
     motor_cli_test_reset_park();
     app_test_reset();
     app_event_port_init();
@@ -32,7 +33,7 @@ void test_dispense_cli_posts_start_without_blocking_motor_run(void)
     TEST_ASSERT_EQUAL(0u, dispense_cli_handle(0u, NULL));
     assert_cli_body("dispense started");
 
-    TEST_ASSERT_EQUAL(0u, fake_motor_port_run_calls());
+    TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
     TEST_ASSERT_EQUAL(0u, fake_motor_port_burst_calls());
 
     TEST_ASSERT_TRUE(app_step());
@@ -88,5 +89,5 @@ void test_motor_park_cli_async_start(void)
     TEST_ASSERT_EQUAL(0u, motor_cli_handle_park());
     assert_cli_body("motor park started");
     TEST_ASSERT_EQUAL(1u, fake_motor_port_park_calls());
-    TEST_ASSERT_EQUAL(0u, fake_motor_port_run_calls());
+    TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
 }

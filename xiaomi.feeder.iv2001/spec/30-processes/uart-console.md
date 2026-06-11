@@ -730,46 +730,48 @@ before EN assert; not counted in `<ms>`. `<ms>` is EN-high spin time only.
 
 PH forward (P0.0 high). Parse strict unsigned decimal milliseconds; require
 `1 ≤ ms ≤ 20000`. Digits only — no leading/trailing whitespace, no
-`+` prefix, no leading zeros (`01` and `007` are rejected). Block the CLI task
-until the run completes (PH settle + spin + auto coast-stop).
+`+` prefix, no leading zeros (`01` and `007` are rejected). Enqueues a timed
+bench run on `motor_ctrl` via `motor_port.request_timed_forward_ms` — no ADC
+mux, stall detection, or index supervision; only the requested EN-high spin cap.
+
+The CLI task prints the started line and returns to the prompt **before** motion
+ends. Completion or fault lines arrive later on separate UART lines.
 
 | Outcome | UART response |
 |---------|---------------|
-| Success | `motor fwd ok` |
+| Accepted | `motor fwd started` |
 | Missing duration | `usage: motor fwd <ms>` |
 | Out of range | `invalid duration` |
-| Run already in progress | `motor fwd failed (busy)` |
-| Other failure | `motor fwd failed (<reason>)` |
+| Motor busy / queue full / prior fwd/rev still waiting | `motor fwd failed (busy)` |
+| Other enqueue failure | `motor fwd failed (<reason>)` |
+| Completed | `motor fwd ok` |
+| Driver fault during run | `motor fwd fault: stuck` |
 
 ### `motor rev <ms>`
 
-PH reverse (P0.0 low). Same duration parsing and range rules as `motor fwd`.
-Block the CLI task until the run completes.
+PH reverse (P0.0 low). Same duration parsing, range rules, and async response
+sequence as `motor fwd`. Uses `motor_port.request_timed_reverse_ms`.
 
 | Outcome | UART response |
 |---------|---------------|
-| Success | `motor rev ok` |
+| Accepted | `motor rev started` |
 | Missing duration | `usage: motor rev <ms>` |
 | Out of range | `invalid duration` |
-| Run already in progress | `motor rev failed (busy)` |
-| Other failure | `motor rev failed (<reason>)` |
+| Motor busy / queue full / prior fwd/rev still waiting | `motor rev failed (busy)` |
+| Other enqueue failure | `motor rev failed (<reason>)` |
+| Completed | `motor rev ok` |
+| Driver fault during run | `motor rev fault: stuck` |
 
-`busy` is returned when a run is already active on `motor_port` (adapter mutex
-held for the full PH settle + spin), when the mutex cannot be taken within
-`[tune]` 5000 ms, or when an AW9523B pin write cannot acquire the EXPANDER
-WFCI loan.
+`busy` is returned when `motor_ctrl` is active, the command queue is full, or
+this CLI handler is already waiting for a prior fwd/rev completion event.
 
 ### Limitations (bench HAL)
 
-- `motor fwd` and `motor rev` block the CLI task for PH settle + `<ms>`; no
-  other UART command is processed until success or failure.
 - No mid-run operator abort; wait for auto-stop or power-cycle.
-- EN/PH are latched on the expander between brief I2C writes; other tasks may
-  still use the AW9523B during the spin window. Bench runs do not hold an
-  exclusive expander loan for the full `<ms>`.
-- Preemptive stop and concurrent motor I/O are owned by `motor_ctrl` (see
-  [task-model.md](../40-architecture/task-model.md) § Bench HAL vs motor_ctrl).
-- While `motor_ctrl` is active, `motor fwd` and `motor rev` return
+- Bench timed runs do not use index IRQ or ADC jam stop; product dispense/park
+  still owns those paths on `motor_ctrl`.
+- While `motor_ctrl` is active (burst, park, anti-jam, or another bench run),
+  new `motor fwd` / `motor rev` enqueue attempts return
   `motor fwd failed (busy)` / `motor rev failed (busy)`.
 
 ### `motor park`

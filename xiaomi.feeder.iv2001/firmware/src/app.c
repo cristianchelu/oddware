@@ -391,10 +391,15 @@ void app_dispatch(const app_event_t *ev)
             hopper_input_notify_dispense_complete();
         }
         motor_cli_on_park_fault();
+        motor_cli_on_timed_run_fault();
         break;
 
     case EVT_PARK_DONE:
         motor_cli_on_park_done();
+        break;
+
+    case EVT_TIMED_RUN_DONE:
+        motor_cli_on_timed_run_done();
         break;
 
     default:

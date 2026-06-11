@@ -27,6 +27,7 @@ typedef enum {
     EVT_BURST_DONE,
     EVT_MOTOR_FAULT,
     EVT_PARK_DONE,
+    EVT_TIMED_RUN_DONE,
 } app_event_type_t;
 
 typedef enum {

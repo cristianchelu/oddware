@@ -50,15 +50,15 @@ that budget. `[design]`
 
 ### Bench HAL vs motor_ctrl
 
-Bench UART `motor fwd <ms>` / `motor rev <ms>` are synchronous shortcuts on the
-CLI task using `motor_port.run_forward_ms` / `run_reverse_ms`; there is no
-separate off/abort command (see
-[uart-console.md](../30-processes/uart-console.md) § motor commands).
+Bench UART `motor fwd <ms>` / `motor rev <ms>` enqueue timed runs on
+`motor_ctrl` via `motor_port.request_timed_forward_ms` /
+`request_timed_reverse_ms` — same non-blocking CLI pattern as `dispense` and
+`motor park` (see [uart-console.md](../30-processes/uart-console.md) § motor
+commands). There is no separate off/abort command.
 
-`motor_ctrl` (HIGH) owns product motor I/O: async bursts, index IRQ, ADC jam
-stop, and preemptive `stop`. When `motor_ctrl` lands, bench CLI may remain a
-thin timed wrapper or post to the task; operator abort is a `motor_ctrl` /
-product concern, not bench CLI.
+`motor_ctrl` (HIGH) owns all motor I/O: product bursts/park (index IRQ, ADC jam
+stop), bench timed runs (PH settle + EN spin only), and preemptive `stop`.
+Operator abort is a `motor_ctrl` / product concern, not bench CLI.
 
 ## Event queue (`app_event_q`)
 
@@ -133,7 +133,7 @@ buses. There is no data-path contention between them:
 
 | Bus | Peripherals | Owner during motor run |
 |-----|-------------|------------------------|
-| **I2C** (AW9523B @ 0x58) | Motor EN/PH (P0.0/P0.1), index IR (P0.6/P0.7), weight scale power (P0.2), display power (P0.5) | Production dispense: `motor_ctrl` (HIGH). Bench UART `motor fwd` / `motor rev`: CLI task via `motor_port` (synchronous; see § Bench HAL vs motor_ctrl). |
+| **I2C** (AW9523B @ 0x58) | Motor EN/PH (P0.0/P0.1), index IR (P0.6/P0.7), weight scale power (P0.2), display power (P0.5) | `motor_ctrl` (HIGH) for dispense, park, and bench timed runs |
 | **UART2** (GPIO11/12) | CS1270 weight scale reads | `app` -- reads between bursts only |
 | **GPIO bit-bang** (GPIO1/GPIO13) | TM1637 display data | `app` -- refreshes between bursts (~1 ms critical section) |
 

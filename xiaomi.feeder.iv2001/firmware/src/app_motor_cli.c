@@ -10,12 +10,12 @@
 
 static uint8_t motor_cli_fwd_cmd(uint8_t argc, char *argv[])
 {
-    return motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, argc, argv);
+    return motor_cli_handle_fwd(argc, argv);
 }
 
 static uint8_t motor_cli_rev_cmd(uint8_t argc, char *argv[])
 {
-    return motor_cli_handle_run("rev", motor_cli_run_rev_ms, argc, argv);
+    return motor_cli_handle_rev(argc, argv);
 }
 
 static uint8_t motor_cli_park_cmd(uint8_t argc, char *argv[])

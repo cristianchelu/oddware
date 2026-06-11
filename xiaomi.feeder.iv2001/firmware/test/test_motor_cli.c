@@ -4,31 +4,43 @@
 
 #include "unity.h"
 
+#include "app.h"
+#include "app_event.h"
+#include "app_event_port.h"
 #include "cli_test_assert.h"
 #include "fake_motor_port.h"
 #include "motor_cli.h"
 #include "motor_port_provider_host.h"
 
-static void assert_motor_cli_fail_msg(const char *verb, port_err_t err,
-                                      const char *expect)
+extern void fake_app_event_q_reset(void);
+
+static void motor_cli_test_reset_all(void)
 {
-    cli_test_reset();
-    motor_cli_print_fail(verb, err);
-    assert_cli_body(expect);
+    motor_port_host_reset();
+    fake_motor_port_reset();
+    fake_app_event_q_reset();
+    motor_cli_test_reset_timed();
+    motor_cli_test_reset_park();
+    app_test_reset();
+    app_event_port_init();
 }
 
-static void assert_motor_cli_handle_run(const char *verb,
-                                        port_err_t (*run_ms)(uint32_t),
-                                        uint8_t argc, char *argv[],
+static void assert_motor_cli_handle_fwd(uint8_t argc, char *argv[],
                                         const char *expect,
                                         uint8_t expect_rc)
 {
-    uint8_t rc;
-
     cli_test_reset();
-    rc = motor_cli_handle_run(verb, run_ms, argc, argv);
+    TEST_ASSERT_EQUAL(expect_rc, motor_cli_handle_fwd(argc, argv));
     assert_cli_body(expect);
-    TEST_ASSERT_EQUAL(expect_rc, rc);
+}
+
+static void assert_motor_cli_handle_rev(uint8_t argc, char *argv[],
+                                        const char *expect,
+                                        uint8_t expect_rc)
+{
+    cli_test_reset();
+    TEST_ASSERT_EQUAL(expect_rc, motor_cli_handle_rev(argc, argv));
+    assert_cli_body(expect);
 }
 
 void test_motor_cli_parse_duration_accepts_valid_range(void)
@@ -80,145 +92,170 @@ void test_motor_cli_parse_rejects_null_args(void)
                       motor_cli_parse_duration_ms("100", NULL));
 }
 
-void test_motor_cli_run_fwd_ms_delegates_to_port(void)
-{
-    fake_motor_port_reset();
-    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_run_fwd_ms(500u));
-    TEST_ASSERT_EQUAL(1u, fake_motor_port_run_calls());
-    TEST_ASSERT_EQUAL(500u, fake_motor_port_last_duration_ms());
-}
-
-void test_motor_cli_run_fwd_ms_propagates_port_error(void)
-{
-    fake_motor_port_reset();
-    fake_motor_port_set_run_err(PORT_ERR_BUSY);
-
-    TEST_ASSERT_EQUAL(PORT_ERR_BUSY, motor_cli_run_fwd_ms(100u));
-}
-
-void test_motor_cli_run_rev_ms_delegates_to_port(void)
-{
-    fake_motor_port_reset();
-    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_run_rev_ms(300u));
-    TEST_ASSERT_EQUAL(1u, fake_motor_port_reverse_calls());
-    TEST_ASSERT_EQUAL(300u, fake_motor_port_last_reverse_duration_ms());
-}
-
-void test_motor_cli_run_rev_ms_propagates_port_error(void)
-{
-    fake_motor_port_reset();
-    fake_motor_port_set_reverse_err(PORT_ERR_IO);
-
-    TEST_ASSERT_EQUAL(PORT_ERR_IO, motor_cli_run_rev_ms(100u));
-}
-
 void test_motor_cli_print_fail_fwd_busy(void)
 {
-    assert_motor_cli_fail_msg("fwd", PORT_ERR_BUSY, "motor fwd failed (busy)");
+    cli_test_reset();
+    motor_cli_print_fail("fwd", PORT_ERR_BUSY);
+    assert_cli_body("motor fwd failed (busy)");
 }
 
 void test_motor_cli_print_fail_rev_io(void)
 {
-    assert_motor_cli_fail_msg("rev", PORT_ERR_IO, "motor rev failed (io)");
+    cli_test_reset();
+    motor_cli_print_fail("rev", PORT_ERR_IO);
+    assert_cli_body("motor rev failed (io)");
 }
 
 void test_motor_cli_print_fail_fwd_io(void)
 {
-    assert_motor_cli_fail_msg("fwd", PORT_ERR_IO, "motor fwd failed (io)");
+    cli_test_reset();
+    motor_cli_print_fail("fwd", PORT_ERR_IO);
+    assert_cli_body("motor fwd failed (io)");
 }
 
 void test_motor_cli_print_fail_rev_busy(void)
 {
-    assert_motor_cli_fail_msg("rev", PORT_ERR_BUSY, "motor rev failed (busy)");
+    cli_test_reset();
+    motor_cli_print_fail("rev", PORT_ERR_BUSY);
+    assert_cli_body("motor rev failed (busy)");
 }
 
-void test_motor_cli_handle_run_fwd_ok(void)
+void test_motor_cli_handle_fwd_async_start(void)
 {
     char arg0[] = "500";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, argv,
-                                "motor fwd ok", 0u);
-    TEST_ASSERT_EQUAL(500u, fake_motor_port_last_duration_ms());
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd started", 0u);
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_timed_fwd_calls());
+    TEST_ASSERT_EQUAL(500u, fake_motor_port_last_timed_fwd_ms());
 }
 
-void test_motor_cli_handle_run_rev_ok(void)
+void test_motor_cli_handle_rev_async_start(void)
 {
     char arg0[] = "300";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    assert_motor_cli_handle_run("rev", motor_cli_run_rev_ms, 1u, argv,
-                                "motor rev ok", 0u);
-    TEST_ASSERT_EQUAL(300u, fake_motor_port_last_reverse_duration_ms());
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_rev(1u, argv, "motor rev started", 0u);
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_timed_rev_calls());
+    TEST_ASSERT_EQUAL(300u, fake_motor_port_last_timed_rev_ms());
 }
 
-void test_motor_cli_handle_run_missing_duration_usage(void)
+void test_motor_cli_handle_fwd_done_after_event(void)
 {
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 0u, NULL,
-                                "usage: motor fwd <ms>", 1u);
-    assert_motor_cli_handle_run("rev", motor_cli_run_rev_ms, 0u, NULL,
-                                "usage: motor rev <ms>", 1u);
+    char arg0[] = "500";
+    char *argv[] = { arg0 };
+    app_event_t ev;
+
+    motor_cli_test_reset_all();
+    (void)motor_cli_handle_fwd(1u, argv);
+
+    ev.type = EVT_TIMED_RUN_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    cli_test_reset();
+    TEST_ASSERT_TRUE(app_step());
+    assert_cli_body("motor fwd ok");
 }
 
-void test_motor_cli_handle_run_invalid_duration(void)
+void test_motor_cli_handle_rev_fault_after_event(void)
+{
+    char arg0[] = "300";
+    char *argv[] = { arg0 };
+    app_event_t ev;
+
+    motor_cli_test_reset_all();
+    (void)motor_cli_handle_rev(1u, argv);
+
+    ev.type = EVT_MOTOR_FAULT;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    cli_test_reset();
+    TEST_ASSERT_TRUE(app_step());
+    assert_cli_body("motor rev fault: stuck");
+}
+
+void test_motor_cli_handle_fwd_missing_duration_usage(void)
+{
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_fwd(0u, NULL, "usage: motor fwd <ms>", 1u);
+    assert_motor_cli_handle_rev(0u, NULL, "usage: motor rev <ms>", 1u);
+}
+
+void test_motor_cli_handle_fwd_invalid_duration(void)
 {
     char arg0[] = "abc";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, argv,
-                                "invalid duration", 1u);
-    TEST_ASSERT_EQUAL(0u, fake_motor_port_run_calls());
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_fwd(1u, argv, "invalid duration", 1u);
+    TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
 }
 
-void test_motor_cli_handle_run_propagates_port_busy(void)
+void test_motor_cli_handle_fwd_propagates_port_busy(void)
 {
     char arg0[] = "100";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    fake_motor_port_set_run_err(PORT_ERR_BUSY);
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, argv,
-                                "motor fwd failed (busy)", 1u);
+    motor_cli_test_reset_all();
+    fake_motor_port_set_timed_fwd_err(PORT_ERR_BUSY);
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd failed (busy)", 1u);
 }
 
-void test_motor_cli_handle_run_propagates_rev_port_busy(void)
+void test_motor_cli_handle_rev_propagates_port_busy(void)
 {
     char arg0[] = "100";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    fake_motor_port_set_reverse_err(PORT_ERR_BUSY);
-    assert_motor_cli_handle_run("rev", motor_cli_run_rev_ms, 1u, argv,
-                                "motor rev failed (busy)", 1u);
+    motor_cli_test_reset_all();
+    fake_motor_port_set_timed_rev_err(PORT_ERR_BUSY);
+    assert_motor_cli_handle_rev(1u, argv, "motor rev failed (busy)", 1u);
 }
 
-void test_motor_cli_handle_run_propagates_port_io(void)
+void test_motor_cli_handle_fwd_propagates_port_io(void)
 {
     char arg0[] = "100";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    fake_motor_port_set_run_err(PORT_ERR_IO);
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, argv,
-                                "motor fwd failed (io)", 1u);
+    motor_cli_test_reset_all();
+    fake_motor_port_set_timed_fwd_err(PORT_ERR_IO);
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd failed (io)", 1u);
 }
 
-void test_motor_cli_handle_run_argv_null_with_argc(void)
+void test_motor_cli_handle_fwd_argv_null_with_argc(void)
 {
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, NULL,
-                                "usage: motor fwd <ms>", 1u);
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_fwd(1u, NULL, "usage: motor fwd <ms>", 1u);
 }
 
-void test_motor_cli_handle_run_fwd_min_duration(void)
+void test_motor_cli_handle_fwd_busy_when_motor_active(void)
+{
+    char arg0[] = "100";
+    char *argv[] = { arg0 };
+
+    motor_cli_test_reset_all();
+    fake_motor_port_set_active(true);
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd failed (busy)", 1u);
+    TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
+}
+
+void test_motor_cli_handle_fwd_busy_while_waiting(void)
+{
+    char arg0[] = "100";
+    char *argv[] = { arg0 };
+
+    motor_cli_test_reset_all();
+    (void)motor_cli_handle_fwd(1u, argv);
+    cli_test_reset();
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd failed (busy)", 1u);
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_timed_fwd_calls());
+}
+
+void test_motor_cli_handle_fwd_min_duration(void)
 {
     char arg0[] = "1";
     char *argv[] = { arg0 };
 
-    fake_motor_port_reset();
-    assert_motor_cli_handle_run("fwd", motor_cli_run_fwd_ms, 1u, argv,
-                                "motor fwd ok", 0u);
-    TEST_ASSERT_EQUAL(1u, fake_motor_port_last_duration_ms());
+    motor_cli_test_reset_all();
+    assert_motor_cli_handle_fwd(1u, argv, "motor fwd started", 0u);
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_last_timed_fwd_ms());
 }

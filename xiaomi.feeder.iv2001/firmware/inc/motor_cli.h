@@ -15,11 +15,12 @@
 
 void motor_cli_print_fail(const char *verb, port_err_t err);
 port_err_t motor_cli_parse_duration_ms(const char *text, uint32_t *duration_ms);
-port_err_t motor_cli_run_fwd_ms(uint32_t duration_ms);
-port_err_t motor_cli_run_rev_ms(uint32_t duration_ms);
-uint8_t motor_cli_handle_run(const char *verb,
-                               port_err_t (*run_ms)(uint32_t),
-                               uint8_t argc, char *argv[]);
+uint8_t motor_cli_handle_fwd(uint8_t argc, char *argv[]);
+uint8_t motor_cli_handle_rev(uint8_t argc, char *argv[]);
+void motor_cli_on_timed_run_done(void);
+void motor_cli_on_timed_run_fault(void);
+void motor_cli_test_reset_timed(void);
+bool motor_cli_test_take_timed_line(char *buf, size_t len);
 uint8_t motor_cli_handle_park(void);
 void motor_cli_on_park_done(void);
 void motor_cli_on_park_fault(void);

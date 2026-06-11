@@ -11,6 +11,16 @@
 
 static bool s_use_integration;
 
+static port_err_t motor_port_integration_timed_forward_ms(uint32_t duration_ms)
+{
+    return motor_ctrl_request_timed_forward_ms(duration_ms);
+}
+
+static port_err_t motor_port_integration_timed_reverse_ms(uint32_t duration_ms)
+{
+    return motor_ctrl_request_timed_reverse_ms(duration_ms);
+}
+
 static port_err_t motor_port_integration_burst(uint8_t pulse_target,
                                                uint16_t timeout_ms)
 {
@@ -33,8 +43,8 @@ static bool motor_port_integration_is_active(void)
 }
 
 static const motor_port_t s_integration_motor_port = {
-    .run_forward_ms = NULL,
-    .run_reverse_ms = NULL,
+    .request_timed_forward_ms = motor_port_integration_timed_forward_ms,
+    .request_timed_reverse_ms = motor_port_integration_timed_reverse_ms,
     .request_burst = motor_port_integration_burst,
     .request_park = motor_port_integration_park,
     .stop = motor_port_integration_stop,

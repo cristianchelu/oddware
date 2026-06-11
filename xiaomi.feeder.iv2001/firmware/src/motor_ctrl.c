@@ -27,6 +27,8 @@
 typedef enum {
     MOTOR_CMD_BURST = 0,
     MOTOR_CMD_PARK,
+    MOTOR_CMD_TIMED_FWD,
+    MOTOR_CMD_TIMED_REV,
     MOTOR_CMD_STOP,
 } motor_cmd_kind_t;
 
@@ -41,6 +43,7 @@ typedef enum {
     MOTOR_PHASE_IDLE = 0,
     MOTOR_PHASE_RUN_BURST,
     MOTOR_PHASE_RUN_PARK,
+    MOTOR_PHASE_RUN_BENCH,
     MOTOR_PHASE_ANTIJAM_REV,
     MOTOR_PHASE_ANTIJAM_WIGGLE_FWD,
     MOTOR_PHASE_ANTIJAM_WIGGLE_REV,
@@ -303,6 +306,17 @@ static void motor_ctrl_finish_park_done(void)
     motor_ctrl_post_app_event(EVT_PARK_DONE);
 }
 
+static void motor_ctrl_finish_bench_done(void)
+{
+    if (!motor_ctrl_force_stop()) {
+        motor_ctrl_finish_fault(MOTOR_FAULT_DRIVER_STOP);
+        return;
+    }
+
+    motor_ctrl_session_teardown();
+    motor_ctrl_post_app_event(EVT_TIMED_RUN_DONE);
+}
+
 static void motor_ctrl_note_io_failure(void)
 {
     if (s_io_fail_streak < 255u) {
@@ -521,6 +535,34 @@ static port_err_t motor_ctrl_begin_run(bool park)
     return PORT_OK;
 }
 
+static port_err_t motor_ctrl_begin_bench_run(bool reverse)
+{
+    port_err_t err;
+
+    motor_ctrl_driver_ensure();
+
+    err = reverse ? motor_driver_start_reverse(&s_driver)
+                  : motor_driver_start_forward(&s_driver);
+    if (err != PORT_OK) {
+        motor_ctrl_finish_fault(MOTOR_FAULT_DRIVER_START);
+        return err;
+    }
+
+    s_phase = MOTOR_PHASE_RUN_BENCH;
+    s_phase_end_tick = motor_ctrl_tick_now() +
+                       pdMS_TO_TICKS(s_active_cmd.timeout_ms);
+    return PORT_OK;
+}
+
+static void motor_ctrl_poll_bench(TickType_t now)
+{
+    if ((int32_t)(now - s_phase_end_tick) < 0) {
+        return;
+    }
+
+    motor_ctrl_finish_bench_done();
+}
+
 static void motor_ctrl_retry_active_cmd(void)
 {
     if (s_active_cmd.kind == MOTOR_CMD_PARK) {
@@ -725,6 +767,10 @@ static void motor_ctrl_handle_cmd(const motor_cmd_t *cmd)
         }
 
         (void)motor_ctrl_begin_run(true);
+    } else if (cmd->kind == MOTOR_CMD_TIMED_FWD) {
+        (void)motor_ctrl_begin_bench_run(false);
+    } else if (cmd->kind == MOTOR_CMD_TIMED_REV) {
+        (void)motor_ctrl_begin_bench_run(true);
     } else {
         (void)motor_ctrl_begin_run(false);
     }
@@ -752,6 +798,8 @@ static void motor_ctrl_task(void *param)
             if (s_phase == MOTOR_PHASE_RUN_BURST ||
                 s_phase == MOTOR_PHASE_RUN_PARK) {
                 motor_ctrl_poll_run(now);
+            } else if (s_phase == MOTOR_PHASE_RUN_BENCH) {
+                motor_ctrl_poll_bench(now);
             } else {
                 motor_ctrl_poll_antijam(now);
             }
@@ -833,6 +881,36 @@ port_err_t motor_ctrl_request_park(uint8_t max_pulses)
     return motor_ctrl_enqueue(&cmd);
 }
 
+static port_err_t motor_ctrl_request_timed_run(bool reverse, uint32_t duration_ms)
+{
+    motor_cmd_t cmd = {
+        .kind = reverse ? MOTOR_CMD_TIMED_REV : MOTOR_CMD_TIMED_FWD,
+        .pulse_target = 0u,
+        .timeout_ms = (uint16_t)duration_ms,
+        .max_pulses = 0u,
+    };
+
+    if (duration_ms == 0u || duration_ms > MOTOR_RUN_MS_MAX) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    if (motor_ctrl_is_active()) {
+        return PORT_ERR_BUSY;
+    }
+
+    return motor_ctrl_enqueue(&cmd);
+}
+
+port_err_t motor_ctrl_request_timed_forward_ms(uint32_t duration_ms)
+{
+    return motor_ctrl_request_timed_run(false, duration_ms);
+}
+
+port_err_t motor_ctrl_request_timed_reverse_ms(uint32_t duration_ms)
+{
+    return motor_ctrl_request_timed_run(true, duration_ms);
+}
+
 port_err_t motor_ctrl_request_stop(void)
 {
     motor_cmd_t cmd = {
@@ -893,6 +971,8 @@ void motor_ctrl_test_poll(void)
         if (s_phase == MOTOR_PHASE_RUN_BURST ||
             s_phase == MOTOR_PHASE_RUN_PARK) {
             motor_ctrl_poll_run(now);
+        } else if (s_phase == MOTOR_PHASE_RUN_BENCH) {
+            motor_ctrl_poll_bench(now);
         } else {
             motor_ctrl_poll_antijam(now);
         }

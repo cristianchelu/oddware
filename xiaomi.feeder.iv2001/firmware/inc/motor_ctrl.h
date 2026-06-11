@@ -24,6 +24,8 @@ bool motor_ctrl_is_active(void);
 
 port_err_t motor_ctrl_request_burst(uint8_t pulse_target, uint16_t timeout_ms);
 port_err_t motor_ctrl_request_park(uint8_t max_pulses);
+port_err_t motor_ctrl_request_timed_forward_ms(uint32_t duration_ms);
+port_err_t motor_ctrl_request_timed_reverse_ms(uint32_t duration_ms);
 port_err_t motor_ctrl_request_stop(void);
 
 #endif /* MOTOR_CTRL_H */

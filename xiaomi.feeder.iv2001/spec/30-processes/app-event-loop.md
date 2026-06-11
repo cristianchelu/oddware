@@ -73,12 +73,13 @@ pixels.
 
 | `EVT_DISPENSE_START` | UART `dispense` CLI (or future button/MQTT) | Enqueue `motor_port.request_burst(1, 8000)` only; no park |
 | `EVT_BURST_DONE` | `motor_ctrl` | UART `dispense done` when a dispense burst was active; `hopper_input_notify_dispense_complete()`; otherwise no-op |
-| `EVT_MOTOR_FAULT` | `motor_ctrl` | UART `dispense fault: stuck` or `motor park fault: stuck` per active CLI command; `hopper_input_notify_dispense_complete()` when dispense was active |
+| `EVT_MOTOR_FAULT` | `motor_ctrl` | UART `dispense fault: stuck`, `motor park fault: stuck`, or `motor fwd/rev fault: stuck` per active CLI command; `hopper_input_notify_dispense_complete()` when dispense was active |
 | `EVT_PARK_DONE` | `motor_ctrl` | UART `motor park done` when park was active |
+| `EVT_TIMED_RUN_DONE` | `motor_ctrl` | UART `motor fwd ok` or `motor rev ok` when the matching bench timed run was active |
 
-`dispense` and `motor park` UART commands are fully non-blocking on the CLI
-task: started/busy lines print immediately; done/fault lines print when `app`
-handles the matching completion event.
+`dispense`, `motor park`, and `motor fwd` / `motor rev` UART commands are fully
+non-blocking on the CLI task: started/busy lines print immediately; done/fault
+lines print when `app` handles the matching completion event.
 
 Reserved for later phases (handlers are no-ops when posted): multi-burst gram
 targets, dispense queue, MQTT dispense dispatch, provisioning submit, OTA
