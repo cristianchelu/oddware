@@ -183,6 +183,19 @@ See [app-logging.md](../30-processes/app-logging.md).
 `firmware/src/*.c` fails the build (`app_log.c` is exempt). Use `snprintf` for
 string assembly; route UART diagnostics through `app_log_*`.
 
+### Remote telnet CLI (`REMOTE_CLI_ENABLE`)
+
+| Setting | Location | Default |
+|---------|----------|---------|
+| `REMOTE_CLI_ENABLE` | `firmware/GCC/feature.mk` | `y` (current bring-up default); must be `n` before production release |
+
+When `y`, `remote_cli.c` and `console_uart.c` link into the ARM image;
+`console_mux.c` is always linked (UART override mux when remote CLI is enabled).
+`remote_cli` starts after `EVT_WIFI_STA_READY`. Host tests compile the session
+mux and log-mirror logic with `HOST_TEST` (no lwIP).
+
+See [uart-console.md](../30-processes/uart-console.md) § Remote telnet console.
+
 ## `tools/build-env.sh`
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.

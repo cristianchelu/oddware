@@ -41,6 +41,8 @@ The SDK creates these internally. Their priorities are fixed:
 | `mqtt_cn` | NORMAL − 1 | 3072 B | Ephemeral | Blocking `ConnectNetwork` + `MQTTConnect` + post-connect subscribe/publish; self-deletes on completion |
 | `ota_dl` | NORMAL | 4096 B | Ephemeral | Spawned during OTA download only, posts progress to `app_event_q`, self-deletes on completion |
 | `motor_ctrl` | HIGH | 2048 B | Persistent (when dispense features land) | Safety-critical motor I2C: receives fault notifications from ADC ISR, performs protective I2C writes, posts `EVT_MOTOR_FAULT` to `app_event_q` |
+| `remote_cli` | NORMAL | `[tune]` 4096 B | Persistent when `REMOTE_CLI_ENABLE=y` | TCP listen/accept on port 2323; runs MiniCLI on the active socket; attaches/detaches telnet `app_log` mirror; all socket I/O in this task only |
+| `app_cli` | NORMAL | 4096 B | Persistent | UART0 MiniCLI; polls UART for local override while a remote session is active |
 
 `motor_ctrl` runs at HIGH priority -- above the WiFi `net` task -- because
 mechanical damage from a stalled motor is a harder failure than a missed

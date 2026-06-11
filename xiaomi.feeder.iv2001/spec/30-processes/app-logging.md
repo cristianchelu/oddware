@@ -81,8 +81,12 @@ Do not enable additional SDK debug flags without spec review.
 
 | Sink | When |
 |------|------|
-| UART0 via `log_write()` (board `io_def` DMA console, 115200 8N1) | After `bsp_io_def_uart_init()` in `prvSetupHardware()` |
-| Optional mirror | Registered via `app_log_set_sink`; invoked after UART write |
+| UART0 via `log_write()` (board `io_def` DMA console, 115200 8N1) | Always (after `bsp_io_def_uart_init()` in `prvSetupHardware()`) |
+| Telnet mirror | When `REMOTE_CLI_ENABLE` and an active remote CLI session; registered via `app_log_set_sink`, invoked after UART write |
+
+UART is never exclusive — telnet mirror is attach-on-connect,
+detach-on-disconnect or UART override ([uart-console.md](uart-console.md) §
+Remote telnet console).
 
 `app_log_init()` does not configure UART — it only resets mirror-sink state.
 Device output shares the MiniCLI `printf` path (`log_write` in `io_def.c`).

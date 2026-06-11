@@ -28,6 +28,11 @@
 #include "app_mqtt_cli.h"
 #include "provision.h"
 
+#if REMOTE_CLI_ENABLE
+#include "console_mux.h"
+#include "remote_cli.h"
+#endif
+
 #define CLI_HISTORY_LINES   20
 #define CLI_HISTORY_LINE    128
 
@@ -70,6 +75,23 @@ static uint8_t app_cli_dispense(uint8_t argc, char *argv[])
     return dispense_cli_handle(argc, argv);
 }
 
+static uint8_t app_cli_remote_exit(uint8_t argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+
+#if REMOTE_CLI_ENABLE
+    if (console_mux_remote_active()) {
+        app_log_info("cli", "remote session ended");
+        remote_cli_request_disconnect();
+        return 0;
+    }
+#endif
+
+    app_log_info("cli", "not in remote session");
+    return 0;
+}
+
 static uint8_t app_cli_config_factory_reset(uint8_t argc, char *argv[])
 {
     (void)argc;
@@ -107,6 +129,7 @@ static cmd_t app_cli_cmds[] = {
     { "motor",   "motor fwd|rev <ms>|park",   NULL, motor_cli_subcmds },
     { "dispense", "dispense one portion (async)", app_cli_dispense, NULL },
     { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
+    { "exit",   "end remote session (no-op on UART)", app_cli_remote_exit, NULL },
     { NULL, NULL, NULL, NULL },
 };
 
@@ -118,30 +141,75 @@ static cli_t s_cli = {
     .cmd   = app_cli_cmds,
 };
 
-static void app_cli_task(void *param)
+static void app_cli_history_bind(cli_t *cli,
+                                 char (*lines)[CLI_HISTORY_LINE],
+                                 char **ptrs,
+                                 char *input,
+                                 char *parse_token)
 {
-    cli_history_t *hist = &s_cli.history;
+    cli_history_t *hist = &cli->history;
     int i;
 
-    (void)param;
-
     for (i = 0; i < CLI_HISTORY_LINES; i++) {
-        s_history_ptrs[i] = s_history_lines[i];
+        ptrs[i] = lines[i];
     }
 
-    hist->history     = s_history_ptrs;
-    hist->input       = s_history_input;
-    hist->parse_token = s_history_parse_token;
+    hist->history     = ptrs;
+    hist->input       = input;
+    hist->parse_token = parse_token;
     hist->history_max = CLI_HISTORY_LINES;
     hist->line_max    = CLI_HISTORY_LINE;
     hist->index       = 0;
     hist->position    = 0;
     hist->full        = 0;
+}
 
+void app_cli_session_init(cli_t *cli, int (*get)(void), int (*put)(int))
+{
+    static char remote_lines[CLI_HISTORY_LINES][CLI_HISTORY_LINE];
+    static char *remote_ptrs[CLI_HISTORY_LINES];
+    static char remote_input[CLI_HISTORY_LINE];
+    static char remote_parse_token[CLI_HISTORY_LINE];
+
+    app_cli_history_bind(cli, remote_lines, remote_ptrs,
+                         remote_input, remote_parse_token);
+
+    cli->state = 1;
+    cli->echo  = 0;
+    cli->get   = get;
+    cli->put   = put;
+    cli->cmd   = app_cli_cmds;
+    cli_init(cli);
+}
+
+static void app_cli_task(void *param)
+{
+    (void)param;
+
+    app_cli_history_bind(&s_cli, s_history_lines, s_history_ptrs,
+                         s_history_input, s_history_parse_token);
+    s_cli.state = 1;
+    s_cli.echo  = 0;
+    s_cli.get   = __io_getchar;
+    s_cli.put   = __io_putchar;
+    s_cli.cmd   = app_cli_cmds;
     cli_init(&s_cli);
 
+#if REMOTE_CLI_ENABLE
+    console_mux_init();
+#endif
+
     for (;;) {
+#if REMOTE_CLI_ENABLE
+        if (console_mux_remote_active()) {
+            remote_cli_poll_override();
+            vTaskDelay(1);
+        } else {
+            cli_task();
+        }
+#else
         cli_task();
+#endif
     }
 }
 

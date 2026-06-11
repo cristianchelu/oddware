@@ -86,6 +86,14 @@ APP_FILES      += $(APP_PATH_SRC)/app_log.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c
 APP_FILES      += $(APP_PATH_SRC)/app_cli.c
+APP_FILES      += $(APP_PATH_SRC)/console_mux.c
+ifeq ($(REMOTE_CLI_ENABLE),y)
+CFLAGS += -DREMOTE_CLI_ENABLE=1
+APP_FILES      += $(APP_PATH_SRC)/console_uart.c
+APP_FILES      += $(APP_PATH_SRC)/remote_cli.c
+else
+CFLAGS += -DREMOTE_CLI_ENABLE=0
+endif
 APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
 APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c

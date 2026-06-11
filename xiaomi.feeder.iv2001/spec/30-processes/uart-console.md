@@ -809,6 +809,80 @@ ends. Completion or fault lines arrive later on separate UART lines.
 | Burst completed | `dispense done` |
 | Anti-jam exhausted | `dispense fault: stuck` |
 
+## Remote telnet console
+
+Development-only TCP transport for the same MiniCLI command tree as UART0.
+Compile-time gated by `REMOTE_CLI_ENABLE` in `firmware/GCC/feature.mk` (`y`
+during current bring-up; flip to `n` before production release). Never ship
+production images with remote CLI enabled. `[design]`
+
+### Transport
+
+| Parameter | Value |
+|-----------|-------|
+| Protocol | Minimal telnet (RFC 854 subset): 8-bit transparent stream; strips IAC negotiation; replies `WONT`/`DONT` to client `DO`/`WILL`; no server-initiated options `[design]` |
+| Port | `[tune]` 2323 |
+| Availability | After STA has a routable IP (`EVT_WIFI_STA_READY`); listener not started during AP provisioning |
+| Sessions | Single client — a second connect while one session is active is accepted and immediately closed |
+| Command tree | Same as UART0 (see [Command tree](#command-tree)) |
+| Output format | Same unified line format as UART0 ([app-logging.md](app-logging.md)) |
+
+Connect with `telnet <device-ip> 2323`, `tools/remote-console.sh <device-ip>`,
+or `nc <device-ip> 2323`. Received LF is mapped to CR for Enter (same as
+UART line discipline). Plain `nc`/`socat` clients that do not send telnet IAC
+bytes work unchanged.
+
+### Session lifecycle
+
+| State | CLI input | `app_log` sinks |
+|-------|-----------|-----------------|
+| No remote client | UART0 only | UART0 only |
+| Remote client connected | Telnet socket | UART0 **and** telnet mirror |
+| UART override (see below) | UART0 only | UART0 only |
+
+After STA is ready the device logs `remote console listening on port 2323` on
+UART when the listener is up. On remote connect there is no extra banner; the
+client sees the MiniCLI prompt when the session is ready.
+
+On remote disconnect the listener stays up; another client may connect.
+
+### Ending a remote session
+
+From the remote client, type **`exit`**. The device closes the TCP socket
+(SHUT_RDWR) and detaches the log mirror; the client should return to the shell
+(`telnet`: “Connection closed by foreign host”; `nc -N`: process exits).
+Response on the remote client before disconnect:
+
+| Event | Response (message body) |
+|-------|-------------------------|
+| Remote exit | `remote session ended` |
+
+On UART0 only (no active remote session), `exit` prints
+`not in remote session` and leaves the UART CLI unchanged.
+
+Client-side disconnect also works: **Ctrl+C** when using
+`tools/remote-console.sh`, or close the terminal. `[design]`
+
+### UART local override
+
+When a remote session holds the CLI, **any received byte on UART0** preempts
+the telnet session: close the socket, detach the telnet log mirror, return CLI
+to UART0, and emit one line on UART0:
+
+| Event | UART response (message body) |
+|-------|------------------------------|
+| Local preempt | `[console] local` |
+
+The telnet listener keeps running after override. Stray noise on UART0 during
+a remote session can trigger override — acceptable for bench v1. `[design]`
+
+Override does **not** disable the listener or require an escape sequence.
+
+### Security
+
+No login or knock for v1. Compile-time off in production is the threat-model
+mitigation. Remote CLI exposes the same surface as the UART bench console.
+
 ## `config` commands
 
 Bench helper for factory reset without the pin-hole button. Same effect as

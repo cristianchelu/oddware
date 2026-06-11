@@ -18,6 +18,10 @@
 #include "display_presentation.h"
 #include "display_wifi_indicator.h"
 #include "mqtt_client.h"
+
+#if REMOTE_CLI_ENABLE
+#include "remote_cli.h"
+#endif
 #include "mqtt_cred.h"
 #include "ota_client.h"
 #include "ota_rollback.h"
@@ -319,6 +323,9 @@ void app_dispatch(const app_event_t *ev)
     case EVT_WIFI_STA_READY:
         display_wifi_indicator_connected();
         mqtt_client_notify_wifi_ready();
+#if REMOTE_CLI_ENABLE
+        remote_cli_start();
+#endif
         if (mqtt_cred_is_stored(config_port_get())) {
             (void)mqtt_client_request_connect();
         }
