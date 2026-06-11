@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,7 +22,7 @@ static uint8_t adc_cli_read_motor(void)
         return 1;
     }
 
-    printf("adc motor: %u mA\r\n", (unsigned)ma);
+    app_log_info("cli", "adc motor: %u mA", (unsigned)ma);
     return 0;
 }
 
@@ -36,14 +37,14 @@ static uint8_t adc_cli_read_battery(void)
         return 1;
     }
 
-    printf("adc battery: %u mV\r\n", (unsigned)mv);
+    app_log_info("cli", "adc battery: %u mV", (unsigned)mv);
     return 0;
 }
 
 static uint8_t adc_cli_read_cmd(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: adc read motor|battery\r\n");
+        app_log_info("cli", "usage: adc read motor|battery");
         return 1;
     }
 
@@ -55,7 +56,7 @@ static uint8_t adc_cli_read_cmd(uint8_t argc, char *argv[])
         return adc_cli_read_battery();
     }
 
-    printf("usage: adc read motor|battery\r\n");
+    app_log_info("cli", "usage: adc read motor|battery");
     return 1;
 }
 
@@ -67,7 +68,7 @@ static uint8_t adc_cli_cal_capture_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: adc cal <true_mv>|status|reset\r\n");
+        app_log_info("cli", "usage: adc cal <true_mv>|status|reset");
         return 1;
     }
 
@@ -91,7 +92,7 @@ static uint8_t adc_cli_cal_capture_cmd(uint8_t argc, char *argv[])
     }
 
     adc_cli_format_cal_status(&status, ratio, sizeof(ratio));
-    printf("adc cal ok (%s)\r\n", ratio);
+    app_log_info("cli", "adc cal ok (%s)", ratio);
     return 0;
 }
 
@@ -109,7 +110,7 @@ static uint8_t adc_cli_cal_status_cmd(uint8_t argc, char *argv[])
     }
 
     adc_cli_format_cal_status(&status, ratio, sizeof(ratio));
-    printf("adc cal: %s\r\n", ratio);
+    app_log_info("cli", "adc cal: %s", ratio);
     return 0;
 }
 
@@ -126,14 +127,14 @@ static uint8_t adc_cli_cal_reset_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("adc cal reset ok\r\n");
+    app_log_info("cli", "adc cal reset ok");
     return 0;
 }
 
 static uint8_t adc_cli_cal_cmd(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: adc cal <true_mv>|status|reset\r\n");
+        app_log_info("cli", "usage: adc cal <true_mv>|status|reset");
         return 1;
     }
 

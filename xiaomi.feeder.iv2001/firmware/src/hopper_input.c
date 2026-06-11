@@ -2,8 +2,7 @@
  * Hopper level debounce — spec/30-processes/hopper-sensing.md
  */
 
-#include <stdio.h>
-
+#include "app_log.h"
 #include "hopper_input.h"
 
 static const hopper_ir_port_t *s_port;
@@ -41,7 +40,8 @@ static void hopper_input_set_level(hopper_level_t level, uint32_t at_ms)
 
     s_level = level;
     hopper_input_enqueue_transition(level, at_ms);
-    printf("[hopper] level %s\r\n", level == HOPPER_LEVEL_LOW ? "low" : "normal");
+    app_log_info("hopper", "level %s",
+                 level == HOPPER_LEVEL_LOW ? "low" : "normal");
 }
 
 static bool hopper_input_should_sample(uint32_t now_ms)

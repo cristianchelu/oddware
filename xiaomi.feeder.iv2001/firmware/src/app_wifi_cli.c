@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <string.h>
 
 #include "cli.h"
@@ -46,8 +47,8 @@ static uint8_t wifi_cli_show(uint8_t argc, char *argv[])
         pass[0] = '\0';
     }
 
-    printf("ssid: %s\r\n", ssid[0] ? ssid : "(unset)");
-    printf("pass: %s\r\n", wifi_cli_pass_display(ssid[0] != '\0', pass_err, pass));
+    app_log_info("cli", "ssid: %s", ssid[0] ? ssid : "(unset)");
+    app_log_info("cli", "pass: %s", wifi_cli_pass_display(ssid[0] != '\0', pass_err, pass));
     return 0;
 }
 
@@ -56,21 +57,21 @@ static uint8_t wifi_cli_set_ssid(uint8_t argc, char *argv[])
     const config_port_t *cfg = config_port_get();
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: wifi set ssid <name>\r\n");
+        app_log_info("cli", "usage: wifi set ssid <name>");
         return 1;
     }
 
     if (wifi_cred_validate(argv[0], "") != PORT_OK) {
-        printf("invalid ssid\r\n");
+        app_log_info("cli", "invalid ssid");
         return 1;
     }
 
     if (cfg->write(CONFIG_GROUP_WIFI, CONFIG_KEY_WIFI_SSID, argv[0]) != PORT_OK) {
-        printf("nvdm write failed\r\n");
+        app_log_info("cli", "nvdm write failed");
         return 1;
     }
 
-    printf("ssid saved\r\n");
+    app_log_info("cli", "ssid saved");
     return 0;
 }
 
@@ -80,29 +81,29 @@ static uint8_t wifi_cli_set_pass(uint8_t argc, char *argv[])
     const char *pass = "";
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: wifi set pass <password>\r\n");
+        app_log_info("cli", "usage: wifi set pass <password>");
         return 1;
     }
 
     pass = argv[0];
     if (wifi_cred_validate("x", pass) != PORT_OK) {
-        printf("invalid password\r\n");
+        app_log_info("cli", "invalid password");
         return 1;
     }
 
     if (cfg->write(CONFIG_GROUP_WIFI, CONFIG_KEY_WIFI_PASS, pass) != PORT_OK) {
-        printf("nvdm write failed\r\n");
+        app_log_info("cli", "nvdm write failed");
         return 1;
     }
 
-    printf("password saved\r\n");
+    app_log_info("cli", "password saved");
     return 0;
 }
 
 static uint8_t wifi_cli_set(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: wifi set ssid|pass <value>\r\n");
+        app_log_info("cli", "usage: wifi set ssid|pass <value>");
         return 1;
     }
 
@@ -114,7 +115,7 @@ static uint8_t wifi_cli_set(uint8_t argc, char *argv[])
         return wifi_cli_set_pass(argc - 1, argv + 1);
     }
 
-    printf("usage: wifi set ssid|pass <value>\r\n");
+    app_log_info("cli", "usage: wifi set ssid|pass <value>");
     return 1;
 }
 
@@ -124,16 +125,16 @@ static uint8_t wifi_cli_connect(uint8_t argc, char *argv[])
     (void)argv;
 
     if (!wifi_cred_is_stored(config_port_get())) {
-        printf("set ssid first\r\n");
+        app_log_info("cli", "set ssid first");
         return 1;
     }
 
     if (!wifi_sta_request_connect()) {
-        printf("connect already in progress\r\n");
+        app_log_info("cli", "connect already in progress");
         return 1;
     }
 
-    printf("connecting...\r\n");
+    app_log_info("cli", "connecting...");
     return 0;
 }
 

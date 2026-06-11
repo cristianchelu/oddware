@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include "app_log.h"
 
 #include "app_hopper_cli.h"
 #include "beam_cli.h"
@@ -22,7 +23,7 @@ static uint8_t hopper_cli_read_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("hopper beam: %s\r\n", beam_blocked ? "blocked" : "clear");
+    app_log_info("cli", "hopper beam: %s", beam_blocked ? "blocked" : "clear");
     return 0;
 }
 

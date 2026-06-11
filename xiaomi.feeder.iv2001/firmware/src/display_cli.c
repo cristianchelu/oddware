@@ -8,6 +8,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "app_log.h"
 #include "display_boot.h"
 #include "display_cli.h"
 #include "display_port.h"
@@ -73,7 +74,7 @@ __attribute__((weak)) void display_cli_delay_ms(uint32_t ms)
 
 void display_cli_print_fail(const char *what, port_err_t err)
 {
-    printf("display %s failed (%s)\r\n", what, port_err_name(err));
+    app_log_info("cli", "display %s failed (%s)", what, port_err_name(err));
 }
 
 port_err_t display_cli_run_test(void)

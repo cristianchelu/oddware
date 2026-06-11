@@ -46,13 +46,13 @@ All buttons debounced in software:
 
 Until gesture actions (dispense, sleep, provisioning) are wired, a debounced
 **DOWN** transition on any of the three buttons prints one UART line on the
-console (`spec/30-processes/uart-console.md`):
+console ([app-logging.md](app-logging.md); tag `app`; message body only below):
 
-| Button | AW9523B pin | Line |
-|--------|-------------|------|
-| Rear power | P0.3 | `[btn] power pressed` |
-| Pin-hole reset | P0.4 | `[btn] reset pressed` |
-| Manual dispense | P1.0 | `[btn] dispense pressed` |
+| Button | AW9523B pin | Message body |
+|--------|-------------|--------------|
+| Rear power | P0.3 | `btn power pressed` |
+| Pin-hole reset | P0.4 | `btn reset pressed` |
+| Manual dispense | P1.0 | `btn dispense pressed` |
 
 - P0.3 and P0.4 are active-low; P1.0 (main-PCB SW2) is active-high — polarity
   is decoded in `button_port_adapter`; **pressed** is `true` on `button_port`
@@ -91,7 +91,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 - Blocked when child lock is active (no response; see lock indicator in
   `display-presentation.md`).
 - Queued if dispense already in progress.
-- Bring-up stub UART: `[btn] dispense short` / `[btn] dispense long`.
+- Bring-up stub UART: `btn dispense short` / `btn dispense long`.
 
 ### Rear power (P0.3)
 
@@ -101,7 +101,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Long | Enter sleep mode (see `power-state-machine.md`) |
 
 - IRQ remains enabled in sleep mode for wake-up.
-- Bring-up stub UART: `[btn] power short` / `[btn] power long`.
+- Bring-up stub UART: `btn power short` / `btn power long`.
 
 ### Pin-hole reset (P0.4)
 
@@ -110,7 +110,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Short | Re-enter AP mode temporarily (30 s timeout, see `provisioning-flow.md`) |
 | Long | Full factory reset: clear all NVDM, reboot into provisioning |
 
-- Bring-up stub UART: `[btn] reset short` / `[btn] reset long`.
+- Bring-up stub UART: `btn reset short` / `btn reset long`.
 
 ## Child lock
 
@@ -118,7 +118,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 
 - **Physical:** hold P0.4 (reset) + P1.0 (dispense) simultaneously for
   `[tune]` 3 s → toggle child lock state.
-- Bring-up stub UART: `[btn] child_lock toggle`.
+- Bring-up stub UART: `btn child_lock toggle`.
 - **MQTT:** `cmd/config {"child_lock": true|false}`.
 
 ### Behavior when locked

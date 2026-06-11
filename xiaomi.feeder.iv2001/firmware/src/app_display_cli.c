@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,7 +24,7 @@ static uint8_t display_cli_test_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display test ok\r\n");
+    app_log_info("cli", "display test ok");
     return 0;
 }
 
@@ -33,12 +34,12 @@ static uint8_t display_cli_fill_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: display fill <hex_byte>\r\n");
+        app_log_info("cli", "usage: display fill <hex_byte>");
         return 1;
     }
 
     if (display_cli_parse_hex_byte(argv[0], &segment_byte) != PORT_OK) {
-        printf("invalid hex byte\r\n");
+        app_log_info("cli", "invalid hex byte");
         return 1;
     }
 
@@ -48,7 +49,7 @@ static uint8_t display_cli_fill_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display fill ok\r\n");
+    app_log_info("cli", "display fill ok");
     return 0;
 }
 
@@ -65,7 +66,7 @@ static uint8_t display_cli_off_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display off ok\r\n");
+    app_log_info("cli", "display off ok");
     return 0;
 }
 
@@ -76,12 +77,12 @@ static uint8_t display_cli_number_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: display number <0-999> [g|%%]\r\n");
+        app_log_info("cli", "usage: display number <0-999> [g|%%]");
         return 1;
     }
 
     if (display_cli_parse_number(argv[0], &value) != PORT_OK) {
-        printf("invalid number\r\n");
+        app_log_info("cli", "invalid number");
         return 1;
     }
 
@@ -99,7 +100,7 @@ static uint8_t display_cli_number_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display number ok\r\n");
+    app_log_info("cli", "display number ok");
     return 0;
 }
 
@@ -111,12 +112,12 @@ static uint8_t display_cli_icon_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 2 || argv[0] == NULL || argv[1] == NULL) {
-        printf("usage: display icon <name> on|off|blink|steady ...\r\n");
+        app_log_info("cli", "usage: display icon <name> on|off|blink|steady ...");
         return 1;
     }
 
     if (!display_presentation_parse_icon(argv[0], &icon)) {
-        printf("unknown icon\r\n");
+        app_log_info("cli", "unknown icon");
         return 1;
     }
 
@@ -126,7 +127,7 @@ static uint8_t display_cli_icon_cmd(uint8_t argc, char *argv[])
             display_cli_print_fail("icon", err);
             return 1;
         }
-        printf("display icon ok\r\n");
+        app_log_info("cli", "display icon ok");
         return 0;
     }
 
@@ -136,20 +137,20 @@ static uint8_t display_cli_icon_cmd(uint8_t argc, char *argv[])
             display_cli_print_fail("icon", err);
             return 1;
         }
-        printf("display icon ok\r\n");
+        app_log_info("cli", "display icon ok");
         return 0;
     }
 
     if (strcmp(argv[1], "blink") == 0) {
         if (argc < 4 || argv[2] == NULL || argv[3] == NULL) {
-            printf("usage: display icon <name> blink <on_ms> <off_ms>\r\n");
+            app_log_info("cli", "usage: display icon <name> blink <on_ms> <off_ms>");
             return 1;
         }
         if (display_cli_parse_blink_ms(argv[2], &on_ms) != PORT_OK ||
             display_cli_parse_blink_ms(argv[3], &off_ms) != PORT_OK ||
             on_ms < DISPLAY_PRESENTATION_BLINK_MIN_MS ||
             off_ms < DISPLAY_PRESENTATION_BLINK_MIN_MS) {
-            printf("invalid blink timing\r\n");
+            app_log_info("cli", "invalid blink timing");
             return 1;
         }
         err = display_cli_run_icon_blink(icon, on_ms, off_ms);
@@ -157,7 +158,7 @@ static uint8_t display_cli_icon_cmd(uint8_t argc, char *argv[])
             display_cli_print_fail("icon blink", err);
             return 1;
         }
-        printf("display icon blink ok\r\n");
+        app_log_info("cli", "display icon blink ok");
         return 0;
     }
 
@@ -167,11 +168,11 @@ static uint8_t display_cli_icon_cmd(uint8_t argc, char *argv[])
             display_cli_print_fail("icon steady", err);
             return 1;
         }
-        printf("display icon steady ok\r\n");
+        app_log_info("cli", "display icon steady ok");
         return 0;
     }
 
-    printf("usage: display icon <name> on|off|blink|steady ...\r\n");
+    app_log_info("cli", "usage: display icon <name> on|off|blink|steady ...");
     return 1;
 }
 
@@ -182,7 +183,7 @@ static uint8_t display_cli_anim_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: display anim <ota|lock> [loop]\r\n");
+        app_log_info("cli", "usage: display anim <ota|lock> [loop]");
         return 1;
     }
 
@@ -192,12 +193,12 @@ static uint8_t display_cli_anim_cmd(uint8_t argc, char *argv[])
             display_cli_print_fail("anim stop", err);
             return 1;
         }
-        printf("display anim stop ok\r\n");
+        app_log_info("cli", "display anim stop ok");
         return 0;
     }
 
     if (!display_presentation_parse_builtin_anim(argv[0], &id)) {
-        printf("unknown animation\r\n");
+        app_log_info("cli", "unknown animation");
         return 1;
     }
 
@@ -211,7 +212,7 @@ static uint8_t display_cli_anim_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display anim ok\r\n");
+    app_log_info("cli", "display anim ok");
     return 0;
 }
 
@@ -222,13 +223,13 @@ static uint8_t display_cli_brightness_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: display brightness <1-4>\r\n");
+        app_log_info("cli", "usage: display brightness <1-4>");
         return 1;
     }
 
     level = strtoul(argv[0], &end, 10);
     if (end == argv[0] || *end != '\0' || level < 1u || level > 4u) {
-        printf("invalid brightness\r\n");
+        app_log_info("cli", "invalid brightness");
         return 1;
     }
 
@@ -238,7 +239,7 @@ static uint8_t display_cli_brightness_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("display brightness ok\r\n");
+    app_log_info("cli", "display brightness ok");
     return 0;
 }
 

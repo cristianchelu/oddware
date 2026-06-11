@@ -2,18 +2,18 @@
  * Motor bench CLI logic — spec/30-processes/uart-console.md
  */
 
-#include <stdio.h>
 #include <stdint.h>
-
+#include <stdio.h>
 #include <string.h>
 
+#include "app_log.h"
 #include "motor_cli.h"
 #include "motor_jam.h"
 #include "motor_port.h"
 
 void motor_cli_print_fail(const char *verb, port_err_t err)
 {
-    printf("motor %s failed (%s)\r\n", verb, port_err_name(err));
+    app_log_info("cli", "motor %s failed (%s)", verb, port_err_name(err));
 }
 
 port_err_t motor_cli_parse_duration_ms(const char *text, uint32_t *duration_ms)
@@ -79,13 +79,13 @@ uint8_t motor_cli_handle_run(const char *verb,
     port_err_t err;
 
     if (argc < 1 || argv == NULL || argv[0] == NULL) {
-        printf("usage: motor %s <ms>\r\n", verb);
+        app_log_info("cli", "usage: motor %s <ms>", verb);
         return 1;
     }
 
     err = motor_cli_parse_duration_ms(argv[0], &duration_ms);
     if (err != PORT_OK) {
-        printf("invalid duration\r\n");
+        app_log_info("cli", "invalid duration");
         return 1;
     }
 
@@ -95,7 +95,7 @@ uint8_t motor_cli_handle_run(const char *verb,
         return 1;
     }
 
-    printf("motor %s ok\r\n", verb);
+    app_log_info("cli", "motor %s ok", verb);
     return 0;
 }
 
@@ -109,7 +109,7 @@ static char s_park_test_line[48];
 
 static void motor_cli_park_emit(const char *line)
 {
-    printf("%s\r\n", line);
+    app_log_info("cli", "%s", line);
     (void)snprintf(s_park_test_line, sizeof(s_park_test_line), "%s", line);
 }
 

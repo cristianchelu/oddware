@@ -1,12 +1,10 @@
 /* Behavior tests: motor index sensing and dispense — not IRQ-scripted wiring checks.
  * spec/30-processes/dispense-cycle.md, spec/30-processes/motor-index.md */
 
-#include <stdio.h>
-#include <string.h>
-
 #include "unity.h"
 
 #include "app.h"
+#include "cli_test_assert.h"
 #include "app_event.h"
 #include "app_event_port.h"
 #include "dispense_cli.h"
@@ -93,35 +91,6 @@ static void motor_behavior_simulate_index_hole(void)
     fake_gpio_expander_set_index_beam_open(true);
 }
 
-static void capture_stdout_line(char *buf, size_t len, void (*action)(void))
-{
-    FILE *saved = stdout;
-    FILE *cap = tmpfile();
-
-    TEST_ASSERT_NOT_NULL(cap);
-    stdout = cap;
-    action();
-    fflush(stdout);
-    rewind(cap);
-    if (buf != NULL && len > 0u) {
-        if (fgets(buf, (int)len, cap) == NULL) {
-            buf[0] = '\0';
-        }
-    }
-    stdout = saved;
-    fclose(cap);
-}
-
-static void dispense_cli_start_action(void)
-{
-    (void)dispense_cli_handle(0u, NULL);
-}
-
-static void app_step_action(void)
-{
-    (void)app_step();
-}
-
 void test_motor_burst_completes_on_index_transition_without_irq(void)
 {
     motor_behavior_setup_unit();
@@ -184,15 +153,13 @@ void test_motor_burst_retries_index_sample_after_poll_busy(void)
 
 void test_dispense_completes_when_index_pulse_seen_e2e(void)
 {
-    char started[48];
-    char done[48];
-
     motor_behavior_setup_adapter_stack();
     dispense_cli_test_reset();
     app_test_reset();
 
-    capture_stdout_line(started, sizeof(started), dispense_cli_start_action);
-    TEST_ASSERT_EQUAL_STRING("dispense started\r\n", started);
+    cli_test_reset();
+    (void)dispense_cli_handle(0u, NULL);
+    assert_cli_body("dispense started");
     TEST_ASSERT_TRUE(app_step());
     motor_ctrl_test_poll();
     TEST_ASSERT_TRUE(motor_ctrl_is_active());
@@ -202,8 +169,9 @@ void test_dispense_completes_when_index_pulse_seen_e2e(void)
     motor_behavior_run_motor_until_idle(100u);
     TEST_ASSERT_FALSE(motor_ctrl_is_active());
 
-    capture_stdout_line(done, sizeof(done), app_step_action);
-    TEST_ASSERT_EQUAL_STRING("dispense done\r\n", done);
+    cli_test_reset();
+    TEST_ASSERT_TRUE(app_step());
+    assert_cli_body("dispense done");
 
     {
         app_event_t ev;

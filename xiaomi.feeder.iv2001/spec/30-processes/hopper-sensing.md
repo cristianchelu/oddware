@@ -74,8 +74,9 @@ Host-testable debounce over `hopper_ir_port` (same layering as
 | `hopper_input_almost_empty()` | `true` when `get_level() == low` |
 | `hopper_input_pop_transition(...)` | Level edge since last pop (for MQTT / logging) |
 
-On `normal` → `low` or `low` → `normal` transition, log
-`[hopper] level low` / `[hopper] level normal` on UART (MQTT publish deferred).
+On `normal` → `low` or `low` → `normal` transition, log on UART via
+`app_log` (tag `hopper`; message body `level low` / `level normal`; see
+[app-logging.md](app-logging.md)). MQTT publish is deferred.
 
 Wired from `app` on `EVT_DISPLAY_TICK` (`hopper_input_poll`) and on
 `EVT_BURST_DONE` / `EVT_MOTOR_FAULT` when a dispense cycle ends

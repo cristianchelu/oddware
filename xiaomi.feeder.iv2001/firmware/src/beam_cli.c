@@ -2,20 +2,19 @@
  * IR broken-beam bench CLI logic — spec/30-processes/uart-console.md
  */
 
-#include <stdio.h>
-
+#include "app_log.h"
 #include "beam_cli.h"
 #include "hopper_ir_port.h"
 #include "motor_index_port.h"
 
 void beam_cli_print_index_fail(port_err_t err)
 {
-    printf("index read failed (%s)\r\n", port_err_name(err));
+    app_log_info("cli", "index read failed (%s)", port_err_name(err));
 }
 
 void beam_cli_print_hopper_fail(port_err_t err)
 {
-    printf("hopper read failed (%s)\r\n", port_err_name(err));
+    app_log_info("cli", "hopper read failed (%s)", port_err_name(err));
 }
 
 port_err_t beam_cli_run_index_read(bool *beam_open)

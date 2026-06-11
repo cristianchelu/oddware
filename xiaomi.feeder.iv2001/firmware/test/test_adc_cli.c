@@ -1,11 +1,9 @@
 /* Tests: spec/30-processes/uart-console.md § adc commands */
 
-#include <stdio.h>
-#include <string.h>
-
 #include "unity.h"
 
 #include "adc_cli.h"
+#include "cli_test_assert.h"
 #include "adc_port.h"
 #include "config_keys.h"
 #include "fake_adc_port.h"
@@ -13,19 +11,9 @@
 
 static void assert_adc_cli_fail_msg(port_err_t err, const char *expect)
 {
-    char buf[96];
-    FILE *saved = stdout;
-    FILE *cap = tmpfile();
-
-    TEST_ASSERT_NOT_NULL(cap);
-    stdout = cap;
+    cli_test_reset();
     adc_cli_print_fail(err);
-    fflush(stdout);
-    rewind(cap);
-    TEST_ASSERT_NOT_NULL(fgets(buf, sizeof(buf), cap));
-    stdout = saved;
-    fclose(cap);
-    TEST_ASSERT_EQUAL_STRING(expect, buf);
+    assert_cli_body(expect);
 }
 
 void test_adc_cli_motor_read_success(void)
@@ -72,12 +60,12 @@ void test_adc_cli_battery_read_propagates_busy(void)
 
 void test_adc_cli_print_fail_busy(void)
 {
-    assert_adc_cli_fail_msg(PORT_ERR_BUSY, "adc read failed (busy)\r\n");
+    assert_adc_cli_fail_msg(PORT_ERR_BUSY, "adc read failed (busy)");
 }
 
 void test_adc_cli_print_fail_io(void)
 {
-    assert_adc_cli_fail_msg(PORT_ERR_IO, "adc read failed (io)\r\n");
+    assert_adc_cli_fail_msg(PORT_ERR_IO, "adc read failed (io)");
 }
 
 void test_adc_cli_run_rejects_null_mv(void)

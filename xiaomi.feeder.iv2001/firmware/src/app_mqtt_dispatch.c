@@ -2,8 +2,7 @@
  * MQTT command dispatch from app — spec/30-processes/app-event-loop.md
  */
 
-#include <stdio.h>
-
+#include "app_log.h"
 #include "app_mqtt_dispatch.h"
 #include "mqtt_route.h"
 #include "ota_client.h"
@@ -26,7 +25,7 @@ void app_mqtt_dispatch(const char *topic,
         ota_client_on_mqtt_message(topic, payload, len);
         break;
     default:
-        printf("[app] mqtt cmd stub route=%d topic=%s\r\n", (int)route, topic);
+        app_log_debug("app", "mqtt cmd stub route=%d topic=%s", (int)route, topic);
         break;
     }
 }

@@ -3,14 +3,14 @@
  */
 
 #include <stdbool.h>
-#include <stdio.h>
 
+#include "app_log.h"
 #include "weigh_cli.h"
 #include "weight_port.h"
 
 void weigh_cli_print_fail(const char *what, port_err_t err)
 {
-    printf("weigh %s failed (%s)\r\n", what, port_err_name(err));
+    app_log_info("cli", "weigh %s failed (%s)", what, port_err_name(err));
 }
 
 bool weigh_cli_print_scale_off(const char *what, port_err_t err)
@@ -19,7 +19,7 @@ bool weigh_cli_print_scale_off(const char *what, port_err_t err)
         return false;
     }
 
-    printf("weigh %s: scale off (weigh power on first)\r\n", what);
+    app_log_info("cli", "weigh %s: scale off (weigh power on first)", what);
     return true;
 }
 
@@ -37,11 +37,13 @@ bool weigh_cli_print_read_fail(port_err_t err)
 
     st = weigh_cli_run_cal_status();
     if (st == WEIGHT_CAL_CAPTURING_SPAN) {
-        printf("weigh read: calibration incomplete (install bowl, weigh cal span)\r\n");
+        app_log_info("cli",
+                     "weigh read: calibration incomplete (install bowl, weigh cal span)");
         return true;
     }
 
-    printf("weigh read: no calibration (weigh cal zero, then weigh cal span)\r\n");
+    app_log_info("cli",
+                 "weigh read: no calibration (weigh cal zero, then weigh cal span)");
     return true;
 }
 

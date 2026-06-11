@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "app_event.h"
+#include "app_log.h"
 #include "dispense_cli.h"
 #include "motor_port.h"
 
@@ -19,7 +20,7 @@ static char s_test_line[48];
 
 static void dispense_cli_emit(const char *line)
 {
-    printf("%s\r\n", line);
+    app_log_info("cli", "%s", line);
     (void)snprintf(s_test_line, sizeof(s_test_line), "%s", line);
 }
 

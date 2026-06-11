@@ -454,7 +454,7 @@ void test_app_button_press_logs_on_display_tick(void)
     app_step();
 
     TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
-    TEST_ASSERT_EQUAL_STRING("[btn] power pressed", log);
+    TEST_ASSERT_EQUAL_STRING("btn power pressed", log);
 }
 
 void test_app_button_short_gesture_logs_on_release(void)
@@ -481,7 +481,7 @@ void test_app_button_short_gesture_logs_on_release(void)
     post_display_tick(50u);
     app_step();
     TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
-    TEST_ASSERT_EQUAL_STRING("[btn] power pressed", log);
+    TEST_ASSERT_EQUAL_STRING("btn power pressed", log);
 
     fake_button_port_set_sample(&up);
     post_display_tick(100u);
@@ -490,7 +490,7 @@ void test_app_button_short_gesture_logs_on_release(void)
     app_step();
 
     TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
-    TEST_ASSERT_EQUAL_STRING("[btn] power short", log);
+    TEST_ASSERT_EQUAL_STRING("btn power short", log);
 }
 
 void test_app_weight_updates_during_mqtt_connecting(void)

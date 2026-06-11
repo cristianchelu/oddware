@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app_log.h"
 #include "app.h"
 #include "app_event.h"
 #include "app_event_port.h"
@@ -126,7 +127,7 @@ static void app_weight_sample(bool idle_try)
     }
 
     if (s_bowl_valid) {
-        printf("[app] weight sample lost (%s)\r\n", port_err_name(err));
+        app_log_info("app", "weight sample lost (%s)", port_err_name(err));
     }
     s_bowl_valid = false;
 }
@@ -214,7 +215,7 @@ static char s_test_btn_log[48];
 
 static void app_button_log_line(const char *line)
 {
-    printf("%s\r\n", line);
+    app_log_info("app", "%s", line);
     (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "%s", line);
 }
 
@@ -224,7 +225,7 @@ static void app_button_log_press(button_id_t id)
 
     (void)snprintf(line,
                    sizeof(line),
-                   "[btn] %s pressed",
+                   "btn %s pressed",
                    app_button_press_label(id));
     app_button_log_line(line);
 }
@@ -240,13 +241,13 @@ static void app_button_log_gesture(const button_gesture_event_t *ev)
     }
 
     if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
-        app_button_log_line("[btn] child_lock toggle");
+        app_button_log_line("btn child_lock toggle");
         return;
     }
 
     label = app_button_press_label(ev->id);
     kind = (ev->kind == BUTTON_GESTURE_LONG) ? "long" : "short";
-    (void)snprintf(line, sizeof(line), "[btn] %s %s", label, kind);
+    (void)snprintf(line, sizeof(line), "btn %s %s", label, kind);
     app_button_log_line(line);
 }
 
@@ -373,7 +374,7 @@ void app_dispatch(const app_event_t *ev)
         }
 
         if (err != PORT_OK) {
-            printf("dispense busy\r\n");
+            app_log_info("cli", "dispense busy");
             dispense_cli_cancel_wait();
         }
         break;

@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,28 +58,28 @@ static uint8_t mqtt_cli_show(uint8_t argc, char *argv[])
         strcpy(tls_buf, "false");
     }
 
-    printf("host: %s\r\n", host[0] ? host : "(unset)");
-    printf("port: %s\r\n", port_buf[0] ? port_buf : "1883");
-    printf("user: %s\r\n", user[0] ? user : "(anonymous)");
-    printf("pass: %s\r\n", pass[0] ? "********" : "(empty)");
-    printf("device_id: %s\r\n", device_id[0] ? device_id : "(mac)");
-    printf("tls: %s\r\n", tls_buf);
+    app_log_info("cli", "host: %s", host[0] ? host : "(unset)");
+    app_log_info("cli", "port: %s", port_buf[0] ? port_buf : "1883");
+    app_log_info("cli", "user: %s", user[0] ? user : "(anonymous)");
+    app_log_info("cli", "pass: %s", pass[0] ? "********" : "(empty)");
+    app_log_info("cli", "device_id: %s", device_id[0] ? device_id : "(mac)");
+    app_log_info("cli", "tls: %s", tls_buf);
     return 0;
 }
 
 static uint8_t mqtt_cli_set_host(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set host <hostname>\r\n");
+        app_log_info("cli", "usage: mqtt set host <hostname>");
         return 1;
     }
 
     if (mqtt_cred_save_host(config_port_get(), argv[0]) != PORT_OK) {
-        printf("invalid host\r\n");
+        app_log_info("cli", "invalid host");
         return 1;
     }
 
-    printf("host saved\r\n");
+    app_log_info("cli", "host saved");
     return 0;
 }
 
@@ -88,22 +89,22 @@ static uint8_t mqtt_cli_set_port(uint8_t argc, char *argv[])
     char *end;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set port <port>\r\n");
+        app_log_info("cli", "usage: mqtt set port <port>");
         return 1;
     }
 
     port_val = strtoul(argv[0], &end, 10);
     if (end == argv[0] || *end != '\0' || port_val > 65535) {
-        printf("invalid port\r\n");
+        app_log_info("cli", "invalid port");
         return 1;
     }
 
     if (mqtt_cred_save_port(config_port_get(), (uint16_t)port_val) != PORT_OK) {
-        printf("invalid port\r\n");
+        app_log_info("cli", "invalid port");
         return 1;
     }
 
-    printf("port saved\r\n");
+    app_log_info("cli", "port saved");
     return 0;
 }
 
@@ -112,17 +113,17 @@ static uint8_t mqtt_cli_set_user(uint8_t argc, char *argv[])
     const char *user = "";
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set user <username>\r\n");
+        app_log_info("cli", "usage: mqtt set user <username>");
         return 1;
     }
 
     user = argv[0];
     if (mqtt_cred_save_user(config_port_get(), user) != PORT_OK) {
-        printf("nvdm write failed\r\n");
+        app_log_info("cli", "nvdm write failed");
         return 1;
     }
 
-    printf("user saved\r\n");
+    app_log_info("cli", "user saved");
     return 0;
 }
 
@@ -131,17 +132,17 @@ static uint8_t mqtt_cli_set_pass(uint8_t argc, char *argv[])
     const char *pass = "";
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set pass <password>\r\n");
+        app_log_info("cli", "usage: mqtt set pass <password>");
         return 1;
     }
 
     pass = argv[0];
     if (mqtt_cred_save_pass(config_port_get(), pass) != PORT_OK) {
-        printf("nvdm write failed\r\n");
+        app_log_info("cli", "nvdm write failed");
         return 1;
     }
 
-    printf("password saved\r\n");
+    app_log_info("cli", "password saved");
     return 0;
 }
 
@@ -150,24 +151,24 @@ static uint8_t mqtt_cli_set_device_id(uint8_t argc, char *argv[])
     const char *device_id = "";
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set device_id <id>\r\n");
+        app_log_info("cli", "usage: mqtt set device_id <id>");
         return 1;
     }
 
     device_id = argv[0];
     if (mqtt_cred_save_device_id(config_port_get(), device_id) != PORT_OK) {
-        printf("invalid device_id\r\n");
+        app_log_info("cli", "invalid device_id");
         return 1;
     }
 
-    printf("device_id saved\r\n");
+    app_log_info("cli", "device_id saved");
     return 0;
 }
 
 static uint8_t mqtt_cli_set(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: mqtt set host|port|user|pass|device_id <value>\r\n");
+        app_log_info("cli", "usage: mqtt set host|port|user|pass|device_id <value>");
         return 1;
     }
 
@@ -187,7 +188,7 @@ static uint8_t mqtt_cli_set(uint8_t argc, char *argv[])
         return mqtt_cli_set_device_id(argc - 1, argv + 1);
     }
 
-    printf("usage: mqtt set host|port|user|pass|device_id <value>\r\n");
+    app_log_info("cli", "usage: mqtt set host|port|user|pass|device_id <value>");
     return 1;
 }
 
@@ -197,7 +198,7 @@ static uint8_t mqtt_cli_disconnect(uint8_t argc, char *argv[])
     (void)argv;
 
     mqtt_client_stop();
-    printf("mqtt stopped\r\n");
+    app_log_info("cli", "mqtt stopped");
     return 0;
 }
 
@@ -207,26 +208,26 @@ static uint8_t mqtt_cli_connect(uint8_t argc, char *argv[])
     (void)argv;
 
     if (!mqtt_cred_is_stored(config_port_get())) {
-        printf("set host first\r\n");
+        app_log_info("cli", "set host first");
         return 1;
     }
 
     if (mqtt_client_connect_in_progress()) {
-        printf("connect already in progress\r\n");
+        app_log_info("cli", "connect already in progress");
         return 1;
     }
 
     if (!mqtt_client_wifi_is_ready()) {
-        printf("wifi not ready\r\n");
+        app_log_info("cli", "wifi not ready");
         return 1;
     }
 
     if (!mqtt_client_request_connect()) {
-        printf("connect already in progress\r\n");
+        app_log_info("cli", "connect already in progress");
         return 1;
     }
 
-    printf("connecting...\r\n");
+    app_log_info("cli", "connecting...");
     return 0;
 }
 

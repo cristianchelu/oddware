@@ -8,8 +8,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
-#include "syslog.h"
 
+#include "app_log.h"
 #include "hal_cache.h"
 #include "hal_sys.h"
 #include "wifi_api.h"
@@ -30,8 +30,6 @@
 #include "task_def.h"
 #include "wifi_cred.h"
 #include "wifi_port.h"
-
-log_create_module(provision, PRINT_LEVEL_INFO);
 
 #define PROVISION_AP_CHANNEL        6
 #define PROVISION_AP_SETTLE_MS      2000
@@ -116,7 +114,7 @@ static port_err_t provision_http_stop(void)
     const http_server_port_t *http = http_server_port_get();
 
     if (http->stop() != PORT_OK) {
-        LOG_E(provision, "failed to stop HTTP server");
+        app_log_error("provision", "failed to stop HTTP server");
         return PORT_ERR_IO;
     }
 
@@ -128,7 +126,7 @@ static port_err_t provision_http_start(uint16_t port)
     const http_server_port_t *http = http_server_port_get();
 
     if (http->start(port) != PORT_OK) {
-        LOG_E(provision, "failed to restart HTTP server");
+        app_log_error("provision", "failed to restart HTTP server");
         return PORT_ERR_IO;
     }
 
@@ -140,7 +138,7 @@ static port_err_t provision_ap_stop(void)
     const wifi_port_t *wifi = wifi_port_get();
 
     if (wifi->stop_ap() != PORT_OK) {
-        LOG_E(provision, "failed to leave AP mode");
+        app_log_error("provision", "failed to leave AP mode");
         return PORT_ERR_IO;
     }
 
@@ -152,7 +150,7 @@ static port_err_t provision_ap_start(const char *ssid, uint8_t channel)
     const wifi_port_t *wifi = wifi_port_get();
 
     if (wifi->start_ap(ssid, "", channel) != PORT_OK) {
-        LOG_E(provision, "failed to restore AP mode");
+        app_log_error("provision", "failed to restore AP mode");
         return PORT_ERR_IO;
     }
 
@@ -164,7 +162,7 @@ static port_err_t provision_sta_connect(const char *ssid, const char *pass)
     const wifi_port_t *wifi = wifi_port_get();
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
-        LOG_E(provision, "STA connect API failed");
+        app_log_error("provision", "STA connect API failed");
         return PORT_ERR_IO;
     }
 
@@ -196,7 +194,7 @@ static void provision_restore_ap_portal(void);
 static void provision_restore_http_only(void)
 {
     if (http_server_adapter_force_restart(PROVISION_WIFI_TRY_HTTP_PORT) != PORT_OK) {
-        LOG_E(provision, "failed to force-restart HTTP server");
+        app_log_error("provision", "failed to force-restart HTTP server");
     }
 }
 
@@ -318,7 +316,7 @@ void provision_after_cgi_response(void)
     }
 
     if (!provision_ensure_restore_timer()) {
-        LOG_E(provision, "failed to create portal restore timer");
+        app_log_error("provision", "failed to create portal restore timer");
         return;
     }
 
@@ -328,13 +326,13 @@ void provision_after_cgi_response(void)
     if (xTimerChangePeriod(s_restore_timer,
                            pdMS_TO_TICKS(PROVISION_RESTORE_TIMER_MS),
                            pdMS_TO_TICKS(100)) != pdPASS) {
-        LOG_E(provision, "failed to arm portal restore timer");
+        app_log_error("provision", "failed to arm portal restore timer");
         s_pending_restore = kind;
         return;
     }
 
     if (xTimerStart(s_restore_timer, pdMS_TO_TICKS(100)) != pdPASS) {
-        LOG_E(provision, "failed to start portal restore timer");
+        app_log_error("provision", "failed to start portal restore timer");
         s_pending_restore = kind;
     }
 }
@@ -358,7 +356,7 @@ static void provision_task(void *param)
     provision_build_ap_ssid(s_ap_ssid, sizeof(s_ap_ssid));
 
     if (wifi->start_ap(s_ap_ssid, "", PROVISION_AP_CHANNEL) != PORT_OK) {
-        LOG_E(provision, "failed to start AP \"%s\"", s_ap_ssid);
+        app_log_error("provision", "failed to start AP \"%s\"", s_ap_ssid);
         vTaskDelete(NULL);
         return;
     }
@@ -367,7 +365,7 @@ static void provision_task(void *param)
     provision_refresh_scan();
 
     if (http->start(80) != PORT_OK) {
-        LOG_E(provision, "failed to start HTTP server");
+        app_log_error("provision", "failed to start HTTP server");
         vTaskDelete(NULL);
         return;
     }
@@ -380,8 +378,8 @@ static void provision_task(void *param)
         ev.type = EVT_WIFI_STA_AP_MODE;
         (void)app_event_post(&ev);
     }
-    LOG_I(provision, "AP provisioning active — SSID %s", s_ap_ssid);
-    printf("[provision] AP %s — open http://192.168.4.1/\r\n", s_ap_ssid);
+    app_log_info("provision", "AP provisioning active — SSID %s", s_ap_ssid);
+    app_log_info("provision", "AP %s — open http://192.168.4.1/", s_ap_ssid);
 
     vTaskDelete(NULL);
 }
@@ -398,7 +396,7 @@ void provision_start(void)
                     NULL,
                     APP_TASK_PRIO,
                     NULL) != pdPASS) {
-        LOG_E(provision, "failed to start provision task");
+        app_log_error("provision", "failed to start provision task");
     }
 }
 

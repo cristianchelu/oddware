@@ -5,9 +5,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
 #include "FreeRTOS.h"
+#include "app_log.h"
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
@@ -127,26 +127,28 @@ static void motor_ctrl_log_jam(motor_jam_reason_t reason)
 
     switch (reason) {
     case MOTOR_JAM_ADC_ISR:
-        printf("[motor] jam: adc isr (> %u mA)\r\n", MOTOR_JAM_INSTANT_MA);
+        app_log_info("motor", "jam: adc isr (> %u mA)", MOTOR_JAM_INSTANT_MA);
         break;
     case MOTOR_JAM_ADC_INSTANT:
-        printf("[motor] jam: adc instant %u mA (> %u mA)\r\n",
-               (unsigned)s_jam_ma,
-               MOTOR_JAM_INSTANT_MA);
+        app_log_info("motor", "jam: adc instant %u mA (> %u mA)",
+                     (unsigned)s_jam_ma,
+                     MOTOR_JAM_INSTANT_MA);
         break;
     case MOTOR_JAM_ADC_SUSTAINED:
-        printf("[motor] jam: adc sustained %u mA for %lu ms (> %u mA)\r\n",
-               (unsigned)s_jam_ma,
-               (unsigned long)s_jam_sustained_ms,
-               MOTOR_JAM_SUSTAINED_MA);
+        app_log_info("motor",
+                     "jam: adc sustained %u mA for %lu ms (> %u mA)",
+                     (unsigned)s_jam_ma,
+                     (unsigned long)s_jam_sustained_ms,
+                     MOTOR_JAM_SUSTAINED_MA);
         break;
     case MOTOR_JAM_INDEX_TIMEOUT:
-        printf("[motor] jam: index timeout (0 pulses in %u ms, burst)\r\n",
-               (unsigned)s_active_cmd.timeout_ms);
+        app_log_info("motor",
+                     "jam: index timeout (0 pulses in %u ms, burst)",
+                     (unsigned)s_active_cmd.timeout_ms);
         break;
     case MOTOR_JAM_SESSION_TIMEOUT:
-        printf("[motor] jam: session timeout (%u ms)\r\n",
-               (unsigned)MOTOR_RUN_MS_MAX);
+        app_log_info("motor", "jam: session timeout (%u ms)",
+                     (unsigned)MOTOR_RUN_MS_MAX);
         break;
     default:
         break;
@@ -157,28 +159,29 @@ static void motor_ctrl_finish_fault(motor_fault_reason_t reason)
 {
     switch (reason) {
     case MOTOR_FAULT_ANTIJAM_EXHAUSTED:
-        printf("[motor] stuck: antijam retries exhausted (last jam: %s)\r\n",
-               motor_ctrl_jam_reason_label(s_last_jam_reason));
+        app_log_info("motor",
+                     "stuck: antijam retries exhausted (last jam: %s)",
+                     motor_ctrl_jam_reason_label(s_last_jam_reason));
         break;
     case MOTOR_FAULT_SESSION_TIMEOUT:
-        printf("[motor] stuck: session timeout (%u ms)\r\n",
-               (unsigned)MOTOR_RUN_MS_MAX);
+        app_log_info("motor", "stuck: session timeout (%u ms)",
+                     (unsigned)MOTOR_RUN_MS_MAX);
         break;
     case MOTOR_FAULT_IO:
-        printf("[motor] stuck: index I/O failed %u times\r\n",
-               (unsigned)s_io_fail_streak);
+        app_log_info("motor", "stuck: index I/O failed %u times",
+                     (unsigned)s_io_fail_streak);
         break;
     case MOTOR_FAULT_DRIVER_STOP:
-        printf("[motor] stuck: motor stop failed\r\n");
+        app_log_info("motor", "stuck: motor stop failed");
         break;
     case MOTOR_FAULT_DRIVER_START:
-        printf("[motor] stuck: motor start failed\r\n");
+        app_log_info("motor", "stuck: motor start failed");
         break;
     case MOTOR_FAULT_INDEX_LED:
-        printf("[motor] stuck: index LED on failed\r\n");
+        app_log_info("motor", "stuck: index LED on failed");
         break;
     default:
-        printf("[motor] stuck: fault\r\n");
+        app_log_info("motor", "stuck: fault");
         break;
     }
 
@@ -329,7 +332,7 @@ static port_err_t motor_ctrl_poll_beam_open(bool *beam_open)
 
 static void motor_ctrl_finish_park_already_aligned(void)
 {
-    printf("[motor] park: already aligned (beam open)\r\n");
+    app_log_info("motor", "park: already aligned (beam open)");
     motor_ctrl_mutex_give();
     motor_ctrl_post_app_event(EVT_PARK_DONE);
 }
@@ -462,10 +465,10 @@ static void motor_ctrl_begin_antijam(motor_jam_reason_t reason)
 
     motor_ctrl_log_jam(reason);
     s_antijam_retries++;
-    printf("[motor] antijam: retry %u/%u reverse %u ms\r\n",
-           (unsigned)s_antijam_retries,
-           (unsigned)MOTOR_ANTI_JAM_MAX_RETRIES,
-           (unsigned)MOTOR_ANTI_JAM_REVERSE_MS);
+    app_log_info("motor", "antijam: retry %u/%u reverse %u ms",
+                 (unsigned)s_antijam_retries,
+                 (unsigned)MOTOR_ANTI_JAM_MAX_RETRIES,
+                 (unsigned)MOTOR_ANTI_JAM_REVERSE_MS);
     s_phase = MOTOR_PHASE_ANTIJAM_REV;
     (void)motor_driver_start_reverse(&s_driver);
     s_phase_end_tick = motor_ctrl_tick_now() + pdMS_TO_TICKS(MOTOR_ANTI_JAM_REVERSE_MS);
@@ -540,17 +543,18 @@ static void motor_ctrl_after_antijam_step(TickType_t now)
     }
 
     if (!still_jammed) {
-        printf("[motor] antijam: load %u mA ok, resuming %s\r\n",
-               (unsigned)ma,
-               motor_ctrl_cmd_label());
+        app_log_info("motor", "antijam: load %u mA ok, resuming %s",
+                     (unsigned)ma,
+                     motor_ctrl_cmd_label());
         motor_ctrl_retry_active_cmd();
         return;
     }
 
     if (s_phase == MOTOR_PHASE_ANTIJAM_REV) {
-        printf("[motor] antijam: load %u mA still high, wiggle forward %u ms\r\n",
-               (unsigned)ma,
-               (unsigned)MOTOR_ANTI_JAM_WIGGLE_MS);
+        app_log_info("motor",
+                     "antijam: load %u mA still high, wiggle forward %u ms",
+                     (unsigned)ma,
+                     (unsigned)MOTOR_ANTI_JAM_WIGGLE_MS);
         s_phase = MOTOR_PHASE_ANTIJAM_WIGGLE_FWD;
         (void)motor_driver_start_forward(&s_driver);
         s_phase_end_tick = motor_ctrl_tick_now() + pdMS_TO_TICKS(MOTOR_ANTI_JAM_WIGGLE_MS);
@@ -558,9 +562,10 @@ static void motor_ctrl_after_antijam_step(TickType_t now)
     }
 
     if (s_phase == MOTOR_PHASE_ANTIJAM_WIGGLE_FWD) {
-        printf("[motor] antijam: load %u mA still high, wiggle reverse %u ms\r\n",
-               (unsigned)ma,
-               (unsigned)MOTOR_ANTI_JAM_WIGGLE_MS);
+        app_log_info("motor",
+                     "antijam: load %u mA still high, wiggle reverse %u ms",
+                     (unsigned)ma,
+                     (unsigned)MOTOR_ANTI_JAM_WIGGLE_MS);
         s_phase = MOTOR_PHASE_ANTIJAM_WIGGLE_REV;
         (void)motor_driver_start_reverse(&s_driver);
         s_phase_end_tick = motor_ctrl_tick_now() + pdMS_TO_TICKS(MOTOR_ANTI_JAM_WIGGLE_MS);

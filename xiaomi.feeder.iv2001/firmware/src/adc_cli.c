@@ -5,16 +5,17 @@
 #include <stdio.h>
 
 #include "adc_cli.h"
+#include "app_log.h"
 #include "adc_port.h"
 
 void adc_cli_print_fail(port_err_t err)
 {
-    printf("adc read failed (%s)\r\n", port_err_name(err));
+    app_log_info("cli", "adc read failed (%s)", port_err_name(err));
 }
 
 void adc_cli_print_cal_fail(port_err_t err)
 {
-    printf("adc cal failed (%s)\r\n", port_err_name(err));
+    app_log_info("cli", "adc cal failed (%s)", port_err_name(err));
 }
 
 port_err_t adc_cli_run_motor_read(uint16_t *ma)

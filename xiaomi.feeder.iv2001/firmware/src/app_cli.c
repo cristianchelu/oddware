@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <string.h>
 
 #include "FreeRTOS.h"
@@ -42,7 +43,7 @@ static uint8_t app_cli_bank_show(uint8_t argc, char *argv[])
 
     boot_bank_t active = boot_bank_query_active();
 
-    printf("active bank: %c\r\n", (active == BOOT_BANK_B) ? 'B' : 'A');
+    app_log_info("cli", "active bank: %c", (active == BOOT_BANK_B) ? 'B' : 'A');
     return 0;
 }
 
@@ -52,11 +53,11 @@ static uint8_t app_cli_bank_switch(uint8_t argc, char *argv[])
     (void)argv;
 
     if (boot_bank_switch_active() != 0) {
-        printf("bank switch failed\r\n");
+        app_log_info("cli", "bank switch failed");
         return 1;
     }
 
-    printf("bank switched — rebooting\r\n");
+    app_log_info("cli", "bank switched — rebooting");
     vTaskDelay(200 / portTICK_PERIOD_MS);
     hal_cache_disable();
     hal_cache_deinit();
@@ -75,11 +76,11 @@ static uint8_t app_cli_config_factory_reset(uint8_t argc, char *argv[])
     (void)argv;
 
     if (!provision_factory_reset()) {
-        printf("factory reset failed\r\n");
+        app_log_info("cli", "factory reset failed");
         return 1;
     }
 
-    printf("factory reset — rebooting\r\n");
+    app_log_info("cli", "factory reset — rebooting");
     return 0;
 }
 

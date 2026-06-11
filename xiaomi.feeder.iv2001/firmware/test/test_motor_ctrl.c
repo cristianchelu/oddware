@@ -124,7 +124,7 @@ void test_motor_ctrl_park_done_immediately_when_already_open(void)
                                              BOARD_GPIO_MOTOR_EN_PIN));
     TEST_ASSERT_FALSE(fake_motor_index_port_get_led());
     TEST_ASSERT_TRUE(app_event_pending_type(EVT_PARK_DONE));
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] park: already aligned (beam open)"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "park: already aligned (beam open)"));
 }
 
 void test_motor_ctrl_session_faults_on_20s_cap_when_stop_fails(void)
@@ -163,10 +163,10 @@ void test_motor_ctrl_burst_faults_after_index_timeout_retries(void)
 
     TEST_ASSERT_FALSE(motor_ctrl_is_active());
     TEST_ASSERT_TRUE(app_event_pending_type(EVT_MOTOR_FAULT));
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] jam: index timeout"));
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] antijam: retry"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "jam: index timeout"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "antijam: retry"));
     TEST_ASSERT_NOT_NULL(
-        strstr(log, "[motor] stuck: antijam retries exhausted (last jam: index timeout)"));
+        strstr(log, "stuck: antijam retries exhausted (last jam: index timeout)"));
 }
 
 void test_motor_ctrl_logs_sustained_adc_jam(void)
@@ -192,8 +192,8 @@ void test_motor_ctrl_logs_sustained_adc_jam(void)
     }
     capture_stdout_end(saved, cap, log, sizeof(log));
 
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] jam: adc sustained 600 mA"));
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] antijam: retry 1/3"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "jam: adc sustained 600 mA"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "antijam: retry 1/3"));
 }
 
 void test_motor_ctrl_session_fault_logs_timeout(void)
@@ -212,7 +212,7 @@ void test_motor_ctrl_session_fault_logs_timeout(void)
     motor_ctrl_run_until_idle(200u);
     capture_stdout_end(saved, cap, log, sizeof(log));
 
-    TEST_ASSERT_NOT_NULL(strstr(log, "[motor] stuck: session timeout (20000 ms)"));
+    TEST_ASSERT_NOT_NULL(strstr(log, "stuck: session timeout (20000 ms)"));
 }
 
 void test_motor_ctrl_park_survives_burst_index_timeout(void)

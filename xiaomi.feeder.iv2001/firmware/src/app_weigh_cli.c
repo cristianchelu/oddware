@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include "app_log.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,7 +16,7 @@ static uint8_t weigh_cli_power_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: weigh power on|off\r\n");
+        app_log_info("cli", "usage: weigh power on|off");
         return 1;
     }
 
@@ -25,7 +26,7 @@ static uint8_t weigh_cli_power_cmd(uint8_t argc, char *argv[])
             weigh_cli_print_fail("power on", err);
             return 1;
         }
-        printf("weigh power on ok\r\n");
+        app_log_info("cli", "weigh power on ok");
         return 0;
     }
 
@@ -35,11 +36,11 @@ static uint8_t weigh_cli_power_cmd(uint8_t argc, char *argv[])
             weigh_cli_print_fail("power off", err);
             return 1;
         }
-        printf("weigh power off ok\r\n");
+        app_log_info("cli", "weigh power off ok");
         return 0;
     }
 
-    printf("usage: weigh power on|off\r\n");
+    app_log_info("cli", "usage: weigh power on|off");
     return 1;
 }
 
@@ -53,14 +54,14 @@ static uint8_t weigh_cli_read_cmd(uint8_t argc, char *argv[])
 
     err = weigh_cli_run_read(&grams);
     if (err == PORT_OK) {
-        printf("weight: %ld g\r\n", (long)grams);
+        app_log_info("cli", "weight: %ld g", (long)grams);
         return 0;
     }
 
     if (weigh_cli_print_read_fail(err)) {
         err = weigh_cli_run_read_raw(&grams);
         if (err == PORT_OK) {
-            printf("weight: %ld g (raw, no calibration)\r\n", (long)grams);
+            app_log_info("cli", "weight: %ld g (raw, no calibration)", (long)grams);
             return 0;
         }
         return 1;
@@ -83,8 +84,8 @@ static uint8_t weigh_cli_cal_zero_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("weigh cal zero ok\r\n");
-    printf("install provided bowl, then: weigh cal span\r\n");
+    app_log_info("cli", "weigh cal zero ok");
+    app_log_info("cli", "install provided bowl, then: weigh cal span");
     return 0;
 }
 
@@ -101,7 +102,7 @@ static uint8_t weigh_cli_cal_span_cmd(uint8_t argc, char *argv[])
         return 1;
     }
 
-    printf("weigh cal span ok\r\n");
+    app_log_info("cli", "weigh cal span ok");
     return 0;
 }
 
@@ -113,14 +114,14 @@ static uint8_t weigh_cli_cal_status_cmd(uint8_t argc, char *argv[])
     (void)argv;
 
     st = weigh_cli_run_cal_status();
-    printf("weigh cal: %s\r\n", weigh_cli_cal_status_name(st));
+    app_log_info("cli", "weigh cal: %s", weigh_cli_cal_status_name(st));
     return 0;
 }
 
 static uint8_t weigh_cli_cal_cmd(uint8_t argc, char *argv[])
 {
     if (argc < 1 || argv[0] == NULL) {
-        printf("usage: weigh cal zero|span|status\r\n");
+        app_log_info("cli", "usage: weigh cal zero|span|status");
         return 1;
     }
 
@@ -134,7 +135,7 @@ static uint8_t weigh_cli_cal_cmd(uint8_t argc, char *argv[])
         return weigh_cli_cal_status_cmd(argc - 1, argv + 1);
     }
 
-    printf("usage: weigh cal zero|span|status\r\n");
+    app_log_info("cli", "usage: weigh cal zero|span|status");
     return 1;
 }
 
