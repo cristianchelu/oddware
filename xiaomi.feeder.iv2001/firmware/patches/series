@@ -13,6 +13,9 @@ syslog_uart_115200.patch
 mqtt_sys_init_nvdm_order.patch
 mqtt_sys_init_display_boot.patch
 sys_init_wfci_bus.patch
+app_log_uart_boot.patch
+wifi_sta_dhcp_prep.patch
+wifi_n9_dbg_quiet.patch
 mqtt_quiet_debug.patch
 wifi_scan_time_t.patch
 task_def_httpd.patch

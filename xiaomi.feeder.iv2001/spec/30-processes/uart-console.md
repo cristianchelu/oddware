@@ -13,6 +13,11 @@ serves:
 | Baud | 115200 8N1 |
 | Engine | LinkIt MiniCLI (multi-level commands, line history) `[design]` |
 
+All UART output — CLI responses and diagnostics — uses the unified line format
+in [app-logging.md](app-logging.md): `[HH:MM:SS.mmm] [tag] message\r\n`.
+CLI handler lines use tag `cli`. Tables below show the **message body** after
+the tag; prepend the timestamp and `[cli] ` when writing test assertions.
+
 The console is always available in application firmware for bench bring-up,
 bank inspection, and Wi-Fi credential entry before MQTT provisioning exists.
 It is not a user-facing product interface. `[design]`
@@ -177,17 +182,17 @@ association with DHCP. Runs in the Wi-Fi connect task (not the CLI task).
 | Connect queued | `connecting...` |
 | Connect already in progress | `connect already in progress` |
 
-On successful association and DHCP, syslog prints (not necessarily inline
-with the CLI prompt):
+On successful association and DHCP, `app_log` prints (tag `wifi`; not
+necessarily inline with the CLI prompt):
 
 - `connecting to "<ssid>"`
-- `DHCP got IP:<dotted-quad>` (SDK lwIP helper)
+- `DHCP got IP:<dotted-quad>`
 - `STA ready, IP <dotted-quad>`
 
 | Failure | Log / behavior |
 |---------|----------------|
-| Missing or invalid NVDM credentials | `no valid credentials in NVDM` (connect task) |
-| SDK connect API failure | `connect failed` (connect task) |
+| Missing or invalid NVDM credentials | `[wifi] no valid credentials in NVDM` (connect task) |
+| SDK connect API failure | `[wifi] connect failed` (connect task) |
 
 ## Boot behavior (Wi-Fi)
 
@@ -319,21 +324,20 @@ the CLI task).
 | Connect already in progress | `connect already in progress` |
 | Wi-Fi not ready | `wifi not ready` |
 
-On successful broker connect, syslog prints (not necessarily inline with the
-CLI prompt):
+On broker connect, `app_log` prints (tag `mqtt`; not necessarily inline with
+the CLI prompt):
 
-- `mqtt connecting to <host>:<port>` (once per connect attempt burst)
-- `mqtt connected` (once per successful session)
+- `connecting to <host>:<port>` (once per connect attempt burst)
+- `connected` (once per successful session)
 
-While connected, the client does not log per-message or disconnect/reconnect
-chatter on UART. LinkIt MQTT SDK debug (`[MQTT_CLIENT]: …`) is disabled in
-the default build (`MTK_MQTT_DEBUG_ENABLE = n` in `feature.mk`) because the
-SDK logs inside every `MQTTYield` loop and would flood the console.
+While connected, the client does not log per-message RX or disconnect/reconnect
+chatter on UART. SDK syslog and LinkIt MQTT debug are off in the default build
+(`MTK_DEBUG_LEVEL=none`, `MTK_MQTT_DEBUG_ENABLE=n`).
 
 | Failure | Log / behavior |
 |---------|----------------|
-| Missing or invalid NVDM settings | `no valid mqtt config in NVDM` (client task) |
-| TCP or MQTT connect failure | `mqtt connect failed` (client task, once per attempt burst); exponential backoff reconnect while armed per [mqtt-protocol.md](mqtt-protocol.md) |
+| Missing or invalid NVDM settings | `[mqtt] no valid mqtt config in NVDM` (client task) |
+| TCP or MQTT connect failure | `[mqtt] connect failed` (client task, once per attempt burst); exponential backoff reconnect while armed per [mqtt-protocol.md](mqtt-protocol.md) |
 | TLS enabled in NVDM (`mqtt/tls` true) | `mqtt_cred_load` fails; connect does not proceed |
 
 ### `mqtt disconnect`

@@ -11,6 +11,7 @@
 
 #include "app.h"
 #include "app_event.h"
+#include "app_log.h"
 #include "display_presentation.h"
 #include "fake_display_port.h"
 #include "mqtt_client.h"
@@ -41,6 +42,41 @@ static void setup_wifi_up(void)
     fake_wifi_port_reset();
     fake_wifi_port_set_sta_up(true, true);
     mqtt_client_notify_wifi_ready();
+}
+
+static char s_log_capture[512];
+static size_t s_log_capture_len;
+
+static void mqtt_log_sink(const char *buf, size_t len, void *ctx)
+{
+    size_t room;
+
+    (void)ctx;
+
+    if (len == 0u) {
+        return;
+    }
+
+    room = sizeof(s_log_capture) - s_log_capture_len;
+    if (len > room) {
+        len = room;
+    }
+
+    memcpy(s_log_capture + s_log_capture_len, buf, len);
+    s_log_capture_len += len;
+}
+
+static void mqtt_log_capture_begin(void)
+{
+    app_log_test_reset();
+    s_log_capture_len = 0;
+    memset(s_log_capture, 0, sizeof(s_log_capture));
+    app_log_set_sink(mqtt_log_sink, NULL);
+}
+
+static void mqtt_log_capture_end(void)
+{
+    app_log_clear_sink();
 }
 
 void test_client_idle_when_not_armed(void)
@@ -284,6 +320,48 @@ void test_suspend_for_ota_blocks_pending_connect(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
     TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+}
+
+void test_connect_logs_connecting_and_connected_milestones(void)
+{
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+    mqtt_log_capture_begin();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+
+    mqtt_log_capture_end();
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "[mqtt]"));
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "connecting to broker.local:1883"));
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "connected"));
+}
+
+void test_connect_failure_logs_once_per_burst(void)
+{
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+    fake_mqtt_port_set_fail_next_connect(true);
+    mqtt_log_capture_begin();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+
+    mqtt_log_capture_end();
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "connecting to broker.local:1883"));
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "connect failed"));
+    TEST_ASSERT_NULL(strstr(s_log_capture, "connected"));
+
+    mqtt_log_capture_begin();
+    mqtt_client_step();
+    mqtt_log_capture_end();
+    TEST_ASSERT_NULL(strstr(s_log_capture, "connect failed"));
 }
 
 void test_suspend_for_ota_disconnects_without_reconnect(void)

@@ -60,24 +60,26 @@ On jam signal from either path:
 
 ## UART bring-up logging
 
-While `motor_ctrl` owns the motor, jam and recovery steps log on UART0 with
-the `[motor]` prefix (bench aid; MQTT fault publish is separate).
+While `motor_ctrl` owns the motor, jam and recovery steps log on UART0 via
+`app_log` (tag `motor`; bench aid; MQTT fault publish is separate). Full
+lines use [app-logging.md](app-logging.md) format; table shows message body
+only.
 
-| Event | UART line |
-|-------|-----------|
-| Jam from GPIO17 ADC ISR | `[motor] jam: adc isr (> 1800 mA)` |
-| Jam from polled ADC instant threshold | `[motor] jam: adc instant <mA> mA (> 1800 mA)` |
-| Jam from polled ADC sustained threshold | `[motor] jam: adc sustained <mA> mA for <ms> ms (> 500 mA)` |
-| Jam from burst index timeout | `[motor] jam: index timeout (0 pulses in <ms> ms, burst)` |
-| Anti-jam reverse step | `[motor] antijam: retry <n>/3 reverse 1000 ms` |
-| Anti-jam wiggle forward | `[motor] antijam: load <mA> mA still high, wiggle forward 500 ms` |
-| Anti-jam wiggle reverse | `[motor] antijam: load <mA> mA still high, wiggle reverse 500 ms` |
-| Anti-jam cleared | `[motor] antijam: load <mA> mA ok, resuming <burst\|park>` |
-| Stuck after anti-jam exhausted | `[motor] stuck: antijam retries exhausted (last jam: <reason>)` |
-| Stuck on session cap | `[motor] stuck: session timeout (20000 ms)` |
-| Stuck on index I/O | `[motor] stuck: index I/O failed 3 times` |
-| Stuck on driver stop failure | `[motor] stuck: motor stop failed` |
-| Park already aligned | `[motor] park: already aligned (beam open)` |
+| Event | UART line (message body) |
+|-------|--------------------------|
+| Jam from GPIO17 ADC ISR | `jam: adc isr (> 1800 mA)` |
+| Jam from polled ADC instant threshold | `jam: adc instant <mA> mA (> 1800 mA)` |
+| Jam from polled ADC sustained threshold | `jam: adc sustained <mA> mA for <ms> ms (> 500 mA)` |
+| Jam from burst index timeout | `jam: index timeout (0 pulses in <ms> ms, burst)` |
+| Anti-jam reverse step | `antijam: retry <n>/3 reverse 1000 ms` |
+| Anti-jam wiggle forward | `antijam: load <mA> mA still high, wiggle forward 500 ms` |
+| Anti-jam wiggle reverse | `antijam: load <mA> mA still high, wiggle reverse 500 ms` |
+| Anti-jam cleared | `antijam: load <mA> mA ok, resuming <burst\|park>` |
+| Stuck after anti-jam exhausted | `stuck: antijam retries exhausted (last jam: <reason>)` |
+| Stuck on session cap | `stuck: session timeout (20000 ms)` |
+| Stuck on index I/O | `stuck: index I/O failed 3 times` |
+| Stuck on driver stop failure | `stuck: motor stop failed` |
+| Park already aligned | `park: already aligned (beam open)` |
 
 `<reason>` is one of: `adc isr`, `adc instant`, `adc sustained`, `index
 timeout`, `session timeout`.

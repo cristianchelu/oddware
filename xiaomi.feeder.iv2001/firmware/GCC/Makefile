@@ -82,6 +82,7 @@ APP_FILES      += $(APP_PATH_SRC)/button_input.c
 APP_FILES      += $(APP_PATH_SRC)/hopper_input.c
 APP_FILES      += $(APP_PATH_SRC)/button_gesture.c
 APP_FILES      += $(APP_PATH_SRC)/port_err.c
+APP_FILES      += $(APP_PATH_SRC)/app_log.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c
 APP_FILES      += $(APP_PATH_SRC)/app_cli.c
@@ -202,6 +203,18 @@ CFLAGS += -I$(SOURCE_DIR)/middleware/third_party/httpd/inc
 
 ifneq ($(MTK_MQTT_DEBUG_ENABLE),y)
 CFLAGS += -DMTK_MQTT_DEBUG=0
+endif
+
+ifeq ($(APP_LOG_LEVEL),error)
+CFLAGS += -DAPP_LOG_LEVEL=APP_LOG_LEVEL_ERROR
+else ifeq ($(APP_LOG_LEVEL),warn)
+CFLAGS += -DAPP_LOG_LEVEL=APP_LOG_LEVEL_WARN
+else ifeq ($(APP_LOG_LEVEL),warning)
+CFLAGS += -DAPP_LOG_LEVEL=APP_LOG_LEVEL_WARN
+else ifeq ($(APP_LOG_LEVEL),info)
+CFLAGS += -DAPP_LOG_LEVEL=APP_LOG_LEVEL_INFO
+else
+CFLAGS += -DAPP_LOG_LEVEL=APP_LOG_LEVEL_DEBUG
 endif
 
 ifeq ($(FLASH_BANK_OTA_SELFTEST),y)

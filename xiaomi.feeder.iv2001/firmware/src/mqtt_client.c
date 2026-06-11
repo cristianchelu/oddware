@@ -7,11 +7,11 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "syslog.h"
 #include "wifi_api.h"
 
 #include "task_def.h"
 
+#include "app_log.h"
 #include "boot_bank_target.h"
 #include "app_event.h"
 #include "app_event_port.h"
@@ -25,8 +25,6 @@
 #include "mqtt_topics.h"
 #include "ota_client.h"
 #include "wifi_port.h"
-
-log_create_module(mqtt_client, PRINT_LEVEL_INFO);
 
 #define MQTT_OFFLINE_PAYLOAD       "{\"online\": false}"
 #define MQTT_CMD_WILDCARD          "cmd/#"
@@ -162,12 +160,7 @@ static port_err_t mqtt_client_subscribe_commands(const mqtt_port_t *mqtt)
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = mqtt->subscribe(topic, 1);
-    if (err == PORT_OK) {
-        LOG_I(mqtt_client, "subscribed %s", topic);
-        printf("[mqtt] subscribed %s\r\n", topic);
-    }
-    return err;
+    return mqtt->subscribe(topic, 1);
 }
 
 static void mqtt_client_on_message(const char *topic,
@@ -228,14 +221,14 @@ static port_err_t mqtt_client_do_connect(void)
 
     err = mqtt_cred_load(cfg, &cred);
     if (err != PORT_OK) {
-        LOG_E(mqtt_client, "no valid mqtt config in NVDM");
+        APP_LOG_E("mqtt", "no valid mqtt config in NVDM");
         return err;
     }
 
     mqtt_client_get_mac_hex(mac_hex, sizeof(mac_hex));
     mqtt_cred_resolve_device_id(&cred, mac_hex, s_device_id, sizeof(s_device_id));
     if (s_device_id[0] == '\0') {
-        LOG_E(mqtt_client, "device_id unavailable");
+        APP_LOG_E("mqtt", "device_id unavailable");
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -262,15 +255,13 @@ static port_err_t mqtt_client_do_connect(void)
     connect_cfg.lwt = lwt;
 
     if (s_log_connect_failures) {
-        LOG_I(mqtt_client, "connecting to %s:%u", cred.host, (unsigned)cred.port);
-        printf("[mqtt] connecting to %s:%u\r\n", cred.host, (unsigned)cred.port);
+        APP_LOG_I("mqtt", "connecting to %s:%u", cred.host, (unsigned)cred.port);
     }
 
     err = mqtt->connect(&connect_cfg);
     if (err != PORT_OK) {
         if (s_log_connect_failures) {
-            LOG_E(mqtt_client, "mqtt connect failed");
-            printf("[mqtt] connect failed\r\n");
+            APP_LOG_E("mqtt", "connect failed");
             s_log_connect_failures = false;
         }
         return err;
@@ -278,17 +269,16 @@ static port_err_t mqtt_client_do_connect(void)
 
     s_log_connect_failures = true;
 
-    LOG_I(mqtt_client, "mqtt connected");
-    printf("[mqtt] connected\r\n");
+    APP_LOG_I("mqtt", "connected");
 
     if (mqtt_client_subscribe_commands(mqtt) != PORT_OK) {
-        LOG_E(mqtt_client, "subscribe failed");
+        APP_LOG_E("mqtt", "subscribe failed");
         mqtt->disconnect();
         return PORT_ERR_IO;
     }
 
     if (mqtt_client_publish_online(mqtt) != PORT_OK) {
-        LOG_E(mqtt_client, "online publish failed");
+        APP_LOG_E("mqtt", "online publish failed");
         mqtt->disconnect();
         return PORT_ERR_IO;
     }
@@ -352,7 +342,7 @@ static void mqtt_client_begin_connect_job(void)
                     NULL,
                     MQTT_CONNECT_WORKER_PRIO,
                     &s_connect_worker) != pdPASS) {
-        LOG_E(mqtt_client, "connect worker create failed; inline fallback");
+        APP_LOG_E("mqtt", "connect worker create failed; inline fallback");
         s_connect_worker_result = mqtt_client_do_connect();
         s_connect_worker_running = false;
         s_connect_worker_done = true;
@@ -378,7 +368,7 @@ uint32_t mqtt_client_step(void)
 
     if (s_disconnect_pending) {
         s_disconnect_pending = false;
-        LOG_I(mqtt_client, "disconnecting");
+        APP_LOG_I("mqtt", "disconnecting");
         mqtt_client_do_disconnect(mqtt);
         delay_ms = 200;
         goto done;
@@ -539,7 +529,7 @@ void mqtt_client_start(void)
                     NULL,
                     TASK_PRIORITY_ABOVE_NORMAL,
                     &s_mqtt_task) != pdPASS) {
-        LOG_E(mqtt_client, "failed to start mqtt_io task");
+        APP_LOG_E("mqtt", "failed to start mqtt_io task");
         return;
     }
 }

@@ -6,19 +6,17 @@
 #include <string.h>
 
 #include "MQTTClient.h"
-#include "syslog.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "app_log.h"
 #include "mqtt_cred.h"
 #include "mqtt_topics.h"
 #include "provision_form.h"
 
 #include "mqtt_adapter.h"
 #include "mqtt_port.h"
-
-log_create_module(mqtt_adapter, PRINT_LEVEL_INFO);
 
 #define MQTT_CMD_TIMEOUT_MS 12000
 #define MQTT_TX_BUF_SIZE    512
@@ -68,12 +66,10 @@ static void mqtt_adapter_message_arrived(MessageData *md)
         topic_buf[copy_len] = '\0';
         topic_cstr = topic_buf;
     } else {
-        LOG_E(mqtt_adapter, "message dropped: no topic");
+        APP_LOG_E("mqtt", "message dropped: no topic");
         return;
     }
 
-    LOG_I(mqtt_adapter, "rx topic=%s len=%u", topic_cstr, (unsigned)message->payloadlen);
-    printf("[mqtt] rx %s len=%u\r\n", topic_cstr, (unsigned)message->payloadlen);
     s_on_message(topic_cstr, message->payload, message->payloadlen, s_cb_ctx);
 }
 
@@ -184,6 +180,9 @@ static port_err_t mqtt_adapter_publish(const char *topic,
     message.payloadlen = len;
 
     rc = MQTTPublish(&s_client, topic, &message);
+    if (rc != 0) {
+        APP_LOG_E("mqtt", "publish failed");
+    }
     return rc == 0 ? PORT_OK : PORT_ERR_IO;
 }
 
@@ -199,6 +198,9 @@ static port_err_t mqtt_adapter_subscribe(const char *topic, uint8_t qos)
     s_subscribe_topic[sizeof(s_subscribe_topic) - 1] = '\0';
 
     rc = MQTTSubscribe(&s_client, s_subscribe_topic, qos, mqtt_adapter_message_arrived);
+    if (rc != 0) {
+        APP_LOG_E("mqtt", "subscribe failed");
+    }
     return rc == 0 ? PORT_OK : PORT_ERR_IO;
 }
 

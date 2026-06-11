@@ -1,0 +1,13 @@
+diff --git a/project/mt7682_hdk/apps/mqtt_client/src/wifi_nvdm_config.c b/project/mt7682_hdk/apps/mqtt_client/src/wifi_nvdm_config.c
+index 4a8e1c2d..f91b3e04 100644
+--- a/project/mt7682_hdk/apps/mqtt_client/src/wifi_nvdm_config.c
++++ b/project/mt7682_hdk/apps/mqtt_client/src/wifi_nvdm_config.c
+@@ -55,7 +55,7 @@ static const group_data_item_t g_common_data_item_array[] = {
+     NVDM_DATA_ITEM("CountryRegion",      WIFI_DEFAULT_COUNTRY_REGION),
+     NVDM_DATA_ITEM("CountryRegionABand", WIFI_DEFAULT_COUNTRY_REGION_A_BAND),
+     NVDM_DATA_ITEM("RadioOff",           WIFI_DEFAULT_RADIO_ONOFF),
+-    NVDM_DATA_ITEM("DbgLevel",           WIFI_DEFAULT_N9_DEBUG_LEVEL),
++    NVDM_DATA_ITEM("DbgLevel",           "0"),
+     NVDM_DATA_ITEM("RTSThreshold",       WIFI_DEFAULT_RTS_THRESHOLD),
+     NVDM_DATA_ITEM("FragThreshold",      WIFI_DEFAULT_FRAGMENT_THRESHOLD),
+     NVDM_DATA_ITEM("BGChannelTable",     WIFI_DEFAULT_BG_CHANNEL_TABLE),

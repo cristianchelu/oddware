@@ -2,13 +2,14 @@
 
 CC       ?= gcc
 CFLAGS   ?= -Wall -Wextra -std=c11 -pedantic
-CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity -DHOST_TEST
+CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity -DHOST_TEST -DAPP_LOG_LEVEL=APP_LOG_LEVEL_DEBUG
 LDFLAGS  :=
 BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
 UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
-HOST_SRCS := ../src/port_err.c \
+HOST_SRCS := ../src/app_log.c \
+             ../src/port_err.c \
              ../src/boot_bank.c \
              ../src/wifi_cred.c \
              ../src/provision_form.c \

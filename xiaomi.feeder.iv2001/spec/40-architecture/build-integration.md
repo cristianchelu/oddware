@@ -159,6 +159,27 @@ GPIO14–17). `wfci_bus_wifi_spi_active(true)` runs after `connsys_init()` in
 GPIO17 is WFCI SPI CS and AUXADC input — jam detection and battery reads use
 short `ADC` profile loans, not continuous GPIO17 hold.
 
+### Application logging (`app_log`)
+
+| Setting | Location | Default |
+|---------|----------|---------|
+| `APP_LOG_LEVEL` | `firmware/GCC/feature.mk` | `debug` |
+| `MTK_DEBUG_LEVEL` | `firmware/GCC/feature.mk` | `none` |
+| `MTK_MQTT_DEBUG_ENABLE` | `firmware/GCC/feature.mk` | `n` |
+
+Module: `firmware/inc/app_log.h`, `firmware/src/app_log.c`. Linked in
+`firmware/GCC/Makefile` and host `firmware/test/Makefile`.
+
+SDK syslog is off (`MTK_DEBUG_LEVEL=none` → `MTK_DEBUG_LEVEL_NONE`); UART
+output comes from `app_log` via `log_write()` (`io_def.c` console). Console
+hardware is initialized by `bsp_io_def_uart_init()` in `prvSetupHardware()`
+before `app_log_init()` — `app_log` must not deinit/reinit UART0.
+`app_log_uart_boot.patch` calls `app_log_init()` after display boot to reset
+sink state only.
+
+Host tests compile `app_log.c` with `HOST_TEST` — default sink is `stdout`.
+See [app-logging.md](../30-processes/app-logging.md).
+
 ## `tools/build-env.sh`
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.

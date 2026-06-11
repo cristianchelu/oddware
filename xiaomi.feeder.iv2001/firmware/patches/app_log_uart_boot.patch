@@ -1,0 +1,21 @@
+diff --git a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+index c4b8e12a..d91a4f3e 100644
+--- a/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
++++ b/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+@@ -51,6 +51,7 @@
+ #include "nvdm_boot.h"
+ #include "wfci_bus_adapter.h"
+ #include "display_boot.h"
++#include "app_log.h"
+ 
+ 
+ extern uint32_t chip_hardware_code(void);
+@@ -332,6 +333,8 @@ void system_init(void)
+     {
+         (void)display_boot_run();
+     }
++
++    app_log_init();
+ 
+ #ifndef MTK_DEBUG_LEVEL_NONE
+     log_init(NULL, NULL, syslog_control_blocks);

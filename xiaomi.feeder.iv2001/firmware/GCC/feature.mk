@@ -1,8 +1,11 @@
 IC_CONFIG                           = mt7682
 BOARD_CONFIG                        = iv2001
 
-# debug level: none, error, warning, and info
-MTK_DEBUG_LEVEL                     = info
+# debug level: none, error, warning, info, debug
+MTK_DEBUG_LEVEL                     = none
+
+# Application log compile-time floor (debug, info, warn, error)
+APP_LOG_LEVEL                         = debug
 
 # LinkIt MQTT client logs every yield/read at info — floods UART when connected.
 # Set y only for deep MQTT stack debugging (rebuild after change).
