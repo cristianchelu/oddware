@@ -11,9 +11,9 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "syslog.h"
-
 #include "task_def.h"
+
+#include "app_log.h"
 
 #include "httpclient.h"
 #include "mbedtls/sha512.h"
@@ -26,8 +26,6 @@
 #include "ota_port.h"
 #include "ota_rollback.h"
 #include "mqtt_client.h"
-
-log_create_module(ota_adapter, PRINT_LEVEL_INFO);
 
 #define OTA_DL_TASK_STACK   (12288)
 #define OTA_DL_TASK_PRIO    (TASK_PRIORITY_ABOVE_NORMAL - 1)
@@ -141,7 +139,7 @@ static port_err_t ota_adapter_fetch_range(const char *url,
 
     ret = httpclient_connect(&client, (char *)url);
     if (ret != HTTPCLIENT_OK) {
-        printf("[ota] connect fail at %lu\r\n", (unsigned long)offset);
+        app_log_error("ota", "connect fail at %lu", (unsigned long)offset);
         httpclient_close(&client);
         return PORT_ERR_IO;
     }
@@ -154,7 +152,7 @@ static port_err_t ota_adapter_fetch_range(const char *url,
 
     ret = httpclient_send_request(&client, (char *)url, HTTPCLIENT_GET, &client_data);
     if (ret != HTTPCLIENT_OK) {
-        printf("[ota] send fail at %lu\r\n", (unsigned long)offset);
+        app_log_error("ota", "send fail at %lu", (unsigned long)offset);
         httpclient_close(&client);
         return PORT_ERR_IO;
     }
@@ -169,9 +167,11 @@ static port_err_t ota_adapter_fetch_range(const char *url,
 
         ret = httpclient_recv_response(&client, &client_data);
         if (ret < HTTPCLIENT_OK) {
-            printf("[ota] recv fail at %lu+%lu ret=%ld\r\n",
-                   (unsigned long)offset, (unsigned long)range_downloaded,
-                   (long)ret);
+            app_log_error("ota",
+                          "recv fail at %lu+%lu ret=%ld",
+                          (unsigned long)offset,
+                          (unsigned long)range_downloaded,
+                          (long)ret);
             httpclient_close(&client);
             return PORT_ERR_IO;
         }
@@ -194,8 +194,10 @@ static port_err_t ota_adapter_fetch_range(const char *url,
 
             if (flash->write_inactive(write_offset, (const uint8_t *)chunk_buf,
                                       data_len) != PORT_OK) {
-                LOG_E(ota_adapter, "flash write fail at %lu len=%lu",
-                      (unsigned long)write_offset, (unsigned long)data_len);
+                app_log_error("ota",
+                              "flash write fail at %lu len=%lu",
+                              (unsigned long)write_offset,
+                              (unsigned long)data_len);
                 httpclient_close(&client);
                 return PORT_ERR_IO;
             }
@@ -212,27 +214,29 @@ static port_err_t ota_adapter_fetch_range(const char *url,
         if (resp_code == 206) {
             *file_total_out = ota_adapter_parse_content_range_total(hdr_buf);
         } else {
-            LOG_E(ota_adapter, "server returned %d, Range not supported", resp_code);
+            app_log_error("ota", "server returned %d, Range not supported", resp_code);
             httpclient_close(&client);
             return PORT_ERR_IO;
         }
 
         if (*file_total_out == 0) {
-            LOG_E(ota_adapter, "Content-Range total missing");
+            app_log_error("ota", "Content-Range total missing");
             httpclient_close(&client);
             return PORT_ERR_IO;
         }
 
-        LOG_I(ota_adapter, "file size %lu bytes", (unsigned long)*file_total_out);
+        app_log_debug("ota", "file size %lu bytes", (unsigned long)*file_total_out);
     }
 
     {
         uint32_t range_expected = range_end - offset + 1;
 
         if (range_downloaded < range_expected) {
-            printf("[ota] range short at %lu got %lu want %lu\r\n",
-                   (unsigned long)offset, (unsigned long)range_downloaded,
-                   (unsigned long)range_expected);
+            app_log_error("ota",
+                          "range short at %lu got %lu want %lu",
+                          (unsigned long)offset,
+                          (unsigned long)range_downloaded,
+                          (unsigned long)range_expected);
             httpclient_close(&client);
             return PORT_ERR_IO;
         }
@@ -263,9 +267,10 @@ static port_err_t ota_adapter_http_download(const char *url,
 
     flash_bank_port_get()->erase_inactive();
 
-    printf("[ota] range download start heap=%u min=%u\r\n",
-           (unsigned)xPortGetFreeHeapSize(),
-           (unsigned)xPortGetMinimumEverFreeHeapSize());
+    app_log_debug("ota",
+                  "range download start heap=%u min=%u",
+                  (unsigned)xPortGetFreeHeapSize(),
+                  (unsigned)xPortGetMinimumEverFreeHeapSize());
 
     while (!s_abort_requested) {
         uint32_t range_end;
@@ -280,7 +285,7 @@ static port_err_t ota_adapter_http_download(const char *url,
         err = PORT_ERR_IO;
         for (retries = 0; retries < 3; retries++) {
             if (retries > 0) {
-                printf("[ota] retry %d at %lu\r\n", retries, (unsigned long)downloaded);
+                app_log_debug("ota", "retry %d at %lu", retries, (unsigned long)downloaded);
                 vTaskDelay(pdMS_TO_TICKS(1000));
             }
 
@@ -297,7 +302,7 @@ static port_err_t ota_adapter_http_download(const char *url,
         }
 
         if (err != PORT_OK) {
-            printf("[ota] range fail at %lu after retries\r\n", (unsigned long)downloaded);
+            app_log_error("ota", "range fail at %lu after retries", (unsigned long)downloaded);
             mbedtls_sha512_free(&ctx);
             return err;
         }
@@ -311,10 +316,13 @@ static port_err_t ota_adapter_http_download(const char *url,
         if (total > 0) {
             uint8_t pct = ota_progress_pct(downloaded, total);
             if (pct >= last_report_pct + OTA_PROGRESS_STEP_PCT || pct == 100) {
-                printf("[ota] %u%% (%lu/%lu) heap=%u min=%u\r\n",
-                   pct, (unsigned long)downloaded, (unsigned long)total,
-                   (unsigned)xPortGetFreeHeapSize(),
-                   (unsigned)xPortGetMinimumEverFreeHeapSize());
+                app_log_debug("ota",
+                              "%u%% (%lu/%lu) heap=%u min=%u",
+                              pct,
+                              (unsigned long)downloaded,
+                              (unsigned long)total,
+                              (unsigned)xPortGetFreeHeapSize(),
+                              (unsigned)xPortGetMinimumEverFreeHeapSize());
                 last_report_pct = pct;
                 ota_adapter_report(OTA_STATUS_DOWNLOADING, pct, "");
             }
@@ -337,8 +345,10 @@ static port_err_t ota_adapter_http_download(const char *url,
     }
 
     if (downloaded == 0 || (total > 0 && downloaded != total)) {
-        LOG_E(ota_adapter, "download incomplete bytes=%lu total=%lu",
-              (unsigned long)downloaded, (unsigned long)total);
+        app_log_error("ota",
+                      "download incomplete bytes=%lu total=%lu",
+                      (unsigned long)downloaded,
+                      (unsigned long)total);
         mbedtls_sha512_free(&ctx);
         return PORT_ERR_IO;
     }
@@ -355,13 +365,13 @@ static port_err_t ota_adapter_http_download(const char *url,
         uint32_t bank_base = flash_bank_rom_offset(inactive);
 
         if (ota_image_check_vector_table_in_bank(bank_base) != PORT_OK) {
-            printf("[ota] vector table not found in bank\r\n");
+            app_log_error("ota", "vector table not found in bank");
             return PORT_ERR_INVALID_ARG;
         }
     }
 
     *downloaded_out = downloaded;
-    printf("[ota] download complete bytes=%lu\r\n", (unsigned long)downloaded);
+    app_log_info("ota", "download complete bytes=%lu", (unsigned long)downloaded);
     return PORT_OK;
 }
 
@@ -387,21 +397,20 @@ static void ota_adapter_task(void *param)
     vPortFree(param);
 
     s_abort_requested = false;
-    LOG_I(ota_adapter, "task start url=%s sha512=%s", job.url, job.has_expected_sha512 ? "yes" : "no");
+    app_log_info("ota", "task start url=%s sha512=%s", job.url, job.has_expected_sha512 ? "yes" : "no");
     s_status = OTA_STATUS_DOWNLOADING;
 
     mqtt_client_suspend_for_ota();
     if (!mqtt_client_wait_disconnected(5000)) {
-        LOG_E(ota_adapter, "mqtt disconnect timeout");
-        printf("[ota] mqtt disconnect timeout\r\n");
+        app_log_error("ota", "mqtt disconnect timeout");
     }
     vTaskDelay(pdMS_TO_TICKS(3000));
-    printf("[ota] mqtt down, http start\r\n");
+    app_log_info("ota", "mqtt down, http start");
 
     err = ota_adapter_http_download(job.url, &downloaded, s_image_hash);
     if (err != PORT_OK) {
         const char *error = (err == PORT_ERR_INVALID_ARG) ? "image_too_large" : "download_failed";
-        LOG_E(ota_adapter, "download error=%s err=%d", error, (int)err);
+        app_log_error("ota", "download error=%s err=%d", error, (int)err);
         ota_adapter_task_fail(error);
         return;
     }
@@ -410,24 +419,24 @@ static void ota_adapter_task(void *param)
 
     if (job.has_expected_sha512 &&
         memcmp(s_image_hash, job.expected_sha512, FLASH_BANK_SHA512_LEN) != 0) {
-        LOG_E(ota_adapter, "sha512 mismatch");
+        app_log_error("ota", "sha512 mismatch");
         ota_adapter_task_fail("verify_failed");
         return;
     }
 
     if (flash->verify_inactive(s_image_hash, downloaded) != PORT_OK) {
-        LOG_E(ota_adapter, "flash verify failed");
+        app_log_error("ota", "flash verify failed");
         ota_adapter_task_fail("verify_failed");
         return;
     }
 
     ota_adapter_report(OTA_STATUS_APPLYING, 100, "");
-    LOG_I(ota_adapter, "bank swap pending");
+    app_log_info("ota", "bank swap pending");
 
     ota_rollback_mark_pending();
 
     if (flash->swap_banks(s_image_hash) != PORT_OK) {
-        LOG_E(ota_adapter, "bank swap failed");
+        app_log_error("ota", "bank swap failed");
         ota_adapter_task_fail("download_failed");
         return;
     }
@@ -446,7 +455,7 @@ static port_err_t ota_adapter_start(const char *url,
     }
 
     if (s_ota_task != NULL || s_status != OTA_STATUS_IDLE) {
-        LOG_E(ota_adapter, "start busy status=%d", (int)s_status);
+        app_log_error("ota", "start busy status=%d", (int)s_status);
         return PORT_ERR_BUSY;
     }
 
@@ -470,13 +479,13 @@ static port_err_t ota_adapter_start(const char *url,
                     job,
                     OTA_DL_TASK_PRIO,
                     &s_ota_task) != pdPASS) {
-        LOG_E(ota_adapter, "task create failed");
+        app_log_error("ota", "task create failed");
         vPortFree(job);
         s_status = OTA_STATUS_IDLE;
         return PORT_ERR_IO;
     }
 
-    LOG_I(ota_adapter, "task created url=%s", url);
+    app_log_info("ota", "task created url=%s", url);
     return PORT_OK;
 }
 

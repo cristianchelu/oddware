@@ -90,11 +90,21 @@ HOST_SRCS := ../src/app_log.c \
              fakes/host_stubs.c \
              fakes/port_providers_host.c
 
-.PHONY: all test-host clean
+.PHONY: all test-host check-no-printf clean
 
 all: test-host
 
-test-host: $(BUILD)/test_host
+# Bare printf() in firmware/src/ is forbidden — use app_log (spec/30-processes/app-logging.md).
+check-no-printf:
+	@violations=$$(grep -rnE '(^|[^a-z])printf[[:space:]]*\(' ../src --include='*.c' \
+		| grep -v 'app_log\.c' || true); \
+	if [ -n "$$violations" ]; then \
+		echo "error: printf() in firmware/src/ — use app_log instead:" >&2; \
+		echo "$$violations" >&2; \
+		exit 1; \
+	fi
+
+test-host: check-no-printf $(BUILD)/test_host
 	./$(BUILD)/test_host
 	@../../tools/host-green-nudge.sh
 

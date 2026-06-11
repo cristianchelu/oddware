@@ -8,15 +8,13 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
-#include "syslog.h"
 
+#include "app_log.h"
 #include "boot_bank_target.h"
 #include "config_keys.h"
 #include "config_port.h"
 #include "hal_cache.h"
 #include "hal_sys.h"
-
-log_create_module(ota_rollback, PRINT_LEVEL_INFO);
 
 #define OTA_ROLLBACK_TIMEOUT_MS 60000u
 
@@ -66,11 +64,11 @@ static void ota_rollback_clear_boot_count(const config_port_t *cfg)
 static void ota_rollback_do_revert(void)
 {
     if (boot_bank_switch_active() != 0) {
-        LOG_E(ota_rollback, "rollback bank switch failed");
+        app_log_error("ota", "rollback bank switch failed");
         return;
     }
 
-    LOG_W(ota_rollback, "rollback — reverting to previous bank");
+    app_log_warn("ota", "rollback — reverting to previous bank");
     vTaskDelay(pdMS_TO_TICKS(200));
     hal_cache_disable();
     hal_cache_deinit();
@@ -100,7 +98,7 @@ void ota_rollback_on_boot(void)
     ota_rollback_increment_boot_count(cfg);
     s_timer_running = true;
     s_deadline = xTaskGetTickCount() + pdMS_TO_TICKS(OTA_ROLLBACK_TIMEOUT_MS);
-    LOG_I(ota_rollback, "post-OTA boot — rollback timer started");
+    app_log_info("ota", "post-OTA boot — rollback timer started");
 }
 
 void ota_rollback_on_mqtt_connected(void)
@@ -115,7 +113,7 @@ void ota_rollback_on_mqtt_connected(void)
     ota_rollback_clear_boot_count(cfg);
     s_pending = false;
     s_timer_running = false;
-    LOG_I(ota_rollback, "post-OTA health check passed");
+    app_log_info("ota", "post-OTA health check passed");
 }
 
 uint32_t ota_rollback_poll_ms(void)

@@ -232,7 +232,7 @@ if ! "$SCRIPT_DIR/ota-wait-hop.sh" \
     --progress-timeout "$PROGRESS_TIMEOUT" | tee -a "$hop_meta"; then
     echo "result=FAIL" >>"$hop_meta"
     echo "--- UART tail ($uart_log) ---"
-    strings "$uart_log" | grep -E '^\[(ota|mqtt)\]' | tail -20 || true
+    strings "$uart_log" | grep -E '\[(ota|mqtt)\]' | tail -20 || true
     echo "--- HTTP tail ($HTTP_LOG) ---"
     tail -10 "$HTTP_LOG" || true
     EXIT_CODE=1

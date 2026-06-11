@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "syslog.h"
+#include "app_log.h"
 
 #include "mqtt_port.h"
 #include "mqtt_route.h"
@@ -14,8 +14,6 @@
 #include "ota_port.h"
 #include "ota_rollback.h"
 #include "ota_url.h"
-
-log_create_module(ota_client, PRINT_LEVEL_INFO);
 
 static char s_device_id[32];
 static char s_status_topic[96];
@@ -27,10 +25,10 @@ static void ota_client_publish_status(const char *state, uint8_t pct, const char
     int written;
 
     if (mqtt == NULL || !mqtt->is_connected() || s_status_topic[0] == '\0') {
-        LOG_E(ota_client,
-              "status publish skipped conn=%d topic=%s",
-              (mqtt != NULL && mqtt->is_connected()) ? 1 : 0,
-              s_status_topic);
+        app_log_error("ota",
+                      "status publish skipped conn=%d topic=%s",
+                      (mqtt != NULL && mqtt->is_connected()) ? 1 : 0,
+                      s_status_topic);
         return;
     }
 
@@ -45,7 +43,11 @@ static void ota_client_publish_status(const char *state, uint8_t pct, const char
     }
 
     mqtt->publish(s_status_topic, payload, (size_t)written, 1, true);
-    LOG_I(ota_client, "status %s pct=%u err=%s", state, (unsigned)pct, error != NULL ? error : "");
+    app_log_debug("ota",
+                  "status %s pct=%u err=%s",
+                  state,
+                  (unsigned)pct,
+                  error != NULL ? error : "");
 }
 
 static void ota_client_on_progress(const ota_progress_t *progress, void *ctx)
@@ -101,7 +103,7 @@ void ota_client_set_device_id(const char *device_id)
         s_status_topic[0] = '\0';
     }
 
-    LOG_I(ota_client, "device_id=%s status_topic=%s", s_device_id, s_status_topic);
+    app_log_debug("ota", "device_id=%s status_topic=%s", s_device_id, s_status_topic);
 }
 
 void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t len)
@@ -113,25 +115,23 @@ void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t l
     port_err_t err;
 
     if (topic == NULL || payload == NULL) {
-        LOG_E(ota_client, "cmd dropped: null topic or payload");
+        app_log_error("ota", "cmd dropped: null topic or payload");
         return;
     }
 
     if (s_device_id[0] == '\0') {
-        LOG_E(ota_client, "cmd dropped: device_id unset (topic=%s len=%u)", topic, (unsigned)len);
+        app_log_error("ota", "cmd dropped: device_id unset (topic=%s len=%u)", topic, (unsigned)len);
         return;
     }
 
-    LOG_I(ota_client, "mqtt cmd topic=%s len=%u", topic, (unsigned)len);
-    printf("[ota] cmd topic=%s len=%u\r\n", topic, (unsigned)len);
+    app_log_info("ota", "cmd topic=%s len=%u", topic, (unsigned)len);
 
     if (mqtt_route_classify(topic, s_device_id) != MQTT_ROUTE_CMD_OTA) {
-        LOG_I(ota_client, "cmd ignored: not ota (device_id=%s)", s_device_id);
+        app_log_debug("ota", "cmd ignored: not ota (device_id=%s)", s_device_id);
         return;
     }
 
-    LOG_I(ota_client, "ota cmd accepted");
-    printf("[ota] accepted\r\n");
+    app_log_info("ota", "accepted");
 
     if (len >= sizeof(payload_buf)) {
         ota_client_publish_status("error", 0, "invalid_url");
@@ -143,29 +143,28 @@ void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t l
 
     err = ota_cmd_parse(payload_buf, len, url, sizeof(url), sha512, &has_sha512);
     if (err != PORT_OK) {
-        LOG_E(ota_client, "cmd parse failed");
+        app_log_error("ota", "cmd parse failed");
         ota_client_publish_status("error", 0, "invalid_url");
         return;
     }
 
-    LOG_I(ota_client, "parsed url=%s sha512=%s", url, has_sha512 ? "yes" : "no");
+    app_log_debug("ota", "parsed url=%s sha512=%s", url, has_sha512 ? "yes" : "no");
 
     ota_client_publish_status("downloading", 0, "");
 
     err = ota_port_get()->start(url, sha512, has_sha512);
     if (err == PORT_ERR_BUSY) {
-        LOG_E(ota_client, "start busy");
+        app_log_error("ota", "start busy");
         ota_client_publish_status("error", 0, "already_in_progress");
         return;
     }
     if (err != PORT_OK) {
-        LOG_E(ota_client, "start failed err=%d", (int)err);
+        app_log_error("ota", "start failed err=%d", (int)err);
         ota_client_publish_status("error", 0, "invalid_url");
         return;
     }
 
-    LOG_I(ota_client, "download started");
-    printf("[ota] download started\r\n");
+    app_log_info("ota", "download started");
 }
 
 void ota_client_on_mqtt_connected(void)

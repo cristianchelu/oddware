@@ -37,7 +37,7 @@ Options:
   --device-id ID       MQTT device id (default: 768722)
   --want-bank A|B      Expected bank after OTA
   --http-log FILE      Range HTTP server log (counts 206 GETs as progress)
-  --uart-log FILE      Optional UART capture (parses [ota] NN% lines)
+  --uart-log FILE      Optional UART capture (parses [ota] NN% tagged lines)
   --hop-timeout SEC    Absolute max wait (default: $HOP_TIMEOUT)
   --progress-timeout SEC  Stall limit with no progress (default: $PROGRESS_TIMEOUT)
 EOF

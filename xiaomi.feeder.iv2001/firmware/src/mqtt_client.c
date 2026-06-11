@@ -601,7 +601,7 @@ void mqtt_client_suspend_for_ota(void)
     s_disconnect_pending = true;
     s_reconnect_at = 0;
     mqtt_client_connect_worker_reset();
-    printf("[mqtt] suspended for ota\r\n");
+    APP_LOG_I("mqtt", "suspended for ota");
 }
 
 void mqtt_client_resume_after_ota(void)
@@ -610,7 +610,7 @@ void mqtt_client_resume_after_ota(void)
 
     if (s_mqtt_task != NULL) {
         vTaskResume(s_mqtt_task);
-        printf("[mqtt] io task resumed\r\n");
+        APP_LOG_D("mqtt", "io task resumed");
     }
 
     if (mqtt_cred_is_stored(config_port_get()) && mqtt_client_wifi_is_ready()) {
@@ -618,7 +618,7 @@ void mqtt_client_resume_after_ota(void)
         mqtt_client_request_connect();
     }
 
-    printf("[mqtt] resumed after ota\r\n");
+    APP_LOG_I("mqtt", "resumed after ota");
 }
 
 bool mqtt_client_wait_disconnected(uint32_t timeout_ms)
@@ -630,7 +630,7 @@ bool mqtt_client_wait_disconnected(uint32_t timeout_ms)
         if (mqtt == NULL || !mqtt->is_connected()) {
             if (s_mqtt_task != NULL) {
                 vTaskSuspend(s_mqtt_task);
-                printf("[mqtt] io task suspended\r\n");
+                APP_LOG_D("mqtt", "io task suspended");
             }
             return true;
         }

@@ -179,6 +179,10 @@ SDK syslog stays at `info`; curated application lines use `app_log` via the same
 Host tests compile `app_log.c` with `HOST_TEST` — default sink is `stdout`.
 See [app-logging.md](../30-processes/app-logging.md).
 
+`make test-host` runs `check-no-printf` first: bare `printf()` in
+`firmware/src/*.c` fails the build (`app_log.c` is exempt). Use `snprintf` for
+string assembly; route UART diagnostics through `app_log_*`.
+
 ## `tools/build-env.sh`
 
 1. Symlink `petfeeder` app bridge under `project/mt7682_hdk/apps/`.

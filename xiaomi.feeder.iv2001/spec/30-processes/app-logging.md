@@ -127,6 +127,23 @@ Per-message RX logging is **not** emitted on UART (see
 Jam and anti-jam UART lines match [jam-detection.md](jam-detection.md) § UART
 bring-up logging, with the unified timestamp prefix and `[motor]` tag.
 
+## OTA diagnostics (tag `ota`)
+
+Bench OTA scripts under `tools/ota/` grep UART captures for tagged `ota` lines
+(message body only; full line includes timestamp prefix):
+
+| Event | Line |
+|-------|------|
+| Command received | `accepted` |
+| Download armed | `download started` |
+| Per-chunk progress | `NN% (downloaded/total) heap=… min=…` |
+| Download finished | `download complete bytes=…` |
+| HTTP phase start | `mqtt down, http start` |
+
+MQTT suspend/resume during OTA uses tag `mqtt` (`suspended for ota`,
+`resumed after ota`). OTA bench `wait-mqtt-online.sh` treats `[mqtt] connected`
+as boot-ready when UART is available.
+
 ## API (application code)
 
 ```c

@@ -2,7 +2,7 @@
 # Wait until the device has finished boot and is listening on MQTT.
 #
 # Retained state/online:true is not enough — it survives power loss until the
-# device reconnects. Prefer UART "[mqtt] subscribed" when a serial port is given.
+# device reconnects. Prefer UART "[mqtt] connected" when a serial port is given.
 #
 #   ./tools/ota/wait-mqtt-online.sh --device-id 768722
 #   ./tools/ota/wait-mqtt-online.sh --device-id 768722 --uart /dev/ttyUSB0
@@ -95,7 +95,7 @@ uart_mqtt_ready() {
     if [ -z "$log" ] || [ ! -f "$log" ]; then
         return 1
     fi
-    strings "$log" 2>/dev/null | grep -qE '\[mqtt\] subscribed '
+    strings "$log" 2>/dev/null | grep -qE '\[mqtt\] connected'
 }
 
 uart_boot_seen() {
@@ -130,7 +130,7 @@ echo "waiting for MQTT ready (device ${DEVICE_ID}, max ${TIMEOUT}s)..."
 while [ "$SECONDS" -lt "$deadline" ]; do
     if uart_mqtt_ready; then
         bank="$(read_bank)"
-        echo "  ready: UART subscribed, broker bank=${bank}"
+        echo "  ready: UART connected, broker bank=${bank}"
         sleep 2
         exit 0
     fi
