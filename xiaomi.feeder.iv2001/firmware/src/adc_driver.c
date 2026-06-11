@@ -4,6 +4,7 @@
 
 #include <stddef.h>
 
+#include "adc_cal.h"
 #include "adc_driver.h"
 #include "adc_limits.h"
 #include "board_gpio_iv2001.h"
@@ -15,6 +16,9 @@ void adc_driver_init(adc_driver_state_t *state, const adc_hw_t *hw)
     }
 
     state->hw = *hw;
+    if (adc_cal_load(hw->config, &state->cal) != PORT_OK) {
+        (void)adc_cal_reset(NULL, &state->cal);
+    }
 }
 
 uint16_t adc_driver_raw_to_mv(uint16_t raw)
@@ -145,12 +149,12 @@ static uint16_t adc_average_trimmed(const uint16_t *samples, uint8_t count)
     return (uint16_t)(sum / (uint32_t)kept);
 }
 
-port_err_t adc_driver_read_motor_load_mv(adc_driver_state_t *state,
-                                         uint16_t *mv)
+port_err_t adc_driver_read_motor_load_ma(adc_driver_state_t *state,
+                                         uint16_t *ma)
 {
     port_err_t err;
 
-    if (mv == NULL) {
+    if (ma == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -160,10 +164,10 @@ port_err_t adc_driver_read_motor_load_mv(adc_driver_state_t *state,
     }
 
     adc_delay_mux_settle(state);
-    return adc_read_one_mv(state, mv);
+    return adc_read_one_mv(state, ma);
 }
 
-port_err_t adc_driver_read_battery_mv(adc_driver_state_t *state, uint16_t *mv)
+static port_err_t adc_read_battery_pin_mv(adc_driver_state_t *state, uint16_t *mv)
 {
     bool en_high = false;
     uint16_t samples[ADC_BATTERY_SAMPLE_CNT];
@@ -206,4 +210,65 @@ restore_mux:
     }
 
     return err;
+}
+
+port_err_t adc_driver_read_battery_mv(adc_driver_state_t *state, uint16_t *mv)
+{
+    uint16_t pin_mv;
+    port_err_t err;
+
+    if (mv == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = adc_read_battery_pin_mv(state, &pin_mv);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    *mv = adc_cal_apply_pin_mv(&state->cal, pin_mv);
+    return PORT_OK;
+}
+
+port_err_t adc_driver_cal_capture(adc_driver_state_t *state, uint16_t true_mv)
+{
+    uint16_t pin_mv;
+    port_err_t err;
+
+    if (state == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = adc_read_battery_pin_mv(state, &pin_mv);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    return adc_cal_capture(state->hw.config, true_mv, pin_mv, &state->cal);
+}
+
+port_err_t adc_driver_cal_reset(adc_driver_state_t *state)
+{
+    if (state == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    return adc_cal_reset(state->hw.config, &state->cal);
+}
+
+void adc_driver_cal_status(const adc_driver_state_t *state,
+                           adc_cal_status_t *status)
+{
+    if (status == NULL) {
+        return;
+    }
+
+    if (state == NULL) {
+        status->scale_x1000 = ADC_CAL_DEFAULT_SCALE_X1000;
+        status->customized = false;
+        return;
+    }
+
+    status->scale_x1000 = state->cal.scale_x1000;
+    status->customized = state->cal.customized;
 }

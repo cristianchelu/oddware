@@ -10,7 +10,7 @@ battery voltage sense or the motor load sense to the SoC's single ADC input.
 | Pin | Connected to | Source |
 |-----|--------------|--------|
 | COM (pin 4) | MT7682 GPIO17 (ADC) | `[probe]` |
-| B0 (pin 3) | Motor load sense net | `[probe]` |
+| B0 (pin 3) | Motor current sense (1 Ω shunt → ADC) | `[probe]` |
 | B1 (pin 1) | Battery voltage divider | `[probe]` |
 | S (pin 6) | AW9523B P1.7 (select) | `[probe]` |
 
@@ -39,6 +39,8 @@ Source: `[ds:NC7SB3157 §3]`
 - During dispense, mux stays on motor (S=low) for stall detection. Battery
   reads happen when motor is idle.
 - ADC conversion: raw × 2500 / 4095 = millivolts `[ds:MT7682]`
-- Battery voltage likely divided before B1; actual divider ratio `[probe-needed]`.
+- Battery voltage divided before B1; nominal ~11:1 `[design]`. Firmware default
+  11/1; per-device trim via NVDM (`battery-monitoring.md`). Typical measured
+  ratio ~10.6–10.7:1 `[probe]`.
 - Firmware mux select constants: `board_gpio_iv2001.h` (`BOARD_GPIO_ADC_MUX_*`).
   Read API: `adc_port` ([ports.md](../../40-architecture/ports.md)).

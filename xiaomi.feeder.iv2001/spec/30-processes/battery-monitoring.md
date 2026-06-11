@@ -17,7 +17,8 @@ To read battery: set P1.7 = high → B1 (battery voltage divider) → COM → GP
 ## Mux exclusivity
 
 - During dispense, mux stays on motor path (P1.7 = low) for jam detection.
-- Battery reads happen **only** when motor is idle (EN = P0.1 low).
+- Battery reads happen **only** when motor is idle (commanded EN = P0.1 low —
+  output latch, not pad sense; FAULT shares EN `[probe]`).
 - After switching mux, wait `[tune]` 1 ms settling time before sampling. `[ds:NC7SB3157]`
 
 ## Sampling procedure
@@ -31,12 +32,23 @@ To read battery: set P1.7 = high → B1 (battery voltage divider) → COM → GP
 
 ## ADC conversion
 
+Pin voltage at GPIO17:
+
 ```
-voltage_mV = raw_adc × 2500 / 4095
+pin_mV = raw_adc × 2500 / 4095
 ```
 
-Source: `[ds:MT7682]`. Battery voltage divider ratio `[probe-needed]` — actual
-battery voltage = `voltage_mV × divider_ratio`.
+Source: `[ds:MT7682]`.
+
+Battery voltage (after the B1 divider):
+
+```
+battery_mV = pin_mV × batt_scale_x1000 / 1000
+```
+
+Default `[design]` **11000** (multiplier 11.0, nominal ~11:1 divider).
+Per-device trim in NVDM `power/batt_scale_x1000` — see [uart-console.md](uart-console.md)
+`adc cal`. Motor-load reads report mA via 1 Ω shunt (`[probe]`); no scale factor.
 
 ## Discharge curve mapping
 

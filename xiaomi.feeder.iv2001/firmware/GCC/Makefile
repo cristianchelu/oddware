@@ -104,6 +104,7 @@ APP_FILES      += $(APP_PATH_SRC)/app_weigh_cli.c
 APP_FILES      += $(APP_PATH_SRC)/motor_cli.c
 APP_FILES      += $(APP_PATH_SRC)/app_motor_cli.c
 APP_FILES      += $(APP_PATH_SRC)/adc_driver.c
+APP_FILES      += $(APP_PATH_SRC)/adc_cal.c
 APP_FILES      += $(APP_PATH_SRC)/adc_cli.c
 APP_FILES      += $(APP_PATH_SRC)/app_adc_cli.c
 APP_FILES      += $(APP_PATH_SRC)/cs1270.c

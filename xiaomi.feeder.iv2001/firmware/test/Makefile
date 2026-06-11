@@ -52,6 +52,7 @@ HOST_SRCS := ../src/port_err.c \
              ../src/weight_driver.c \
              ../src/motor_driver.c \
              ../src/adc_driver.c \
+             ../src/adc_cal.c \
              ../src/adc_cli.c \
              ../src/weigh_cal.c \
              ../src/gpio_expander_loan.c \

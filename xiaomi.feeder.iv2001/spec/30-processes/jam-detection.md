@@ -14,16 +14,17 @@ select P1.7 = low. During dispense, the mux stays on motor path.
 |-----------|-------|--------|
 | ADC pin | GPIO17 (COM output of NC7SB3157) | `[probe]` |
 | Mux select | P1.7 = low (motor path B0→COM) | `[probe]` |
-| ADC conversion | raw × 2500 / 4095 = millivolts | `[ds:MT7682]` |
+| ADC conversion | raw × 2500 / 4095 → mA | `[ds:MT7682]` + `[probe]` |
+| Shunt | 1 Ω on motor path — pin mV numerically equals mA (no scale factor) | `[probe]` |
 
 ### Immediate jam threshold
 
-- If motor-load ADC > `[tune]` 1800 mV → instant jam signal.
+- If motor-load reading > `[tune]` 1800 mA → instant jam signal.
 - Single sample above threshold is sufficient; no averaging.
 
 ### Sustained load threshold
 
-- If motor-load ADC > `[tune]` 500 mV for longer than `[tune]` 4 s → jam signal.
+- If motor-load reading > `[tune]` 500 mA for longer than `[tune]` 4 s → jam signal.
 - Sampled at sub-millisecond intervals during motor run.
 - Uses a rolling timer: reset whenever ADC drops below threshold.
 

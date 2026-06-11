@@ -211,13 +211,22 @@ static port_err_t gpio_exp_set_int_mask(uint8_t mask_p0, uint8_t mask_p1)
 
 static port_err_t gpio_exp_get_pin(uint8_t port, uint8_t pin, bool *level)
 {
+    uint8_t dir;
     uint8_t reg;
     uint8_t val;
     port_err_t err;
     bool nested = gpio_expander_loan_is_held();
 
-    if (level == NULL || !s_exp_ready) {
+    if (level == NULL || !s_exp_ready || pin > 7u) {
         return PORT_ERR_INVALID_ARG;
+    }
+
+    dir = (port == 0u) ? s_aw9523b.dir_p0 : s_aw9523b.dir_p1;
+    if ((dir & (uint8_t)(1u << pin)) == 0u) {
+        uint8_t out = aw9523b_output_get(&s_aw9523b, port);
+
+        *level = (out & (uint8_t)(1u << pin)) != 0u;
+        return PORT_OK;
     }
 
     if (!nested) {

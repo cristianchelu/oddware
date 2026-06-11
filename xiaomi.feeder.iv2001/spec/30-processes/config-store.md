@@ -33,6 +33,7 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | calib | span_g | int32 | 350 | Provided bowl mass in grams (`[product]`) |
 | calib | span_raw | int32 | — | Raw CS1270 count at span_g |
 | power | battery_wifi | enum | on | Wi-Fi on battery: on / off / scheduled_only |
+| power | batt_scale_x1000 | uint16 | 11000 | Pack mV = pin_mV × value / 1000; key absent → 11.0 default |
 | system | boot_count | uint32 | 0 | Incremented each post-OTA boot while `ota_pending` is set; cleared on successful post-OTA MQTT connect |
 | system | ota_pending | bool | 0 | Set to `1` before bank swap; cleared on successful post-OTA MQTT connect (OTA rollback health check) |
 | system | last_reset | enum | — | Reason for last reset (watchdog / ota / user / power) |
@@ -83,4 +84,5 @@ partition sizes defined in `../10-hardware/flash.md`. `[design]`
 | `.../cmd/config` | Command | Subset of writable settings (user-facing only) |
 
 Not writable via MQTT: `wifi/*` (requires reprovisioning), `calib/*` (requires
-calibration action), `system/*` (internal bookkeeping).
+calibration action), `power/batt_scale_x1000` (requires UART `adc cal`), `system/*`
+(internal bookkeeping).

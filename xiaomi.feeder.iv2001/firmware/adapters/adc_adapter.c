@@ -9,6 +9,7 @@
 #include "adc_bus_adapter.h"
 #include "adc_driver.h"
 #include "adc_port.h"
+#include "config_port.h"
 #include "gpio_expander_port.h"
 #include "wfci_bus_port.h"
 
@@ -54,6 +55,7 @@ static void adc_adapter_ensure_init(void)
     }
 
     hw.expander = gpio_expander_port_get();
+    hw.config = config_port_get();
     hw.read_raw = adc_adapter_read_raw;
     hw.delay_ms = adc_hal_delay_ms;
     adc_driver_init(&s_state, &hw);
@@ -72,7 +74,9 @@ static port_err_t adc_mutex_ensure(void)
     return PORT_OK;
 }
 
-static port_err_t adc_port_read_locked(uint16_t *mv, bool battery)
+typedef port_err_t (*adc_port_body_fn_t)(void);
+
+static port_err_t adc_port_with_lock(adc_port_body_fn_t body)
 {
     port_err_t err;
 
@@ -86,29 +90,93 @@ static port_err_t adc_port_read_locked(uint16_t *mv, bool battery)
     }
 
     adc_adapter_ensure_init();
-    if (battery) {
-        err = adc_driver_read_battery_mv(&s_state, mv);
-    } else {
-        err = adc_driver_read_motor_load_mv(&s_state, mv);
-    }
-
+    err = body();
     (void)xSemaphoreGive(s_adc_mutex);
     return err;
 }
 
-static port_err_t adc_port_read_motor_load_mv(uint16_t *mv)
+static uint16_t s_read_mv;
+
+static port_err_t adc_body_read_motor(void)
 {
-    return adc_port_read_locked(mv, false);
+    return adc_driver_read_motor_load_ma(&s_state, &s_read_mv);
+}
+
+static port_err_t adc_body_read_battery(void)
+{
+    return adc_driver_read_battery_mv(&s_state, &s_read_mv);
+}
+
+static uint16_t s_cal_true_mv;
+
+static port_err_t adc_body_cal_capture(void)
+{
+    return adc_driver_cal_capture(&s_state, s_cal_true_mv);
+}
+
+static port_err_t adc_body_cal_reset(void)
+{
+    return adc_driver_cal_reset(&s_state);
+}
+
+static port_err_t adc_port_read_motor_load_ma(uint16_t *ma)
+{
+    port_err_t err;
+
+    if (ma == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = adc_port_with_lock(adc_body_read_motor);
+    if (err == PORT_OK) {
+        *ma = s_read_mv;
+    }
+    return err;
 }
 
 static port_err_t adc_port_read_battery_mv(uint16_t *mv)
 {
-    return adc_port_read_locked(mv, true);
+    port_err_t err;
+
+    if (mv == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = adc_port_with_lock(adc_body_read_battery);
+    if (err == PORT_OK) {
+        *mv = s_read_mv;
+    }
+    return err;
+}
+
+static port_err_t adc_port_cal_capture(uint16_t true_mv)
+{
+    s_cal_true_mv = true_mv;
+    return adc_port_with_lock(adc_body_cal_capture);
+}
+
+static port_err_t adc_port_cal_reset(void)
+{
+    return adc_port_with_lock(adc_body_cal_reset);
+}
+
+static port_err_t adc_port_get_cal_status(adc_cal_status_t *status)
+{
+    if (status == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    adc_adapter_ensure_init();
+    adc_driver_cal_status(&s_state, status);
+    return PORT_OK;
 }
 
 static const adc_port_t s_adc_port = {
-    .read_motor_load_mv = adc_port_read_motor_load_mv,
+    .read_motor_load_ma = adc_port_read_motor_load_ma,
     .read_battery_mv = adc_port_read_battery_mv,
+    .cal_capture = adc_port_cal_capture,
+    .cal_reset = adc_port_cal_reset,
+    .get_cal_status = adc_port_get_cal_status,
 };
 
 const adc_port_t *adc_port_get(void)

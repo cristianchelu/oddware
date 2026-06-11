@@ -171,8 +171,11 @@ this port synchronously on the CLI task.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `read_motor_load_mv` | `(&mv) -> err` | Idempotent P1.7 low (motor path B0→COM), `[tune]` 1 ms mux settle, **1** raw sample, `mv = raw × 2500 / 4095`. `PORT_ERR_BUSY` if adapter mutex not acquired within `[tune]` 5000 ms or WFCI `ADC` loan unavailable. |
-| `read_battery_mv` | `(&mv) -> err` | If motor EN (P0.1) high → `PORT_ERR_BUSY`. P1.7 high (battery path B1→COM), settle, **10** raw samples with outlier trim (> 2σ from mean when N ≥ 4), average, **always** restore P1.7 low. Returns sense mV at GPIO17 (divider ratio not applied — `[probe-needed]`). Same mutex / loan errors as motor load. |
+| `read_motor_load_ma` | `(&ma) -> err` | Idempotent P1.7 low (motor path B0→COM), `[tune]` 1 ms mux settle, **1** raw sample, `ma = raw × 2500 / 4095`. Value is motor current in mA (1 Ω shunt — `[probe]`; no scale). `PORT_ERR_BUSY` if adapter mutex not acquired within `[tune]` 5000 ms or WFCI `ADC` loan unavailable. |
+| `read_battery_mv` | `(&mv) -> err` | If motor EN (P0.1) high → `PORT_ERR_BUSY`. P1.7 high (battery path), settle, **10** raw samples with outlier trim, average pin mV, apply `pin_mV × batt_scale_x1000 / 1000` from NVDM (default 11000). **Always** restore P1.7 low. Same mutex / loan errors as motor load. |
+| `cal_capture` | `(true_mv) -> err` | One-point divider trim: sample pin mV on battery path (same exclusivity as `read_battery_mv`), store `round(true_mv × 1000 / pin_mV)` as `power/batt_scale_x1000`, update runtime cal. `true_mv` `[design]` 3000–8000. |
+| `cal_reset` | `() -> err` | Erase `power/batt_scale_x1000`; restore 11.000 default. |
+| `get_cal_status` | `(&status) -> err` | Fill `adc_cal_status_t` (`scale_x1000`, `customized`) from driver state / NVDM. |
 
 Adapter: `adc_adapter.c` — `gpio_expander_port` + `adc_driver.c` + `adc_bus_adapter.c`
 (HAL AUXADC0); mutex for overlapping callers.
@@ -181,7 +184,7 @@ Adapter: `adc_adapter.c` — `gpio_expander_port` + `adc_driver.c` + `adc_bus_ad
 
 | Function | When |
 |----------|------|
-| `try_read_motor_load_mv` | Non-blocking jam sample during motor EN |
+| `try_read_motor_load_ma` | Non-blocking jam sample during motor EN |
 | `try_read_battery_mv` | Monitoring tick when WFCI busy |
 
 ### `weight_port.h`
@@ -316,7 +319,7 @@ loan for the drive pin.
 | `reset` | `() -> err` | Hardware reset pulse on GPIO14, verify ID `0x23` |
 | `configure` | `(dir_p0, dir_p1, out_p0, out_p1) -> err` | Write direction and output registers |
 | `set_pin` | `(port, pin, level) -> err` | Set one expander pin (0=output, 1=input per AW9523B) |
-| `get_pin` | `(port, pin, &level) -> err` | Read one expander input pin |
+| `get_pin` | `(port, pin, &level) -> err` | For pins configured as **output** (`dir` bit = 0), return the commanded level from the output latch. For **input** pins, read the input register. Motor EN exclusivity uses output latch, not pad sense (FAULT shares EN — `[probe]`). |
 | `read_inputs` | `(&p0, &p1) -> err` | Read input registers 0x00 and 0x01 in one `EXPANDER` loan |
 | `set_int_mask` | `(mask_p0, mask_p1) -> err` | Write IRQ mask registers 0x06/0x07 (`0` = enabled, `1` = masked) |
 

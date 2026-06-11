@@ -8,7 +8,9 @@
 
 void fake_adc_port_reset(void);
 
-void fake_adc_port_set_motor_mv(uint16_t mv);
+void fake_adc_port_set_motor_ma(uint16_t ma);
+
+void fake_adc_port_set_battery_pin_mv(uint16_t mv);
 
 void fake_adc_port_set_battery_mv(uint16_t mv);
 

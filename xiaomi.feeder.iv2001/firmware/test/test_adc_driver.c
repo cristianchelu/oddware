@@ -5,6 +5,8 @@
 #include "adc_driver.h"
 #include "adc_limits.h"
 #include "board_gpio_iv2001.h"
+#include "config_keys.h"
+#include "fake_config_port.h"
 #include "fake_gpio_expander_port.h"
 #include "fake_time.h"
 
@@ -42,12 +44,14 @@ static void adc_driver_test_reset(void)
 {
     adc_hw_t hw = {
         .expander = fake_gpio_expander_port_get(),
+        .config = fake_config_port_get(),
         .read_raw = test_read_raw,
         .delay_ms = test_delay_ms,
     };
 
     const gpio_expander_port_t *exp = fake_gpio_expander_port_get();
 
+    fake_config_port_reset();
     fake_gpio_expander_reset();
     fake_gpio_expander_set_inputs(0u, 0u);
     fake_time_reset();
@@ -81,13 +85,13 @@ void test_adc_raw_to_mv_converts_2048_to_1250(void)
 
 void test_adc_motor_load_selects_mux_settles_and_samples_once(void)
 {
-    uint16_t mv = 0u;
+    uint16_t ma = 0u;
 
     adc_driver_test_reset();
     adc_test_set_raw_sequence((const uint16_t[]){ 2048u }, 1u);
 
-    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_mv(&s_state, &mv));
-    TEST_ASSERT_EQUAL_UINT16(1250u, mv);
+    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_ma(&s_state, &ma));
+    TEST_ASSERT_EQUAL_UINT16(1250u, ma);
     TEST_ASSERT_EQUAL(ADC_MUX_SETTLE_MS, (unsigned)fake_time_ticks());
     TEST_ASSERT_FALSE(fake_gpio_expander_pin(BOARD_GPIO_ADC_MUX_PORT,
                                              BOARD_GPIO_ADC_MUX_PIN));
@@ -96,22 +100,29 @@ void test_adc_motor_load_selects_mux_settles_and_samples_once(void)
 
 void test_adc_motor_load_idempotent_mux_low(void)
 {
-    uint16_t mv = 0u;
+    uint16_t ma = 0u;
 
     adc_driver_test_reset();
     adc_test_set_raw_sequence((const uint16_t[]){ 1000u, 1000u }, 2u);
 
-    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_mv(&s_state, &mv));
-    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_mv(&s_state, &mv));
+    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_ma(&s_state, &ma));
+    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_motor_load_ma(&s_state, &ma));
     TEST_ASSERT_EQUAL(2u, fake_gpio_expander_set_pin_calls());
 }
 
+/* Regression: motor EN exclusivity uses output latch, not input pad (FAULT shares EN). */
 void test_adc_battery_rejects_when_motor_en_high(void)
 {
     uint16_t mv = 0u;
 
+    const gpio_expander_port_t *exp = fake_gpio_expander_port_get();
+
     adc_driver_test_reset();
-    fake_gpio_expander_set_inputs(BOARD_GPIO_MOTOR_EN_MASK, 0u);
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      exp->configure(BOARD_GPIO_BOOT_DIR_P0,
+                                     BOARD_GPIO_BOOT_DIR_P1,
+                                     BOARD_GPIO_MOTOR_EN_MASK,
+                                     BOARD_GPIO_BOOT_OUT_P1));
 
     TEST_ASSERT_EQUAL(PORT_ERR_BUSY, adc_driver_read_battery_mv(&s_state, &mv));
     TEST_ASSERT_EQUAL(0u, fake_gpio_expander_set_pin_calls());
@@ -130,7 +141,7 @@ void test_adc_battery_averages_ten_samples_and_restores_mux(void)
     adc_test_set_raw_sequence(raws, ADC_BATTERY_SAMPLE_CNT);
 
     TEST_ASSERT_EQUAL(PORT_OK, adc_driver_read_battery_mv(&s_state, &mv));
-    TEST_ASSERT_EQUAL_UINT16(1250u, mv);
+    TEST_ASSERT_EQUAL_UINT16(13750u, mv);
     TEST_ASSERT_EQUAL(ADC_MUX_SETTLE_MS, (unsigned)fake_time_ticks());
     TEST_ASSERT_FALSE(fake_gpio_expander_pin(BOARD_GPIO_ADC_MUX_PORT,
                                              BOARD_GPIO_ADC_MUX_PIN));
@@ -184,11 +195,29 @@ void test_adc_battery_rejects_null_mv(void)
                       adc_driver_read_battery_mv(&s_state, NULL));
 }
 
-void test_adc_motor_load_rejects_null_mv(void)
+void test_adc_motor_load_rejects_null_ma(void)
 {
     adc_driver_test_reset();
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG,
-                      adc_driver_read_motor_load_mv(&s_state, NULL));
+                      adc_driver_read_motor_load_ma(&s_state, NULL));
+}
+
+void test_adc_driver_cal_capture_updates_state(void)
+{
+    adc_cal_status_t status;
+    uint16_t raws[ADC_BATTERY_SAMPLE_CNT];
+    uint8_t i;
+
+    adc_driver_test_reset();
+    for (i = 0u; i < ADC_BATTERY_SAMPLE_CNT; i++) {
+        raws[i] = 983u;
+    }
+    adc_test_set_raw_sequence(raws, ADC_BATTERY_SAMPLE_CNT);
+
+    TEST_ASSERT_EQUAL(PORT_OK, adc_driver_cal_capture(&s_state, 6385u));
+    adc_driver_cal_status(&s_state, &status);
+    TEST_ASSERT_TRUE(status.customized);
+    TEST_ASSERT_EQUAL_UINT32(10642u, status.scale_x1000);
 }
 
 void test_adc_driver_init_null_safe(void)

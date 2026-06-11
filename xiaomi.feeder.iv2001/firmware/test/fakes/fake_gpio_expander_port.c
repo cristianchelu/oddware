@@ -99,10 +99,19 @@ static port_err_t fake_exp_set_pin(uint8_t port, uint8_t pin, bool level)
 
 static port_err_t fake_exp_get_pin(uint8_t port, uint8_t pin, bool *level)
 {
+    uint8_t dir;
     uint8_t sample;
 
-    if (level == NULL) {
+    if (level == NULL || pin > 7u) {
         return PORT_ERR_INVALID_ARG;
+    }
+
+    dir = (port == 0u) ? s_dev.dir_p0 : s_dev.dir_p1;
+    if ((dir & (uint8_t)(1u << pin)) == 0u) {
+        uint8_t out = aw9523b_output_get(&s_dev, port);
+
+        *level = (out & (uint8_t)(1u << pin)) != 0u;
+        return PORT_OK;
     }
 
     sample = (port == 0u) ? s_input_p0 : s_input_p1;

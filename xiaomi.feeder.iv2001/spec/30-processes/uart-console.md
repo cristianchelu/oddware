@@ -53,6 +53,11 @@ weigh cal span
 weigh cal status
 index read
 hopper read
+adc read motor
+adc read battery
+adc cal <true_mv>
+adc cal status
+adc cal reset
 motor fwd <ms>
 motor rev <ms>
 config factory-reset
@@ -635,9 +640,10 @@ Pulses the hopper IR emitter, samples the detector, drives the emitter off.
 ## `adc` commands
 
 Bench helper for NC7SB3157 BAT/MOT mux + MT7682 AUXADC0 (GPIO17). Uses
-`adc_port`. Returns sense voltage in millivolts at the ADC pin — no divider
-ratio, jam thresholds, or battery-percent mapping. Not a product interface.
-`[design]`
+`adc_port` and `config_port` (cal only). `adc read motor` returns motor current
+in mA (1 Ω shunt — `[probe]`). `adc read battery` returns pack mV after the stored scale
+(default 11/1 — see [battery-monitoring.md](battery-monitoring.md)). No jam
+thresholds or battery-percent mapping. Not a product interface. `[design]`
 
 **Operator note.** `adc read battery` switches P1.7 to the battery path briefly.
 Do not run concurrently with `motor fwd` / `motor rev` (battery read refuses
@@ -645,11 +651,11 @@ when motor EN is high).
 
 ### `adc read motor`
 
-Select motor-load path (P1.7 low), sample once, convert to mV.
+Select motor-load path (P1.7 low), sample once, convert to mA (1 Ω shunt).
 
 | Outcome | UART response |
 |---------|---------------|
-| Success | `adc motor: <mv> mV` |
+| Success | `adc motor: <ma> mA` |
 | Failure | `adc read failed (<reason>)` |
 
 ### `adc read battery`
@@ -662,6 +668,36 @@ motor path.
 | Success | `adc battery: <mv> mV` |
 | Motor EN asserted | `adc read failed (busy)` |
 | Other failure | `adc read failed (<reason>)` |
+
+### `adc cal <true_mv>`
+
+One-point battery divider calibration. Operator measures pack voltage with a
+multimeter (`true_mv` in mV, e.g. `6385` for 6.385 V), motor commanded off (not
+during `motor fwd` / `motor rev`). `true_mv` must be `[design]` 3000–8000.
+Firmware samples pin mV on the battery path, stores `round(true_mv × 1000 / pin_mV)` as
+`power/batt_scale_x1000`. Effective multiplier must be 8.0–15.0 `[design]`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `adc cal ok (<scale>)` e.g. `adc cal ok (10.642)` |
+| Motor EN asserted | `adc cal failed (busy)` |
+| Invalid `true_mv` or ratio | `adc cal failed (invalid_arg)` |
+| Other failure | `adc cal failed (<reason>)` |
+
+### `adc cal status`
+
+| Outcome | UART response |
+|---------|---------------|
+| Factory default (key absent) | `adc cal: 11.000 (default)` |
+| Custom scale stored | `adc cal: <scale>` e.g. `adc cal: 10.642` |
+
+### `adc cal reset`
+
+Erase `power/batt_scale_x1000`; restore 11.000 default.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `adc cal reset ok` |
 
 ## `motor` commands
 
