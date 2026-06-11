@@ -878,6 +878,16 @@ a remote session can trigger override — acceptable for bench v1. `[design]`
 
 Override does **not** disable the listener or require an escape sequence.
 
+### OTA download window
+
+During an OTA download (from preflight through verify/apply or failure),
+the telnet listener is torn down: active session closed, port 2323 not
+accepting connections, `remote_cli` task suspended. UART0 remains available
+for bench commands. After a failed OTA the listener restarts and logs
+`remote console listening on port 2323` on UART; after a successful OTA
+the device reboots and the listener comes up on the next boot when STA is
+ready. See [ota-flow.md](ota-flow.md) § Pre-download memory reclaim.
+
 ### Security
 
 No login or knock for v1. Compile-time off in production is the threat-model

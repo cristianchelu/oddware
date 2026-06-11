@@ -2,6 +2,7 @@
 #define MQTT_CLIENT_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 const char *mqtt_client_device_id(void);
 void mqtt_client_start(void);

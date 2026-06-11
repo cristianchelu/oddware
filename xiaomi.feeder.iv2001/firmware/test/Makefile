@@ -33,6 +33,7 @@ HOST_SRCS := ../src/app_log.c \
              ../src/button_gesture.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
+             ../src/ota_preflight.c \
              ../src/ota_url.c \
              ../src/ota_image.c \
              ../src/ota_rollback.c \

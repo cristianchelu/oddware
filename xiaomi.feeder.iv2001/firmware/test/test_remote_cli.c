@@ -177,9 +177,7 @@ void test_remote_cli_uart_override_via_poll_and_service(void)
 
     remote_cli_poll_override();
 
-    TEST_ASSERT_TRUE(console_mux_force_local_pending());
-    TEST_ASSERT_FALSE(remote_cli_test_service_session());
-
+    TEST_ASSERT_FALSE(console_mux_force_local_pending());
     TEST_ASSERT_FALSE(remote_cli_test_session_active());
     TEST_ASSERT_FALSE(console_mux_remote_active());
     TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "[console] local"));
@@ -222,4 +220,37 @@ void test_remote_cli_force_local_service_matches_device_path(void)
     TEST_ASSERT_FALSE(remote_cli_test_session_active());
     TEST_ASSERT_FALSE(console_mux_remote_active());
     TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "[console] local"));
+}
+
+void test_remote_cli_suspend_for_ota_releases_mux(void)
+{
+    remote_cli_test_reset_all();
+
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_suspend_for_ota();
+
+    TEST_ASSERT_FALSE(remote_cli_test_session_active());
+    TEST_ASSERT_FALSE(console_mux_remote_active());
+    TEST_ASSERT_TRUE(remote_cli_test_is_suspended_for_ota());
+}
+
+void test_remote_cli_suspend_rejects_new_session(void)
+{
+    remote_cli_test_reset_all();
+
+    remote_cli_suspend_for_ota();
+
+    TEST_ASSERT_FALSE(remote_cli_test_begin_session());
+}
+
+void test_remote_cli_resume_after_ota_allows_session(void)
+{
+    remote_cli_test_reset_all();
+
+    remote_cli_suspend_for_ota();
+    remote_cli_resume_after_ota();
+
+    TEST_ASSERT_FALSE(remote_cli_test_is_suspended_for_ota());
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_end_session();
 }

@@ -133,6 +133,7 @@ static int remote_cli_telnet_rx_byte(uint8_t c)
 
 #include "cli.h"
 #include "lwip/sockets.h"
+#include <sys/select.h>
 #include "task_def.h"
 
 #include "app_cli.h"
@@ -140,10 +141,17 @@ static int remote_cli_telnet_rx_byte(uint8_t c)
 #define REMOTE_CLI_PORT           2323
 #define REMOTE_CLI_STACK_WORDS    (APP_TASK_STACKSIZE / sizeof(portSTACK_TYPE))
 
+static TaskHandle_t s_remote_cli_task;
 static int s_listen_fd = -1;
 static int s_client_fd = -1;
 static volatile bool s_session_end;
+static volatile bool s_suspended_for_ota;
+static volatile bool s_remote_cli_reclaimed;
 static cli_t s_remote_cli;
+
+static void remote_cli_detach_session(void);
+static void remote_cli_close_listener(void);
+static void remote_cli_enter_ota_suspend(void);
 
 static void remote_cli_telnet_send_neg(uint8_t cmd, uint8_t opt)
 {
@@ -295,7 +303,7 @@ static void remote_cli_run_session(void)
 {
     bool forced = false;
 
-    while (s_client_fd >= 0 && console_mux_remote_active() && !s_session_end) {
+    while (s_client_fd >= 0 && console_mux_remote_active() && !s_session_end && !s_suspended_for_ota) {
         if (console_mux_take_force_local()) {
             forced = true;
             break;
@@ -315,6 +323,44 @@ static void remote_cli_close_listener(void)
         (void)close(s_listen_fd);
         s_listen_fd = -1;
     }
+}
+
+static void remote_cli_recover_stale_state(void)
+{
+    s_session_end = true;
+    app_log_clear_sink();
+
+    if (console_mux_remote_active()) {
+        console_mux_release_remote();
+    }
+}
+
+static void remote_cli_enter_ota_suspend(void)
+{
+    remote_cli_detach_session();
+    remote_cli_close_listener();
+    s_remote_cli_reclaimed = true;
+    s_remote_cli_task = NULL;
+    vTaskDelete(NULL);
+}
+
+static bool remote_cli_listen_readable(uint32_t timeout_ms)
+{
+    fd_set readfds;
+    struct timeval tv;
+    int rc;
+
+    if (s_listen_fd < 0) {
+        return false;
+    }
+
+    FD_ZERO(&readfds);
+    FD_SET(s_listen_fd, &readfds);
+    tv.tv_sec = (time_t)(timeout_ms / 1000u);
+    tv.tv_usec = (suseconds_t)((timeout_ms % 1000u) * 1000u);
+
+    rc = select(s_listen_fd + 1, &readfds, NULL, NULL, &tv);
+    return rc > 0 && FD_ISSET(s_listen_fd, &readfds);
 }
 
 static bool remote_cli_open_listener(void)
@@ -350,6 +396,14 @@ static bool remote_cli_open_listener(void)
         return false;
     }
 
+    {
+        int flags = fcntl(s_listen_fd, F_GETFL, 0);
+
+        if (flags >= 0) {
+            (void)fcntl(s_listen_fd, F_SETFL, flags | O_NONBLOCK);
+        }
+    }
+
     return true;
 }
 
@@ -361,6 +415,11 @@ static void remote_cli_task(void *param)
      * Do not call lwip_net_ready() here — its semaphores are one-shot and already taken. */
 
     for (;;) {
+        if (s_suspended_for_ota) {
+            remote_cli_enter_ota_suspend();
+            continue;
+        }
+
         if (!remote_cli_open_listener()) {
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             continue;
@@ -373,9 +432,19 @@ static void remote_cli_task(void *param)
             socklen_t peer_len = sizeof(peer);
             int client_fd;
 
+            if (s_suspended_for_ota) {
+                break;
+            }
+
+            if (!remote_cli_listen_readable(100u)) {
+                continue;
+            }
+
             client_fd = accept(s_listen_fd, (struct sockaddr *)&peer, &peer_len);
             if (client_fd < 0) {
-                vTaskDelay(10 / portTICK_PERIOD_MS);
+                if (s_suspended_for_ota) {
+                    break;
+                }
                 continue;
             }
 
@@ -396,23 +465,68 @@ static void remote_cli_task(void *param)
 
 void remote_cli_start(void)
 {
-    static bool started;
-
-    if (started) {
+    if (s_remote_cli_task != NULL) {
         return;
     }
+
+    s_remote_cli_reclaimed = false;
 
     if (xTaskCreate(remote_cli_task,
                     "remote_cli",
                     REMOTE_CLI_STACK_WORDS,
                     NULL,
                     APP_TASK_PRIO,
-                    NULL) != pdPASS) {
+                    &s_remote_cli_task) != pdPASS) {
         app_log_error("cli", "remote console: task create failed");
         return;
     }
+}
 
-    started = true;
+void remote_cli_suspend_for_ota(void)
+{
+    TaskHandle_t task;
+
+    s_suspended_for_ota = true;
+    s_session_end = true;
+    app_log_info("cli", "remote console suspended for ota");
+
+    if (remote_cli_wait_suspended_for_ota(500u)) {
+        return;
+    }
+
+    task = s_remote_cli_task;
+    if (task != NULL) {
+        app_log_warn("cli", "remote console: force delete for ota");
+        s_remote_cli_task = NULL;
+        s_remote_cli_reclaimed = true;
+        vTaskDelete(task);
+    }
+}
+
+bool remote_cli_wait_suspended_for_ota(uint32_t timeout_ms)
+{
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+
+    while (xTaskGetTickCount() < deadline) {
+        if (s_remote_cli_reclaimed) {
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    return s_remote_cli_reclaimed;
+}
+
+void remote_cli_resume_after_ota(void)
+{
+    s_suspended_for_ota = false;
+    remote_cli_recover_stale_state();
+
+    if (s_remote_cli_task == NULL) {
+        remote_cli_start();
+    }
+
+    app_log_info("cli", "remote console resumed after ota");
 }
 
 void remote_cli_poll_override(void)
@@ -426,7 +540,10 @@ void remote_cli_poll_override(void)
     }
 
     console_uart_consume_pending();
-    console_mux_request_force_local();
+    s_session_end = true;
+    app_log_clear_sink();
+    console_mux_release_remote();
+    app_log_info("cli", "[console] local");
 }
 
 void remote_cli_request_disconnect(void)
@@ -443,6 +560,8 @@ void remote_cli_request_disconnect(void)
 
 static bool s_session_active;
 static bool s_sink_attached;
+static volatile bool s_suspended_for_ota;
+static volatile bool s_remote_cli_reclaimed;
 static char s_host_sink[512];
 static size_t s_host_sink_len;
 
@@ -484,6 +603,8 @@ static void remote_cli_host_end_session(bool print_local)
 void remote_cli_test_reset(void)
 {
     remote_cli_host_end_session(false);
+    s_suspended_for_ota = false;
+    s_remote_cli_reclaimed = false;
     s_host_sink_len = 0;
     memset(s_host_sink, 0, sizeof(s_host_sink));
     s_host_tn_tx_len = 0;
@@ -491,8 +612,17 @@ void remote_cli_test_reset(void)
     remote_cli_telnet_reset();
 }
 
+bool remote_cli_test_is_suspended_for_ota(void)
+{
+    return s_suspended_for_ota;
+}
+
 bool remote_cli_test_begin_session(void)
 {
+    if (s_suspended_for_ota) {
+        return false;
+    }
+
     if (!console_mux_try_remote()) {
         return false;
     }
@@ -561,9 +691,28 @@ void remote_cli_start(void)
 {
 }
 
+void remote_cli_suspend_for_ota(void)
+{
+    s_suspended_for_ota = true;
+    remote_cli_host_end_session(false);
+    s_remote_cli_reclaimed = true;
+}
+
+bool remote_cli_wait_suspended_for_ota(uint32_t timeout_ms)
+{
+    (void)timeout_ms;
+    return s_remote_cli_reclaimed;
+}
+
+void remote_cli_resume_after_ota(void)
+{
+    s_suspended_for_ota = false;
+    s_remote_cli_reclaimed = false;
+}
+
 void remote_cli_poll_override(void)
 {
-    if (!console_mux_remote_active()) {
+    if (!s_session_active) {
         return;
     }
 
@@ -572,7 +721,7 @@ void remote_cli_poll_override(void)
     }
 
     console_uart_consume_pending();
-    console_mux_request_force_local();
+    remote_cli_host_end_session(true);
 }
 
 void remote_cli_request_disconnect(void)
@@ -597,6 +746,20 @@ void remote_cli_poll_override(void)
 }
 
 void remote_cli_request_disconnect(void)
+{
+}
+
+void remote_cli_suspend_for_ota(void)
+{
+}
+
+bool remote_cli_wait_suspended_for_ota(uint32_t timeout_ms)
+{
+    (void)timeout_ms;
+    return true;
+}
+
+void remote_cli_resume_after_ota(void)
 {
 }
 

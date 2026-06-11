@@ -24,8 +24,8 @@
 #include "hal_sys.h"
 #include "ota_image.h"
 #include "ota_port.h"
+#include "ota_preflight.h"
 #include "ota_rollback.h"
-#include "mqtt_client.h"
 
 #define OTA_DL_TASK_STACK   (12288)
 #define OTA_DL_TASK_PRIO    (TASK_PRIORITY_ABOVE_NORMAL - 1)
@@ -377,7 +377,7 @@ static port_err_t ota_adapter_http_download(const char *url,
 
 static void ota_adapter_task_fail(const char *error)
 {
-    mqtt_client_resume_after_ota();
+    ota_preflight_resume_idle_tasks();
     ota_adapter_report(OTA_STATUS_ERROR, 0, error);
     s_status = OTA_STATUS_IDLE;
     s_ota_task = NULL;
@@ -400,10 +400,6 @@ static void ota_adapter_task(void *param)
     app_log_info("ota", "task start url=%s sha512=%s", job.url, job.has_expected_sha512 ? "yes" : "no");
     s_status = OTA_STATUS_DOWNLOADING;
 
-    mqtt_client_suspend_for_ota();
-    if (!mqtt_client_wait_disconnected(5000)) {
-        app_log_error("ota", "mqtt disconnect timeout");
-    }
     vTaskDelay(pdMS_TO_TICKS(3000));
     app_log_info("ota", "mqtt down, http start");
 
@@ -473,6 +469,8 @@ static port_err_t ota_adapter_start(const char *url,
 
     s_status = OTA_STATUS_DOWNLOADING;
 
+    ota_preflight_suspend_idle_tasks();
+
     if (xTaskCreate(ota_adapter_task,
                     "ota_dl",
                     OTA_DL_TASK_STACK / sizeof(portSTACK_TYPE),
@@ -480,6 +478,7 @@ static port_err_t ota_adapter_start(const char *url,
                     OTA_DL_TASK_PRIO,
                     &s_ota_task) != pdPASS) {
         app_log_error("ota", "task create failed");
+        ota_preflight_resume_idle_tasks();
         vPortFree(job);
         s_status = OTA_STATUS_IDLE;
         return PORT_ERR_IO;

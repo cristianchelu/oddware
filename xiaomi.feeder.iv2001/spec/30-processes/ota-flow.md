@@ -29,12 +29,32 @@ exists (`dispense-cycle.md`).
 
 ## Download
 
+### Pre-download memory reclaim
+
+Before spawning the download worker, firmware suspends non-essential
+persistent tasks to free RTOS stack RAM (~100–200 KB free at runtime; the
+download worker needs `[tune]` 12 KB stack). `[design]`
+
+| Task | Action during OTA window |
+|------|--------------------------|
+| `mqtt_io` | Disarm reconnect, disconnect broker session (task keeps running; broker buffers freed) |
+| `remote_cli` | End active telnet session, close port 2323 listener, delete task to free stack (when `REMOTE_CLI_ENABLE`; recreated after failed OTA) |
+
+UART0 CLI (`app_cli`) stays up. On download-worker spawn failure or any
+download/verify/apply failure before reboot: resume suspended tasks (MQTT
+reconnects when credentials are stored; telnet re-binds port 2323). On
+successful apply: reboot — no resume. See
+[uart-console.md](uart-console.md) § Remote telnet console.
+
+### Steps
+
 1. Publish `.../ota/status`: `{"state": "downloading", "pct": 0}`.
-2. HTTP(S) GET to provided URL.
-3. Read in `[tune]` 4 KB chunks (RAM-constrained: ~100–200 KB free at runtime).
-4. Write chunks to the inactive application bank (A/B layout).
-5. Publish progress every `[tune]` 5 % (e.g. at 5, 10, 15 … 100 %).
-6. Enforce maximum image size (partition size minus header). Abort if exceeded.
+2. Suspend idle tasks (above).
+3. HTTP(S) GET to provided URL.
+4. Read in `[tune]` 4 KB chunks.
+5. Write chunks to the inactive application bank (A/B layout).
+6. Publish progress every `[tune]` 5 % (e.g. at 5, 10, 15 … 100 %).
+7. Enforce maximum image size (partition size minus header). Abort if exceeded.
 
 HTTPS: supported if `mqtt/tls` is enabled and mbedTLS RAM budget permits.
 

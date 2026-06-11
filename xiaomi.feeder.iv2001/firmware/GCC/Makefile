@@ -128,6 +128,7 @@ APP_FILES      += $(APP_PATH_SRC)/ota_url.c
 APP_FILES      += $(APP_PATH_SRC)/ota_image.c
 APP_FILES      += $(APP_PATH_SRC)/flash_bank_logic.c
 APP_FILES      += $(APP_PATH_SRC)/ota_client.c
+APP_FILES      += $(APP_PATH_SRC)/ota_preflight.c
 APP_FILES      += $(APP_PATH_SRC)/ota_rollback.c
 APP_FILES      += $(APP_PATH_SRC)/nvdm_boot.c
 APP_FILES      += $(APP_PATH_SRC)/provision_form.c

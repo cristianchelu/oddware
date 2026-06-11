@@ -517,6 +517,11 @@ void mqtt_client_test_set_device_id(const char *device_id)
     s_device_id[sizeof(s_device_id) - 1] = '\0';
 }
 
+bool mqtt_client_test_is_suspended(void)
+{
+    return s_suspended;
+}
+
 void mqtt_client_start(void)
 {
     mqtt_backoff_init(&s_backoff);
@@ -608,11 +613,6 @@ void mqtt_client_resume_after_ota(void)
 {
     s_suspended = false;
 
-    if (s_mqtt_task != NULL) {
-        vTaskResume(s_mqtt_task);
-        APP_LOG_D("mqtt", "io task resumed");
-    }
-
     if (mqtt_cred_is_stored(config_port_get()) && mqtt_client_wifi_is_ready()) {
         s_connect_armed = true;
         mqtt_client_request_connect();
@@ -627,11 +627,11 @@ bool mqtt_client_wait_disconnected(uint32_t timeout_ms)
     TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
 
     while (xTaskGetTickCount() < deadline) {
+        if (s_unit_test_mode) {
+            mqtt_client_step();
+        }
+
         if (mqtt == NULL || !mqtt->is_connected()) {
-            if (s_mqtt_task != NULL) {
-                vTaskSuspend(s_mqtt_task);
-                APP_LOG_D("mqtt", "io task suspended");
-            }
             return true;
         }
         vTaskDelay(pdMS_TO_TICKS(100));
