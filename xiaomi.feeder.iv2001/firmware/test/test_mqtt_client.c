@@ -264,3 +264,47 @@ void test_stored_host_autoconnects_on_wifi_ready(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
 }
+
+/* Regression: OTA must not spawn MQTT reconnect while HTTP download runs. */
+void test_suspend_for_ota_blocks_pending_connect(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_suspend_for_ota();
+    mqtt_client_step();
+    mqtt_client_step();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
+    TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+}
+
+void test_suspend_for_ota_disconnects_without_reconnect(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+
+    mqtt_client_suspend_for_ota();
+    mqtt_client_step();
+    mqtt_client_step();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
+    TEST_ASSERT_EQUAL_UINT(1, mqtt->disconnect_calls);
+    TEST_ASSERT_FALSE(mqtt->connected);
+}

@@ -247,24 +247,16 @@ static port_err_t ota_adapter_http_download(const char *url,
                                             uint32_t *downloaded_out,
                                             uint8_t hash_out[FLASH_BANK_SHA512_LEN])
 {
-    char *chunk_buf = NULL;
-    char *hdr_buf = NULL;
+    /* Task-stack buffers: no heap (fragmented) and no permanent BSS reservation. */
+    uint8_t chunk_storage[OTA_CHUNK_SIZE];
+    char hdr_storage[OTA_RANGE_HDR_BUF];
+    char *chunk_buf = (char *)chunk_storage;
+    char *hdr_buf = hdr_storage;
     uint32_t downloaded = 0;
     uint32_t total = 0;
     uint8_t last_report_pct = 0;
     mbedtls_sha512_context ctx;
     port_err_t err;
-
-    chunk_buf = pvPortMalloc(OTA_CHUNK_SIZE);
-    if (chunk_buf == NULL) {
-        return PORT_ERR_IO;
-    }
-
-    hdr_buf = pvPortMalloc(OTA_RANGE_HDR_BUF);
-    if (hdr_buf == NULL) {
-        vPortFree(chunk_buf);
-        return PORT_ERR_IO;
-    }
 
     mbedtls_sha512_init(&ctx);
     mbedtls_sha512_starts(&ctx, 0);
@@ -307,16 +299,10 @@ static port_err_t ota_adapter_http_download(const char *url,
         if (err != PORT_OK) {
             printf("[ota] range fail at %lu after retries\r\n", (unsigned long)downloaded);
             mbedtls_sha512_free(&ctx);
-            if (hdr_buf != NULL) {
-                vPortFree(hdr_buf);
-            }
-            vPortFree(chunk_buf);
             return err;
         }
 
-        /* Free header buffer once total is known. */
         if (hdr_buf != NULL && total > 0) {
-            vPortFree(hdr_buf);
             hdr_buf = NULL;
         }
 
@@ -345,13 +331,8 @@ static port_err_t ota_adapter_http_download(const char *url,
         vTaskDelay(pdMS_TO_TICKS(OTA_RANGE_DELAY_MS));
     }
 
-    if (hdr_buf != NULL) {
-        vPortFree(hdr_buf);
-    }
-
     if (s_abort_requested) {
         mbedtls_sha512_free(&ctx);
-        vPortFree(chunk_buf);
         return PORT_ERR_BUSY;
     }
 
@@ -359,13 +340,11 @@ static port_err_t ota_adapter_http_download(const char *url,
         LOG_E(ota_adapter, "download incomplete bytes=%lu total=%lu",
               (unsigned long)downloaded, (unsigned long)total);
         mbedtls_sha512_free(&ctx);
-        vPortFree(chunk_buf);
         return PORT_ERR_IO;
     }
 
     mbedtls_sha512_finish(&ctx, hash_out);
     mbedtls_sha512_free(&ctx);
-    vPortFree(chunk_buf);
 
     if (!ota_image_size_allowed(downloaded)) {
         return PORT_ERR_INVALID_ARG;

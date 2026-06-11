@@ -12,7 +12,7 @@
 #include "memory_map.h"
 #include "port_err.h"
 
-#define OTA_CHUNK_SIZE        8192
+#define OTA_CHUNK_SIZE        4096
 #define OTA_RANGE_SIZE        32768
 #define OTA_RANGE_DELAY_MS    0
 #define OTA_PROGRESS_STEP_PCT 5

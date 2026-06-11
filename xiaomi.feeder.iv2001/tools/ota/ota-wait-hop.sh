@@ -70,6 +70,8 @@ if [ "$WANT_BANK" != "A" ] && [ "$WANT_BANK" != "B" ]; then
 fi
 
 STATE_TOPIC="petfeeder/${DEVICE_ID}/state"
+OTA_STATUS_TOPIC="petfeeder/${DEVICE_ID}/ota/status"
+last_ota_status=""
 
 read_bank() {
     local state
@@ -130,6 +132,16 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     hop_hits=$((hits - http_baseline))
     pct="$(uart_pct)"
     progressed=0
+    ota_status="$(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+        -u "$MQTT_USER" -P "$MQTT_PASS" \
+        -t "$OTA_STATUS_TOPIC" -C 1 -W 1 2>/dev/null || true)"
+    if [ -n "$ota_status" ] && [ "$ota_status" != "$last_ota_status" ]; then
+        last_ota_status="$ota_status"
+        if [[ "$ota_status" == *'"state": "error"'* ]] || [[ "$ota_status" == *'"state":"error"'* ]]; then
+            echo "  FAIL: device reported ${ota_status}" >&2
+            exit 1
+        fi
+    fi
 
     if [ "$bank" = "$WANT_BANK" ] && [ "$saw_activity" -eq 1 ]; then
         echo "  OK: online on bank ${bank} (http_hop=${hop_hits}, uart_pct=${pct})"

@@ -2,15 +2,6 @@ diff --git a/driver/chip/mt7686/src/hal_flash_mtd_dal.c b/driver/chip/mt7686/src
 index 4fed57bd..10559494 100644
 --- a/driver/chip/mt7686/src/hal_flash_mtd_dal.c
 +++ b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
-@@ -1363,7 +1363,7 @@ ATTR_TEXT_IN_RAM void Flash_ReturnReady(void)
-  * Description
-       > Every program transaction consists of 1B of command, 3B of address,
-         and 1~256B of data in sequential.
--      > If an interrupt comes during Local Buf.¡÷GPRAM and reads Flash status,
-+      > If an interrupt comes during Local Buf.??GPRAM and reads Flash status,
-         it may corrput the program command and a part of program address.
-  *  Solution
-       > Always write first 4 bytes (command+address) to GPRAM after IRQs are disabled.
 @@ -2577,6 +2577,10 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
       *  Page program loop
       */
@@ -26,7 +17,7 @@ index 4fed57bd..10559494 100644
          // stpe2. If program Length is greater than the offset to the page boundary
          length = written = ((Length > length) ? length : Length);
  
-+        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet ?7.2.20) */
++        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet 7.2.20) */
 +        {
 +            uint32_t nor_page_remain = 256u - (address & 255u);
 +            if (written > nor_page_remain) {

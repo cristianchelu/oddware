@@ -215,6 +215,10 @@ static port_err_t mqtt_client_do_connect(void)
     const mqtt_port_t *mqtt = mqtt_port_get();
     const config_port_t *cfg = config_port_get();
     mqtt_cred_t cred;
+
+    if (s_suspended) {
+        return PORT_ERR_BUSY;
+    }
     mqtt_connect_cfg_t connect_cfg;
     mqtt_lwt_t lwt;
     char client_id[64];
@@ -323,6 +327,10 @@ static void mqtt_client_connect_worker_fn(void *param)
 
 static void mqtt_client_begin_connect_job(void)
 {
+    if (s_suspended) {
+        return;
+    }
+
     if (s_connect_worker_running || s_connect_worker_done) {
         return;
     }
@@ -597,7 +605,12 @@ const char *mqtt_client_device_id(void)
 void mqtt_client_suspend_for_ota(void)
 {
     s_suspended = true;
+    s_connect_armed = false;
+    s_connect_pending = false;
+    s_connect_busy = false;
     s_disconnect_pending = true;
+    s_reconnect_at = 0;
+    mqtt_client_connect_worker_reset();
     printf("[mqtt] suspended for ota\r\n");
 }
 

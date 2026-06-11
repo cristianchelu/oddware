@@ -104,8 +104,12 @@ ota_common_start_http() {
         --directory "$flash_dir" >>"$http_log" 2>&1 &
     OTA_HTTP_PID=$!
     sleep 1
-    if ! curl -sf --max-time 3 -H 'Range: bytes=0-63' \
+    local curl_ok=0
+    if curl -sf --max-time 3 -H 'Range: bytes=0-63' \
         "http://${lan_ip}:${HTTP_PORT}/petfeeder_a.bin" >/dev/null; then
+        curl_ok=1
+    fi
+    if [ "$curl_ok" -eq 0 ]; then
         echo "error: HTTP Range server not reachable" >&2
         cat "$http_log" >&2
         return 1
