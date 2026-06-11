@@ -34,7 +34,7 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
 | `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `ota_client_on_mqtt_connected()` (rollback confirm + idle `ota/status`); no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (OTA live; other routes log-only stub) |
-| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) in one handler |
+| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) + `hopper_input_poll(now_ms)` in one handler |
 | `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_rollback_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 
@@ -71,8 +71,18 @@ alone misses samples when that event is dropped; clearing the cached gram
 reading on `PORT_ERR_BUSY` blanks the scene while TM1637 may still show stale
 pixels.
 
-Reserved for later phases (handlers are no-ops when posted): motor, dispense
-actions, provisioning submit, OTA progress/complete.
+| `EVT_DISPENSE_START` | UART `dispense` CLI (or future button/MQTT) | Enqueue `motor_port.request_burst(1, 8000)` only; no park |
+| `EVT_BURST_DONE` | `motor_ctrl` | UART `dispense done` when a dispense burst was active; `hopper_input_notify_dispense_complete()`; otherwise no-op |
+| `EVT_MOTOR_FAULT` | `motor_ctrl` | UART `dispense fault: stuck` or `motor park fault: stuck` per active CLI command; `hopper_input_notify_dispense_complete()` when dispense was active |
+| `EVT_PARK_DONE` | `motor_ctrl` | UART `motor park done` when park was active |
+
+`dispense` and `motor park` UART commands are fully non-blocking on the CLI
+task: started/busy lines print immediately; done/fault lines print when `app`
+handles the matching completion event.
+
+Reserved for later phases (handlers are no-ops when posted): multi-burst gram
+targets, dispense queue, MQTT dispense dispatch, provisioning submit, OTA
+progress/complete.
 
 ## MQTT session phase payload
 

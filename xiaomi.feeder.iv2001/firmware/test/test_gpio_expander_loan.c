@@ -50,3 +50,14 @@ void test_gpio_expander_loan_rejects_double_begin(void)
     TEST_ASSERT_EQUAL(PORT_ERR_BUSY, gpio_expander_loan_begin());
     gpio_expander_loan_end();
 }
+
+void test_gpio_expander_loan_try_begin_fails_when_bus_busy(void)
+{
+    fake_wfci_bus_reset();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_ADC,
+                                                   WFCI_BUS_PRIORITY_NORMAL,
+                                                   0u));
+    TEST_ASSERT_EQUAL(PORT_ERR_BUSY, gpio_expander_loan_try_begin());
+    wfci_bus_port_get()->release(WFCI_BUS_PROFILE_ADC);
+}

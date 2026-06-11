@@ -19,6 +19,7 @@ typedef struct gpio_expander_port {
     port_err_t (*set_pin)(uint8_t port, uint8_t pin, bool level);
     port_err_t (*get_pin)(uint8_t port, uint8_t pin, bool *level);
     port_err_t (*read_inputs)(uint8_t *p0, uint8_t *p1);
+    port_err_t (*try_read_inputs)(uint8_t *p0, uint8_t *p1);
     port_err_t (*set_int_mask)(uint8_t mask_p0, uint8_t mask_p1);
 } gpio_expander_port_t;
 

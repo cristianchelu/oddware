@@ -7,6 +7,7 @@
 
 #include "fake_motor_port.h"
 #include "motor_cli.h"
+#include "motor_port_provider_host.h"
 
 static void assert_motor_cli_fail_msg(const char *verb, port_err_t err,
                                       const char *expect)
@@ -59,10 +60,10 @@ void test_motor_cli_parse_duration_accepts_valid_range(void)
     TEST_ASSERT_EQUAL(1u, ms);
     TEST_ASSERT_EQUAL(PORT_OK, motor_cli_parse_duration_ms("2", &ms));
     TEST_ASSERT_EQUAL(2u, ms);
-    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_parse_duration_ms("7999", &ms));
-    TEST_ASSERT_EQUAL(7999u, ms);
-    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_parse_duration_ms("8000", &ms));
-    TEST_ASSERT_EQUAL(8000u, ms);
+    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_parse_duration_ms("19999", &ms));
+    TEST_ASSERT_EQUAL(19999u, ms);
+    TEST_ASSERT_EQUAL(PORT_OK, motor_cli_parse_duration_ms("20000", &ms));
+    TEST_ASSERT_EQUAL(20000u, ms);
 }
 
 void test_motor_cli_parse_duration_rejects_invalid(void)
@@ -73,7 +74,7 @@ void test_motor_cli_parse_duration_rejects_invalid(void)
 
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("", &ms));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("0", &ms));
-    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("8001", &ms));
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("20001", &ms));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("abc", &ms));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("01", &ms));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, motor_cli_parse_duration_ms("007", &ms));

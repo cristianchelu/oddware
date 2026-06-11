@@ -22,6 +22,7 @@
 #include "app_index_cli.h"
 #include "app_weigh_cli.h"
 #include "app_motor_cli.h"
+#include "dispense_cli.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
 #include "provision.h"
@@ -63,6 +64,11 @@ static uint8_t app_cli_bank_switch(uint8_t argc, char *argv[])
     return 0;
 }
 
+static uint8_t app_cli_dispense(uint8_t argc, char *argv[])
+{
+    return dispense_cli_handle(argc, argv);
+}
+
 static uint8_t app_cli_config_factory_reset(uint8_t argc, char *argv[])
 {
     (void)argc;
@@ -97,7 +103,8 @@ static cmd_t app_cli_cmds[] = {
     { "index",   "index read",                NULL, index_cli_subcmds },
     { "hopper",  "hopper read",               NULL, hopper_cli_subcmds },
     { "adc",     "adc read|cal",              NULL, adc_cli_subcmds },
-    { "motor",   "motor fwd|rev <ms>",        NULL, motor_cli_subcmds },
+    { "motor",   "motor fwd|rev <ms>|park",   NULL, motor_cli_subcmds },
+    { "dispense", "dispense one portion (async)", app_cli_dispense, NULL },
     { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
     { NULL, NULL, NULL, NULL },
 };

@@ -4,6 +4,7 @@
 
 static bool s_beam_blocked;
 static port_err_t s_sense_err = PORT_OK;
+static uint32_t s_sense_count;
 
 static port_err_t fake_hopper_ir_sense(bool *beam_blocked)
 {
@@ -15,6 +16,7 @@ static port_err_t fake_hopper_ir_sense(bool *beam_blocked)
         return s_sense_err;
     }
 
+    s_sense_count++;
     *beam_blocked = s_beam_blocked;
     return PORT_OK;
 }
@@ -27,6 +29,12 @@ void fake_hopper_ir_port_reset(void)
 {
     s_beam_blocked = false;
     s_sense_err = PORT_OK;
+    s_sense_count = 0u;
+}
+
+uint32_t fake_hopper_ir_port_sense_count(void)
+{
+    return s_sense_count;
 }
 
 void fake_hopper_ir_port_set_beam_blocked(bool beam_blocked)

@@ -17,6 +17,7 @@
 #include "provision.h"
 #include "wifi_cred.h"
 #include "wifi_sta.h"
+#include "motor_ctrl.h"
 #include "mqtt_client.h"
 
 log_create_module(petfeeder, PRINT_LEVEL_INFO);
@@ -29,6 +30,7 @@ int main(void)
           (boot_bank_query_active() == BOOT_BANK_B) ? 'B' : 'A');
 
     app_start();
+    motor_ctrl_start();
     app_cli_start();
     wifi_sta_start();
     provision_start();

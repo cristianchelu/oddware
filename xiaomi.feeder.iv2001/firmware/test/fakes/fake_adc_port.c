@@ -25,6 +25,11 @@ static port_err_t fake_read_motor_load_ma(uint16_t *ma)
     return PORT_OK;
 }
 
+static port_err_t fake_try_read_motor_load_ma(uint16_t *ma)
+{
+    return fake_read_motor_load_ma(ma);
+}
+
 static port_err_t fake_read_battery_mv(uint16_t *mv)
 {
     if (mv == NULL) {
@@ -67,6 +72,7 @@ static port_err_t fake_get_cal_status(adc_cal_status_t *status)
 
 static const adc_port_t s_fake_adc = {
     .read_motor_load_ma = fake_read_motor_load_ma,
+    .try_read_motor_load_ma = fake_try_read_motor_load_ma,
     .read_battery_mv = fake_read_battery_mv,
     .cal_capture = fake_cal_capture,
     .cal_reset = fake_cal_reset,

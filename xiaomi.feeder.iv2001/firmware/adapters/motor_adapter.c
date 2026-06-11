@@ -7,6 +7,7 @@
 #include "task.h"
 
 #include "gpio_expander_port.h"
+#include "motor_ctrl.h"
 #include "motor_driver.h"
 #include "motor_port.h"
 
@@ -52,6 +53,10 @@ static port_err_t motor_port_run_locked(uint32_t duration_ms, bool reverse)
 {
     port_err_t err;
 
+    if (motor_ctrl_is_active()) {
+        return PORT_ERR_BUSY;
+    }
+
     err = motor_mutex_ensure();
     if (err != PORT_OK) {
         return err;
@@ -81,9 +86,33 @@ static port_err_t motor_port_run_reverse_ms(uint32_t duration_ms)
     return motor_port_run_locked(duration_ms, true);
 }
 
+static port_err_t motor_port_request_burst(uint8_t pulse_target, uint16_t timeout_ms)
+{
+    return motor_ctrl_request_burst(pulse_target, timeout_ms);
+}
+
+static port_err_t motor_port_request_park(uint8_t max_pulses)
+{
+    return motor_ctrl_request_park(max_pulses);
+}
+
+static port_err_t motor_port_stop(void)
+{
+    return motor_ctrl_request_stop();
+}
+
+static bool motor_port_is_active(void)
+{
+    return motor_ctrl_is_active();
+}
+
 static const motor_port_t s_motor_port = {
     .run_forward_ms = motor_port_run_forward_ms,
     .run_reverse_ms = motor_port_run_reverse_ms,
+    .request_burst = motor_port_request_burst,
+    .request_park = motor_port_request_park,
+    .stop = motor_port_stop,
+    .is_active = motor_port_is_active,
 };
 
 const motor_port_t *motor_port_get(void)

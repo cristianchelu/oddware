@@ -21,26 +21,12 @@ void beam_cli_print_hopper_fail(port_err_t err)
 port_err_t beam_cli_run_index_read(bool *beam_open)
 {
     const motor_index_port_t *port = motor_index_port_get();
-    port_err_t err;
-    port_err_t off_err;
 
-    if (beam_open == NULL || port == NULL || port->set_led == NULL ||
-        port->read_beam_open == NULL) {
+    if (beam_open == NULL || port == NULL || port->sense == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = port->set_led(true);
-    if (err != PORT_OK) {
-        return err;
-    }
-
-    err = port->read_beam_open(beam_open);
-    off_err = port->set_led(false);
-    if (err != PORT_OK) {
-        return err;
-    }
-
-    return off_err;
+    return port->sense(beam_open);
 }
 
 port_err_t beam_cli_run_hopper_read(bool *beam_blocked)

@@ -17,6 +17,7 @@ typedef struct adc_cal_status {
 
 typedef struct adc_port {
     port_err_t (*read_motor_load_ma)(uint16_t *ma);
+    port_err_t (*try_read_motor_load_ma)(uint16_t *ma);
     port_err_t (*read_battery_mv)(uint16_t *mv);
     port_err_t (*cal_capture)(uint16_t true_mv);
     port_err_t (*cal_reset)(void);

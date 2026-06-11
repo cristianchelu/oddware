@@ -126,40 +126,28 @@ portal.
 Adapter: wraps SDK NVDM API. Groups map to NVDM groups (e.g. `wifi`,
 `mqtt`, `schedule`).
 
-### `motor_port.h` (partial — bench HAL)
+### `motor_port.h`
 
 **Auger H-bridge** ([dispense-cycle.md](../30-processes/dispense-cycle.md) PH/EN
-sequencing). Bench UART `motor fwd <ms>` / `motor rev <ms>` call this port
-synchronously on the CLI task. Production dispense does **not** use the UART CLI.
+sequencing). Two entry paths in `motor_adapter.c` — bench sync vs production
+async — not one mutex-wrapped blocking path for everything.
 
-| Function | Signature | Behavior |
-|----------|-----------|----------|
-| `run_forward_ms` | `(duration_ms) -> err` | PH forward, `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. On success PH stays forward, EN low. On fault after EN assert: retry EN low up to 3 times; on any fault after PH assert: de-assert PH. EN may remain high if coast-stop I2C fails after retries. `PORT_ERR_BUSY` if already running, adapter mutex not acquired within `[tune]` 5000 ms, or EXPANDER WFCI loan unavailable on a pin write. `PORT_ERR_INVALID_ARG` if out of range (`1…8000` ms). |
-| `run_reverse_ms` | `(duration_ms) -> err` | PH reverse (low), `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. On success PH stays reverse (low), EN low. Same error/retry/busy/range semantics as `run_forward_ms`. |
+| Function | Signature | Blocking? | Behavior |
+|----------|-----------|-----------|----------|
+| `run_forward_ms` | `(duration_ms) -> err` | **Yes** (CLI bench) | PH forward, `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. `PORT_ERR_BUSY` if `motor_ctrl` active, adapter mutex not acquired within `[tune]` 5000 ms, or EXPANDER WFCI loan unavailable. `PORT_ERR_INVALID_ARG` if out of range (`1…20000` ms). |
+| `run_reverse_ms` | `(duration_ms) -> err` | **Yes** (CLI bench) | PH reverse; same busy/range semantics as `run_forward_ms`. |
+| `request_burst` | `(pulse_target, timeout_ms) -> err` | **No** | Enqueue burst to `motor_ctrl` command queue with send timeout 0. Index LED on, forward EN until `pulse_target` beam-open edges or `timeout_ms` (whichever first). Posts `EVT_BURST_DONE` or `EVT_MOTOR_FAULT`. `PORT_ERR_BUSY` if queue full or motor active. |
+| `request_park` | `(max_pulses) -> err` | **No** | Enqueue park to `motor_ctrl` (CLI recovery only in v1). Forward until beam-open or `max_pulses`. Posts `EVT_PARK_DONE` or `EVT_MOTOR_FAULT`. |
+| `stop` | `() -> err` | **No** | Enqueue preemptive stop to `motor_ctrl` (timeout 0). |
+| `is_active` | `() -> bool` | — | True while `motor_ctrl` owns a burst, park, or anti-jam sequence. |
 
-Adapter: `motor_adapter.c` — `gpio_expander_port` + EXPANDER micro-loans;
-mutex for overlapping callers.
+Adapter: `motor_adapter.c` — bench `run_*` take adapter mutex and call
+`motor_driver_run_*_ms`; `request_*` / `stop` enqueue only. `motor_ctrl` holds
+the adapter mutex for the full burst/park/anti-jam sequence and calls
+`motor_driver_start_*` / `motor_driver_stop` directly.
 
-**Not exposed this slice** (internal driver helper or future `motor_ctrl`):
-
-| Function | When |
-|----------|------|
-| `stop` | `motor_ctrl` — preemptive EN low on jam ISR, fault, or dispense abort |
-
-### Remaining motor_port work
-
-| Item | Notes |
-|------|-------|
-| `stop` | Public port fn when `motor_ctrl` lands; preemptive abort |
-| `start_burst` | Async via `motor_ctrl` queue; pulse/duration termination |
-| `park` | Index-seal parking ([motor-index.md](../30-processes/motor-index.md)) |
-| Queue adapter | Replace synchronous `run_forward_ms` caller with `motor_ctrl` task |
-| Index LED lifecycle | P0.6 on during run ([motor-index.md](../30-processes/motor-index.md)) |
-| ADC supervision (ISR + burst) | GPIO17 threshold ISR, periodic jam samples during EN ([jam-detection.md](../30-processes/jam-detection.md)) — read path on `adc_port` |
-
-When `motor_ctrl` lands, adapter sends burst/park commands to the task. Results
-arrive as `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in
-`app_event_q`.
+Results arrive as `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in
+`app_event_q` (`app_event_post` timeout 0).
 
 ### `adc_port.h`
 
@@ -180,11 +168,12 @@ this port synchronously on the CLI task.
 Adapter: `adc_adapter.c` — `gpio_expander_port` + `adc_driver.c` + `adc_bus_adapter.c`
 (HAL AUXADC0); mutex for overlapping callers.
 
-**Not exposed this slice** (future `motor_ctrl` / monitoring):
+| `try_read_motor_load_ma` | `(&ma) -> err` | **No** | Same sample path as `read_motor_load_ma` but mutex/WFCI acquire with timeout 0 — `PORT_ERR_BUSY` when contended. Used by `motor_ctrl` jam loop only. |
+
+**Not exposed this slice** (future monitoring):
 
 | Function | When |
 |----------|------|
-| `try_read_motor_load_ma` | Non-blocking jam sample during motor EN |
 | `try_read_battery_mv` | Monitoring tick when WFCI busy |
 
 ### `weight_port.h`
@@ -283,12 +272,15 @@ Adapter: `button_port_adapter.c` — `gpio_expander_port.read_inputs` +
 
 **Motor index broken-beam** ([motor-index.md](../30-processes/motor-index.md)).
 AW9523B P0.6 (LED) and P0.7 (detector). Application and `motor_ctrl` depend on
-`motor_index_port`, not `gpio_expander_port`.
+`motor_index_port`, not `gpio_expander_port`. LED drive and P0.7 sampling stay
+inside the adapter — callers never toggle P0.6 or read the expander directly.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `set_led` | `(on) -> err` | Drive P0.6 via expander loan; caller enables only during motor run |
-| `read_beam_open` | `(&beam_open) -> err` | Read P0.7; `true` = index hole aligned / beam restored |
+| `sense` | `(&beam_open) -> err` | One-shot: illuminate → sample → de-illuminate; `true` = hole aligned / beam open |
+| `session_begin` | `() -> err` | Illuminate for an active motor burst/park session (idempotent) |
+| `session_end` | `() -> err` | De-illuminate after session teardown |
+| `poll` | `(&beam_open) -> err` | Sample while `session_begin` is active; `PORT_ERR_IO` if session inactive |
 
 Adapter: `motor_index_port_adapter.c` — `gpio_expander_port` +
 `board_gpio_iv2001.h` masks. Polarity: `BOARD_GPIO_INDEX_BEAM_OPEN_HIGH`.
@@ -320,7 +312,8 @@ loan for the drive pin.
 | `configure` | `(dir_p0, dir_p1, out_p0, out_p1) -> err` | Write direction and output registers |
 | `set_pin` | `(port, pin, level) -> err` | Set one expander pin (0=output, 1=input per AW9523B) |
 | `get_pin` | `(port, pin, &level) -> err` | For pins configured as **output** (`dir` bit = 0), return the commanded level from the output latch. For **input** pins, read the input register. Motor EN exclusivity uses output latch, not pad sense (FAULT shares EN — `[probe]`). |
-| `read_inputs` | `(&p0, &p1) -> err` | Read input registers 0x00 and 0x01 in one `EXPANDER` loan |
+| `read_inputs` | `(&p0, &p1) -> err` | Read input registers 0x00 and 0x01 in one blocking `EXPANDER` loan |
+| `try_read_inputs` | `(&p0, &p1) -> err` | Same; `try_acquire` — `PORT_ERR_BUSY` when WFCI contended (motor index `poll`) |
 | `set_int_mask` | `(mask_p0, mask_p1) -> err` | Write IRQ mask registers 0x06/0x07 (`0` = enabled, `1` = masked) |
 
 Adapter: `gpio_expander_adapter.c` — AW9523B register model + `i2c_bus_port`.

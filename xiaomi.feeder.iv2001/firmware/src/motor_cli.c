@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <string.h>
+
 #include "motor_cli.h"
+#include "motor_jam.h"
 #include "motor_port.h"
 
 void motor_cli_print_fail(const char *verb, port_err_t err)
@@ -94,4 +97,94 @@ uint8_t motor_cli_handle_run(const char *verb,
 
     printf("motor %s ok\r\n", verb);
     return 0;
+}
+
+typedef enum {
+    MOTOR_PARK_IDLE = 0,
+    MOTOR_PARK_WAIT,
+} motor_park_cli_state_t;
+
+static motor_park_cli_state_t s_park_state = MOTOR_PARK_IDLE;
+static char s_park_test_line[48];
+
+static void motor_cli_park_emit(const char *line)
+{
+    printf("%s\r\n", line);
+    (void)snprintf(s_park_test_line, sizeof(s_park_test_line), "%s", line);
+}
+
+uint8_t motor_cli_handle_park(void)
+{
+    const motor_port_t *port = motor_port_get();
+    port_err_t err;
+
+    if (port == NULL || port->request_park == NULL) {
+        motor_cli_park_emit("motor park busy");
+        return 1u;
+    }
+
+    if (port->is_active != NULL && port->is_active()) {
+        motor_cli_park_emit("motor park busy");
+        return 1u;
+    }
+
+    if (s_park_state != MOTOR_PARK_IDLE) {
+        motor_cli_park_emit("motor park busy");
+        return 1u;
+    }
+
+    err = port->request_park(MOTOR_PARK_MAX_PULSES_DEFAULT);
+    if (err != PORT_OK) {
+        motor_cli_park_emit("motor park busy");
+        return 1u;
+    }
+
+    s_park_state = MOTOR_PARK_WAIT;
+    motor_cli_park_emit("motor park started");
+    return 0u;
+}
+
+void motor_cli_on_park_done(void)
+{
+    if (s_park_state != MOTOR_PARK_WAIT) {
+        return;
+    }
+
+    s_park_state = MOTOR_PARK_IDLE;
+    motor_cli_park_emit("motor park done");
+}
+
+void motor_cli_on_park_fault(void)
+{
+    if (s_park_state != MOTOR_PARK_WAIT) {
+        return;
+    }
+
+    s_park_state = MOTOR_PARK_IDLE;
+    motor_cli_park_emit("motor park fault: stuck");
+}
+
+void motor_cli_test_reset_park(void)
+{
+    s_park_state = MOTOR_PARK_IDLE;
+    s_park_test_line[0] = '\0';
+}
+
+bool motor_cli_test_take_park_line(char *buf, size_t len)
+{
+    size_t n;
+
+    if (buf == NULL || len == 0u || s_park_test_line[0] == '\0') {
+        return false;
+    }
+
+    n = strlen(s_park_test_line);
+    if (n >= len) {
+        n = len - 1u;
+    }
+
+    memcpy(buf, s_park_test_line, n);
+    buf[n] = '\0';
+    s_park_test_line[0] = '\0';
+    return true;
 }

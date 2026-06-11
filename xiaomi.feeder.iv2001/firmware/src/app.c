@@ -21,6 +21,12 @@
 #include "ota_client.h"
 #include "ota_rollback.h"
 #include "port_err.h"
+#include "dispense_cli.h"
+#include "hopper_input.h"
+#include "hopper_ir_port.h"
+#include "motor_cli.h"
+#include "motor_jam.h"
+#include "motor_port.h"
 #include "weight_port.h"
 
 #define APP_WEIGHT_SAMPLE_MS  500u
@@ -344,6 +350,7 @@ void app_dispatch(const app_event_t *ev)
         app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
         (void)display_presentation_tick(ev->u.display_tick.now_ms);
         app_button_poll(ev->u.display_tick.now_ms);
+        hopper_input_poll(ev->u.display_tick.now_ms);
         break;
 
     case EVT_BUTTON_IRQ:
@@ -354,6 +361,39 @@ void app_dispatch(const app_event_t *ev)
     case EVT_TIMER_TICK:
         (void)ota_rollback_poll_ms();
         app_weight_boot_advance();
+        break;
+
+    case EVT_DISPENSE_START: {
+        const motor_port_t *motor = motor_port_get();
+        port_err_t err = PORT_ERR_IO;
+
+        if (motor != NULL && motor->request_burst != NULL) {
+            err = motor->request_burst(MOTOR_BURST_PULSE_DEFAULT,
+                                       MOTOR_BURST_TIMEOUT_MS);
+        }
+
+        if (err != PORT_OK) {
+            printf("dispense busy\r\n");
+            dispense_cli_cancel_wait();
+        }
+        break;
+    }
+
+    case EVT_BURST_DONE:
+        if (dispense_cli_on_burst_done()) {
+            hopper_input_notify_dispense_complete();
+        }
+        break;
+
+    case EVT_MOTOR_FAULT:
+        if (dispense_cli_on_motor_fault()) {
+            hopper_input_notify_dispense_complete();
+        }
+        motor_cli_on_park_fault();
+        break;
+
+    case EVT_PARK_DONE:
+        motor_cli_on_park_done();
         break;
 
     default:
@@ -369,6 +409,7 @@ void app_test_reset(void)
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
     button_input_init(button_port_get());
+    hopper_input_init(hopper_ir_port_get());
     button_gesture_reset();
     app_event_port_init();
 }

@@ -30,13 +30,20 @@ select P1.7 = low. During dispense, the mux stays on motor path.
 
 ## Index-pulse timeout
 
-While motor EN (P0.1) is asserted:
+Applies to **dispense bursts only** (`MOTOR_PHASE_RUN_BURST`), not seal parking.
+
+While motor EN (P0.1) is asserted during a burst:
 
 - Count falling edges on P0.7 (motor-index IR detector).
-- If motor runs longer than `[tune]` burst duration (2 s) with fewer index
+- If motor runs longer than `[tune]` burst duration (8 s) with fewer index
   pulses than expected (at least 1 pulse expected per burst), treat as
   potential jam.
 - Index-pulse timeout is a secondary signal; ADC-based detection is primary.
+
+Seal parking (`MOTOR_PHASE_RUN_PARK`) does **not** use this rule — zero pulses
+while searching for beam-open is normal. Park ends on beam-open, `[tune]` 4
+index pulses, or the shared `[tune]` 20 s session cap (see
+[dispense-cycle.md](dispense-cycle.md) § Index parking).
 
 ## Anti-jam recovery sequence
 
@@ -50,6 +57,30 @@ On jam signal from either path:
 | 4 | De-assert EN, re-check ADC | — |
 | 5 | If jam persists: toggle forward/reverse (wiggle sequence) | `[tune]` 500 ms each |
 | 6 | Repeat up to `[tune]` 3 retries total | — |
+
+## UART bring-up logging
+
+While `motor_ctrl` owns the motor, jam and recovery steps log on UART0 with
+the `[motor]` prefix (bench aid; MQTT fault publish is separate).
+
+| Event | UART line |
+|-------|-----------|
+| Jam from GPIO17 ADC ISR | `[motor] jam: adc isr (> 1800 mA)` |
+| Jam from polled ADC instant threshold | `[motor] jam: adc instant <mA> mA (> 1800 mA)` |
+| Jam from polled ADC sustained threshold | `[motor] jam: adc sustained <mA> mA for <ms> ms (> 500 mA)` |
+| Jam from burst index timeout | `[motor] jam: index timeout (0 pulses in <ms> ms, burst)` |
+| Anti-jam reverse step | `[motor] antijam: retry <n>/3 reverse 1000 ms` |
+| Anti-jam wiggle forward | `[motor] antijam: load <mA> mA still high, wiggle forward 500 ms` |
+| Anti-jam wiggle reverse | `[motor] antijam: load <mA> mA still high, wiggle reverse 500 ms` |
+| Anti-jam cleared | `[motor] antijam: load <mA> mA ok, resuming <burst\|park>` |
+| Stuck after anti-jam exhausted | `[motor] stuck: antijam retries exhausted (last jam: <reason>)` |
+| Stuck on session cap | `[motor] stuck: session timeout (20000 ms)` |
+| Stuck on index I/O | `[motor] stuck: index I/O failed 3 times` |
+| Stuck on driver stop failure | `[motor] stuck: motor stop failed` |
+| Park already aligned | `[motor] park: already aligned (beam open)` |
+
+`<reason>` is one of: `adc isr`, `adc instant`, `adc sustained`, `index
+timeout`, `session timeout`.
 
 ## Stuck fault declaration
 

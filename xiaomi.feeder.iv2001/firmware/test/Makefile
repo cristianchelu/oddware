@@ -2,7 +2,7 @@
 
 CC       ?= gcc
 CFLAGS   ?= -Wall -Wextra -std=c11 -pedantic
-CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity
+CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity -DHOST_TEST
 LDFLAGS  :=
 BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
@@ -25,6 +25,7 @@ HOST_SRCS := ../src/port_err.c \
              ../src/app.c \
              ../src/app_mqtt_dispatch.c \
              ../src/button_input.c \
+             ../src/hopper_input.c \
              ../src/button_gesture.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
@@ -46,6 +47,8 @@ HOST_SRCS := ../src/port_err.c \
              ../src/display_cli.c \
              ../src/weigh_cli.c \
              ../src/motor_cli.c \
+             ../src/dispense_cli.c \
+             ../src/motor_ctrl.c \
              ../src/beam_cli.c \
              ../src/cs1270.c \
              ../src/weight_rail.c \
@@ -57,6 +60,10 @@ HOST_SRCS := ../src/port_err.c \
              ../src/weigh_cal.c \
              ../src/gpio_expander_loan.c \
              ../src/wfci_bus_state.c \
+             ../adapters/motor_index_port_adapter.c \
+             fakes/gpio_expander_port_provider_host.c \
+             fakes/motor_index_port_provider_host.c \
+             fakes/motor_port_provider_host.c \
              fakes/fake_i2c_bus.c \
              fakes/fake_wfci_bus_port.c \
              fakes/fake_gpio_expander_port.c \
@@ -76,6 +83,9 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_app_event_q.c \
              fakes/fake_time.c \
              fakes/freertos_shim.c \
+             fakes/freertos_queue_shim.c \
+             fakes/motor_index_irq_host_stub.c \
+             fakes/adc_jam_isr_host_stub.c \
              fakes/host_stubs.c \
              fakes/port_providers_host.c
 
@@ -93,12 +103,22 @@ $(BUILD)/test_host: $(RUNNER) $(TEST_SRCS) $(HOST_SRCS) $(UNITY_SRC) Makefile | 
 $(RUNNER): $(TEST_SRCS) Makefile | $(BUILD)
 	@echo '#include "unity.h"' > $@
 	@echo '' >> $@
+	@echo 'extern void motor_port_host_reset(void);' >> $@
+	@echo 'extern void motor_index_port_host_reset(void);' >> $@
+	@echo 'extern void fake_wfci_bus_reset(void);' >> $@
+	@echo 'extern void gpio_expander_loan_end(void);' >> $@
 	@for f in $(TEST_SRCS); do \
 		grep -h '^void test_' $$f 2>/dev/null \
 			| sed 's/void \(test_[^(]*\)(.*/extern void \1(void);/'; \
 	done | sort -u >> $@
 	@echo '' >> $@
-	@echo 'void setUp(void) {}' >> $@
+	@echo 'void setUp(void)' >> $@
+	@echo '{' >> $@
+	@echo '    motor_port_host_reset();' >> $@
+	@echo '    motor_index_port_host_reset();' >> $@
+	@echo '    fake_wfci_bus_reset();' >> $@
+	@echo '    gpio_expander_loan_end();' >> $@
+	@echo '}' >> $@
 	@echo 'void tearDown(void) {}' >> $@
 	@echo '' >> $@
 	@echo 'int main(void)' >> $@

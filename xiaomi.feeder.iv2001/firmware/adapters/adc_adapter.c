@@ -24,19 +24,29 @@ static void adc_hal_delay_ms(uint32_t ms)
     vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-static port_err_t adc_adapter_read_raw(uint16_t *raw)
+static port_err_t adc_adapter_read_raw_locked(bool try_only, uint16_t *raw)
 {
     const wfci_bus_port_t *bus = wfci_bus_port_get();
     port_err_t err;
 
-    if (raw == NULL || bus == NULL || bus->acquire == NULL ||
-        bus->release == NULL) {
+    if (raw == NULL || bus == NULL || bus->release == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = bus->acquire(WFCI_BUS_PROFILE_ADC,
-                       WFCI_BUS_PRIORITY_HIGH,
-                       ADC_ADAPTER_MUTEX_WAIT_MS);
+    if (try_only) {
+        if (bus->try_acquire == NULL) {
+            return PORT_ERR_BUSY;
+        }
+        err = bus->try_acquire(WFCI_BUS_PROFILE_ADC, WFCI_BUS_PRIORITY_HIGH);
+    } else {
+        if (bus->acquire == NULL) {
+            return PORT_ERR_INVALID_ARG;
+        }
+        err = bus->acquire(WFCI_BUS_PROFILE_ADC,
+                           WFCI_BUS_PRIORITY_HIGH,
+                           ADC_ADAPTER_MUTEX_WAIT_MS);
+    }
+
     if (err != PORT_OK) {
         return err;
     }
@@ -44,6 +54,11 @@ static port_err_t adc_adapter_read_raw(uint16_t *raw)
     err = adc_bus_adapter_read_raw(raw);
     bus->release(WFCI_BUS_PROFILE_ADC);
     return err;
+}
+
+static port_err_t adc_adapter_read_raw(uint16_t *raw)
+{
+    return adc_adapter_read_raw_locked(false, raw);
 }
 
 static void adc_adapter_ensure_init(void)
@@ -76,7 +91,7 @@ static port_err_t adc_mutex_ensure(void)
 
 typedef port_err_t (*adc_port_body_fn_t)(void);
 
-static port_err_t adc_port_with_lock(adc_port_body_fn_t body)
+static port_err_t adc_port_with_lock(adc_port_body_fn_t body, bool try_only)
 {
     port_err_t err;
 
@@ -85,7 +100,11 @@ static port_err_t adc_port_with_lock(adc_port_body_fn_t body)
         return err;
     }
 
-    if (xSemaphoreTake(s_adc_mutex, pdMS_TO_TICKS(ADC_ADAPTER_MUTEX_WAIT_MS)) != pdPASS) {
+    if (try_only) {
+        if (xSemaphoreTake(s_adc_mutex, 0) != pdPASS) {
+            return PORT_ERR_BUSY;
+        }
+    } else if (xSemaphoreTake(s_adc_mutex, pdMS_TO_TICKS(ADC_ADAPTER_MUTEX_WAIT_MS)) != pdPASS) {
         return PORT_ERR_BUSY;
     }
 
@@ -127,7 +146,22 @@ static port_err_t adc_port_read_motor_load_ma(uint16_t *ma)
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = adc_port_with_lock(adc_body_read_motor);
+    err = adc_port_with_lock(adc_body_read_motor, false);
+    if (err == PORT_OK) {
+        *ma = s_read_mv;
+    }
+    return err;
+}
+
+static port_err_t adc_port_try_read_motor_load_ma(uint16_t *ma)
+{
+    port_err_t err;
+
+    if (ma == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = adc_port_with_lock(adc_body_read_motor, true);
     if (err == PORT_OK) {
         *ma = s_read_mv;
     }
@@ -142,7 +176,7 @@ static port_err_t adc_port_read_battery_mv(uint16_t *mv)
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = adc_port_with_lock(adc_body_read_battery);
+    err = adc_port_with_lock(adc_body_read_battery, false);
     if (err == PORT_OK) {
         *mv = s_read_mv;
     }
@@ -152,12 +186,12 @@ static port_err_t adc_port_read_battery_mv(uint16_t *mv)
 static port_err_t adc_port_cal_capture(uint16_t true_mv)
 {
     s_cal_true_mv = true_mv;
-    return adc_port_with_lock(adc_body_cal_capture);
+    return adc_port_with_lock(adc_body_cal_capture, false);
 }
 
 static port_err_t adc_port_cal_reset(void)
 {
-    return adc_port_with_lock(adc_body_cal_reset);
+    return adc_port_with_lock(adc_body_cal_reset, false);
 }
 
 static port_err_t adc_port_get_cal_status(adc_cal_status_t *status)
@@ -173,6 +207,7 @@ static port_err_t adc_port_get_cal_status(adc_cal_status_t *status)
 
 static const adc_port_t s_adc_port = {
     .read_motor_load_ma = adc_port_read_motor_load_ma,
+    .try_read_motor_load_ma = adc_port_try_read_motor_load_ma,
     .read_battery_mv = adc_port_read_battery_mv,
     .cal_capture = adc_port_cal_capture,
     .cal_reset = adc_port_cal_reset,

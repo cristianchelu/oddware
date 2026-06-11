@@ -9,6 +9,6 @@
 #include <stdint.h>
 
 #define MOTOR_PH_SETTLE_MS  100u
-#define MOTOR_RUN_MS_MAX    8000u
+#define MOTOR_RUN_MS_MAX    20000u
 
 #endif /* MOTOR_LIMITS_H */

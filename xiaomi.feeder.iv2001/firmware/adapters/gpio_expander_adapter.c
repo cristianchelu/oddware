@@ -173,7 +173,9 @@ static port_err_t gpio_exp_set_pin(uint8_t port, uint8_t pin, bool level)
 static uint8_t s_int_mask_p0;
 static uint8_t s_int_mask_p1;
 
-static port_err_t gpio_exp_read_inputs(uint8_t *p0, uint8_t *p1)
+static port_err_t gpio_exp_read_inputs_common(uint8_t *p0,
+                                              uint8_t *p1,
+                                              bool try_only)
 {
     port_err_t err;
     bool nested = gpio_expander_loan_is_held();
@@ -183,7 +185,11 @@ static port_err_t gpio_exp_read_inputs(uint8_t *p0, uint8_t *p1)
     }
 
     if (!nested) {
-        err = gpio_expander_loan_begin();
+        if (try_only) {
+            err = gpio_expander_loan_try_begin();
+        } else {
+            err = gpio_expander_loan_begin();
+        }
         if (err != PORT_OK) {
             return err;
         }
@@ -195,6 +201,16 @@ static port_err_t gpio_exp_read_inputs(uint8_t *p0, uint8_t *p1)
         gpio_expander_loan_end();
     }
     return err;
+}
+
+static port_err_t gpio_exp_read_inputs(uint8_t *p0, uint8_t *p1)
+{
+    return gpio_exp_read_inputs_common(p0, p1, false);
+}
+
+static port_err_t gpio_exp_try_read_inputs(uint8_t *p0, uint8_t *p1)
+{
+    return gpio_exp_read_inputs_common(p0, p1, true);
 }
 
 static port_err_t gpio_exp_set_int_mask_body(void)
@@ -254,6 +270,7 @@ static const gpio_expander_port_t s_gpio_expander = {
     .set_pin = gpio_exp_set_pin,
     .get_pin = gpio_exp_get_pin,
     .read_inputs = gpio_exp_read_inputs,
+    .try_read_inputs = gpio_exp_try_read_inputs,
     .set_int_mask = gpio_exp_set_int_mask,
 };
 

@@ -41,8 +41,12 @@ reverse delay, dispense completion, or display refresh timer period.
 `WEIGH`; 200 ms for `FULL` (sleep/wake).
 
 AW9523B outputs latch in silicon; motor EN can stay asserted while WFCI is
-free. Motor control uses loans at burst edges, index IRQ service, and periodic
-ADC samples only.
+free. Motor control uses **try_acquire** expander loans for index `poll` during
+motion (skip sample on `PORT_ERR_BUSY` — no I2C attempt). Blocking acquire
+remains for park pre-check `sense` and session `set_pin` edges. Index IRQ
+samples are debounced `[tune]` 50 ms before one I2C read (retried on
+`PORT_ERR_BUSY`). Session fallback polls: burst `[tune]` 50 ms, park `[tune]`
+200 ms.
 
 ## Bus profiles
 

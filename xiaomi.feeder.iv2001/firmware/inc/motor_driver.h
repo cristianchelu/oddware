@@ -23,6 +23,10 @@ typedef struct motor_driver_state {
 } motor_driver_state_t;
 
 void motor_driver_init(motor_driver_state_t *state, const motor_hw_t *hw);
+port_err_t motor_driver_start_forward(motor_driver_state_t *state);
+port_err_t motor_driver_start_reverse(motor_driver_state_t *state);
+port_err_t motor_driver_stop(motor_driver_state_t *state);
+bool motor_driver_is_running(const motor_driver_state_t *state);
 port_err_t motor_driver_run_forward_ms(motor_driver_state_t *state,
                                        uint32_t duration_ms);
 port_err_t motor_driver_run_reverse_ms(motor_driver_state_t *state,

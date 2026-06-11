@@ -9,7 +9,7 @@
 static bool s_loan_held;
 static bool s_loan_owned;
 
-port_err_t gpio_expander_loan_begin(void)
+static port_err_t gpio_expander_loan_begin_common(bool try_only)
 {
     port_err_t err;
 
@@ -23,14 +23,31 @@ port_err_t gpio_expander_loan_begin(void)
         return PORT_OK;
     }
 
-    err = wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_EXPANDER,
-                                       WFCI_BUS_PRIORITY_HIGH,
-                                       5000u);
+    if (try_only) {
+        err = wfci_bus_port_get()->try_acquire(WFCI_BUS_PROFILE_EXPANDER,
+                                               WFCI_BUS_PRIORITY_HIGH);
+    } else {
+        err = wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_EXPANDER,
+                                           WFCI_BUS_PRIORITY_HIGH,
+                                           5000u);
+    }
+
     if (err == PORT_OK) {
         s_loan_held = true;
         s_loan_owned = true;
     }
+
     return err;
+}
+
+port_err_t gpio_expander_loan_begin(void)
+{
+    return gpio_expander_loan_begin_common(false);
+}
+
+port_err_t gpio_expander_loan_try_begin(void)
+{
+    return gpio_expander_loan_begin_common(true);
 }
 
 void gpio_expander_loan_end(void)

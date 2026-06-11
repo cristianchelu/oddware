@@ -30,11 +30,15 @@ Motor is controlled through AW9523B (I2C @ 0x58) driving SGM42507.
 | 1 | Assert PH = forward | P0.0 high | — |
 | 2 | Wait direction-setup delay | — | `[tune]` 100 ms `[ds:SGM42507]` |
 | 3 | Assert EN = run | P0.1 high | — |
-| 4 | Motor runs until burst duration elapsed **or** index pulse count reached | P0.7 falling edges | `[tune]` burst duration 2 s |
+| 4 | Motor runs until burst duration elapsed **or** index pulse count reached | P0.7 beam-open edges | `[tune]` index-timeout 8 s; `[tune]` 1 pulse per portion burst (180°) |
 | 5 | De-assert EN (coast) | P0.1 low | — |
 | 6 | If more bursts remain, repeat from step 1 | — | — |
 
-Hard safety cutoff: motor must not run continuously beyond `[tune]` 8 s.
+Hard safety cutoff: motor must not run continuously beyond `[tune]` 20 s.
+`motor_ctrl` enforces this on the **active burst/park session** (from first EN
+assert through anti-jam), independent of the driver `running` flag. If AW9523B
+I2C cannot de-assert EN, the session still ends with `stuck` and `motor_ctrl`
+stops polling expander pins.
 
 Production dispense uses `motor_ctrl` (not UART bench CLI). Bench
 `motor fwd <ms>` and `motor rev <ms>` exercise the same PH/EN timed sequence

@@ -10,6 +10,7 @@
 #include "port_err.h"
 
 port_err_t gpio_expander_loan_begin(void);
+port_err_t gpio_expander_loan_try_begin(void);
 void gpio_expander_loan_end(void);
 bool gpio_expander_loan_is_held(void);
 

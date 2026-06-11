@@ -60,6 +60,8 @@ adc cal status
 adc cal reset
 motor fwd <ms>
 motor rev <ms>
+motor park
+dispense
 config factory-reset
 ```
 
@@ -715,14 +717,14 @@ command means the operator accepts responsibility for the run.
 Firmware must not expose a motor-on path without a duration. There is no
 `motor off` command; coast-stop is automatic at the end of `<ms>`.
 
-Maximum duration is `[tune]` 8000 ms (same hard safety cutoff as
+Maximum duration is `[tune]` 20000 ms (same hard safety cutoff as
 [dispense-cycle.md](dispense-cycle.md)). Direction-setup delay is `[tune]` 100 ms
 before EN assert; not counted in `<ms>`. `<ms>` is EN-high spin time only.
 
 ### `motor fwd <ms>`
 
 PH forward (P0.0 high). Parse strict unsigned decimal milliseconds; require
-`1 ≤ ms ≤ 8000`. Digits only — no leading/trailing whitespace, no
+`1 ≤ ms ≤ 20000`. Digits only — no leading/trailing whitespace, no
 `+` prefix, no leading zeros (`01` and `007` are rejected). Block the CLI task
 until the run completes (PH settle + spin + auto coast-stop).
 
@@ -762,6 +764,43 @@ WFCI loan.
   exclusive expander loan for the full `<ms>`.
 - Preemptive stop and concurrent motor I/O are owned by `motor_ctrl` (see
   [task-model.md](../40-architecture/task-model.md) § Bench HAL vs motor_ctrl).
+- While `motor_ctrl` is active, `motor fwd` and `motor rev` return
+  `motor fwd failed (busy)` / `motor rev failed (busy)`.
+
+### `motor park`
+
+Async recovery align: run forward until index beam-open (hole aligned) or
+`[tune]` 4 index pulses — whichever first. Uses `motor_port.request_park`.
+Not invoked by `dispense`. Operator runs after bench `motor fwd` / `motor rev`
+or a fault when alignment is unknown. If the beam is already open (hole
+aligned), park completes immediately with no motor motion via
+`motor_index_port.sense` (same one-shot path as `index read`).
+
+The CLI task prints the started line and returns to the prompt **before** motion
+ends. Completion or fault lines arrive later on separate UART lines.
+
+| Outcome | UART response |
+|---------|---------------|
+| Accepted | `motor park started` |
+| Motor busy / queue full | `motor park busy` |
+| Completed | `motor park done` |
+| Anti-jam exhausted | `motor park fault: stuck` |
+
+### `dispense`
+
+Async one portion (one index pulse, `[tune]` 8 s index-timeout cap). Posts
+`EVT_DISPENSE_START` to the app event loop; the app task enqueues
+`motor_port.request_burst(1, 8000)` only — no park step in this command.
+
+The CLI task prints the started line and returns to the prompt **before** motion
+ends. Completion or fault lines arrive later on separate UART lines.
+
+| Outcome | UART response |
+|---------|---------------|
+| Accepted | `dispense started` |
+| App event queue full or motor busy | `dispense busy` |
+| Burst completed | `dispense done` |
+| Anti-jam exhausted | `dispense fault: stuck` |
 
 ## `config` commands
 

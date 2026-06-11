@@ -1,6 +1,8 @@
 #ifndef TASK_H
 #define TASK_H
 
+#include <stddef.h>
+
 #include "FreeRTOS.h"
 
 void vTaskDelay(const TickType_t ticks_to_delay);
@@ -16,6 +18,16 @@ void vTaskResume(TaskHandle_t task);
 void vTaskPrioritySet(TaskHandle_t task, UBaseType_t priority);
 UBaseType_t uxTaskPriorityGet(TaskHandle_t task);
 void vTaskDelete(TaskHandle_t task);
+
+BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
+                           uint32_t ulBitsToClearOnExit,
+                           uint32_t *pulNotificationValue,
+                           TickType_t xTicksToWait);
+BaseType_t xTaskNotify(TaskHandle_t xTaskHandle,
+                       uint32_t ulValue,
+                       uint32_t eAction);
+
+#define eSetBits 1u
 
 #define taskYIELD() ((void)0)
 

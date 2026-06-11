@@ -22,9 +22,12 @@ device is doing and whether it needs attention.
 
 ## Hopper fill level
 
-- Two-state indicator: **normal** or **low**.
+- Two-state indicator: **normal** or **low** (almost empty — IR beam clear).
 - Based on a break-beam sensor inside the hopper cavity.
-- Also checked after every successful dispense.
+- Checked after every completed dispense and periodically while idle.
+- Distinct from the `empty_hopper` dispense outcome (motor ran but bowl weight
+  did not increase); that path also requires `low` hopper level — see
+  [hopper-sensing.md](../30-processes/hopper-sensing.md).
 
 ## Calibration
 

@@ -10,6 +10,8 @@ motor and a bowl-mounted weight sensor.
 - A dispense request specifies a **target in grams** (range 5–150 g).
 - Requests can come from a schedule, an MQTT command, or the manual
   dispense button.
+- On the bench UART, `dispense` runs one open-loop portion (one index pulse,
+  ~10 g design target) without gram targeting or weight feedback.
 
 ## Dispense modes
 

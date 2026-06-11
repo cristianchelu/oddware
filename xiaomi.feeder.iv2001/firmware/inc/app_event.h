@@ -23,6 +23,10 @@ typedef enum {
     EVT_TIMER_TICK,
     EVT_BUTTON_IRQ,
     EVT_BUTTON_GESTURE,
+    EVT_DISPENSE_START,
+    EVT_BURST_DONE,
+    EVT_MOTOR_FAULT,
+    EVT_PARK_DONE,
 } app_event_type_t;
 
 typedef enum {

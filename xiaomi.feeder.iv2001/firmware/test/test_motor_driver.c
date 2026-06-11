@@ -304,3 +304,35 @@ void test_motor_driver_init_null_safe(void)
     motor_driver_init(NULL, NULL);
     motor_driver_init(&s_state, NULL);
 }
+
+void test_motor_start_forward_leaves_en_high_until_stop(void)
+{
+    motor_driver_test_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, motor_driver_start_forward(&s_state));
+    TEST_ASSERT_TRUE(s_state.running);
+    TEST_ASSERT_TRUE(fake_gpio_expander_pin(BOARD_GPIO_MOTOR_EN_PORT,
+                                             BOARD_GPIO_MOTOR_EN_PIN));
+    TEST_ASSERT_EQUAL(MOTOR_PH_SETTLE_MS, (unsigned)fake_time_ticks());
+    TEST_ASSERT_EQUAL(PORT_OK, motor_driver_stop(&s_state));
+    TEST_ASSERT_FALSE(s_state.running);
+    TEST_ASSERT_FALSE(fake_gpio_expander_pin(BOARD_GPIO_MOTOR_EN_PORT,
+                                              BOARD_GPIO_MOTOR_EN_PIN));
+}
+
+void test_motor_start_reverse_and_is_running(void)
+{
+    motor_driver_test_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, motor_driver_start_reverse(&s_state));
+    TEST_ASSERT_TRUE(motor_driver_is_running(&s_state));
+    TEST_ASSERT_FALSE(fake_gpio_expander_pin(BOARD_GPIO_MOTOR_PH_PORT,
+                                             BOARD_GPIO_MOTOR_PH_PIN));
+    (void)motor_driver_stop(&s_state);
+}
+
+void test_motor_start_rejects_overlap(void)
+{
+    motor_driver_test_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, motor_driver_start_forward(&s_state));
+    TEST_ASSERT_EQUAL(PORT_ERR_BUSY, motor_driver_start_forward(&s_state));
+    (void)motor_driver_stop(&s_state);
+}
