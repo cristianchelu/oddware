@@ -53,6 +53,8 @@ weigh cal span
 weigh cal status
 index read
 hopper read
+motor fwd <ms>
+motor rev <ms>
 config factory-reset
 ```
 
@@ -629,6 +631,70 @@ Pulses the hopper IR emitter, samples the detector, drives the emitter off.
 | Success, food blocks beam | `hopper beam: blocked` |
 | Success, beam clear (low fill) | `hopper beam: clear` |
 | Failure | `hopper read failed (<reason>)` |
+
+## `motor` commands
+
+Bench helper for auger forward and reverse timed runs (SGM42507 via AW9523B
+P0.0 PH, P0.1 EN). Uses `motor_port`. No ADC mux, stall detection, or index
+supervision — only the requested time cap. Not a product interface. `[design]`
+
+**Operator safety contract.** Before each `motor fwd` or `motor rev`, the
+operator must visually confirm the bench is safe to run: clear auger path, no
+hands or tools in the mechanism, hopper/bowl state appropriate for the intended
+direction, and no visible obstruction or binding. Firmware does not validate
+mechanical safety; the timed cap is an electrical limit only. Issuing either
+command means the operator accepts responsibility for the run.
+
+Firmware must not expose a motor-on path without a duration. There is no
+`motor off` command; coast-stop is automatic at the end of `<ms>`.
+
+Maximum duration is `[tune]` 8000 ms (same hard safety cutoff as
+[dispense-cycle.md](dispense-cycle.md)). Direction-setup delay is `[tune]` 100 ms
+before EN assert; not counted in `<ms>`. `<ms>` is EN-high spin time only.
+
+### `motor fwd <ms>`
+
+PH forward (P0.0 high). Parse strict unsigned decimal milliseconds; require
+`1 ≤ ms ≤ 8000`. Digits only — no leading/trailing whitespace, no
+`+` prefix, no leading zeros (`01` and `007` are rejected). Block the CLI task
+until the run completes (PH settle + spin + auto coast-stop).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `motor fwd ok` |
+| Missing duration | `usage: motor fwd <ms>` |
+| Out of range | `invalid duration` |
+| Run already in progress | `motor fwd failed (busy)` |
+| Other failure | `motor fwd failed (<reason>)` |
+
+### `motor rev <ms>`
+
+PH reverse (P0.0 low). Same duration parsing and range rules as `motor fwd`.
+Block the CLI task until the run completes.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `motor rev ok` |
+| Missing duration | `usage: motor rev <ms>` |
+| Out of range | `invalid duration` |
+| Run already in progress | `motor rev failed (busy)` |
+| Other failure | `motor rev failed (<reason>)` |
+
+`busy` is returned when a run is already active on `motor_port` (adapter mutex
+held for the full PH settle + spin), when the mutex cannot be taken within
+`[tune]` 5000 ms, or when an AW9523B pin write cannot acquire the EXPANDER
+WFCI loan.
+
+### Limitations (bench HAL)
+
+- `motor fwd` and `motor rev` block the CLI task for PH settle + `<ms>`; no
+  other UART command is processed until success or failure.
+- No mid-run operator abort; wait for auto-stop or power-cycle.
+- EN/PH are latched on the expander between brief I2C writes; other tasks may
+  still use the AW9523B during the spin window. Bench runs do not hold an
+  exclusive expander loan for the full `<ms>`.
+- Preemptive stop and concurrent motor I/O are owned by `motor_ctrl` (see
+  [task-model.md](../40-architecture/task-model.md) § Bench HAL vs motor_ctrl).
 
 ## `config` commands
 

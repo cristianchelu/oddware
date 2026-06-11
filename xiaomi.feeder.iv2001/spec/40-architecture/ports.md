@@ -126,16 +126,40 @@ portal.
 Adapter: wraps SDK NVDM API. Groups map to NVDM groups (e.g. `wifi`,
 `mqtt`, `schedule`).
 
-### `motor_port.h` (future, with dispense features)
+### `motor_port.h` (partial — bench HAL)
+
+**Auger H-bridge** ([dispense-cycle.md](../30-processes/dispense-cycle.md) PH/EN
+sequencing). Bench UART `motor fwd <ms>` / `motor rev <ms>` call this port
+synchronously on the CLI task. Production dispense does **not** use the UART CLI.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `start_burst` | `(direction, duration_ms, max_pulses) -> err` | Command to `motor_ctrl` task via queue |
-| `stop` | `() -> err` | Immediate motor stop |
-| `park` | `() -> err` | Run to seal index position |
+| `run_forward_ms` | `(duration_ms) -> err` | PH forward, `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. On success PH stays forward, EN low. On fault after EN assert: retry EN low up to 3 times; on any fault after PH assert: de-assert PH. EN may remain high if coast-stop I2C fails after retries. `PORT_ERR_BUSY` if already running, adapter mutex not acquired within `[tune]` 5000 ms, or EXPANDER WFCI loan unavailable on a pin write. `PORT_ERR_INVALID_ARG` if out of range (`1…8000` ms). |
+| `run_reverse_ms` | `(duration_ms) -> err` | PH reverse (low), `[tune]` 100 ms settle, EN run for `duration_ms`, auto coast-stop. On success PH stays reverse (low), EN low. Same error/retry/busy/range semantics as `run_forward_ms`. |
 
-Adapter: sends commands to `motor_ctrl` task. Results arrive as
-`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in `app_event_q`.
+Adapter: `motor_adapter.c` — `gpio_expander_port` + EXPANDER micro-loans;
+mutex for overlapping callers.
+
+**Not exposed this slice** (internal driver helper or future `motor_ctrl`):
+
+| Function | When |
+|----------|------|
+| `stop` | `motor_ctrl` — preemptive EN low on jam ISR, fault, or dispense abort |
+
+### Remaining motor_port work
+
+| Item | Notes |
+|------|-------|
+| `stop` | Public port fn when `motor_ctrl` lands; preemptive abort |
+| `start_burst` | Async via `motor_ctrl` queue; pulse/duration termination |
+| `park` | Index-seal parking ([motor-index.md](../30-processes/motor-index.md)) |
+| Queue adapter | Replace synchronous `run_forward_ms` caller with `motor_ctrl` task |
+| Index LED lifecycle | P0.6 on during run ([motor-index.md](../30-processes/motor-index.md)) |
+| ADC supervision | Mux P1.7 + GPIO17 jam path ([jam-detection.md](../30-processes/jam-detection.md)) |
+
+When `motor_ctrl` lands, adapter sends burst/park commands to the task. Results
+arrive as `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in
+`app_event_q`.
 
 ### `weight_port.h`
 

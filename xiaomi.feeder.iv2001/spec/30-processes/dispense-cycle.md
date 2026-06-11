@@ -36,6 +36,12 @@ Motor is controlled through AW9523B (I2C @ 0x58) driving SGM42507.
 
 Hard safety cutoff: motor must not run continuously beyond `[tune]` 8 s.
 
+Production dispense uses `motor_ctrl` (not UART bench CLI). Bench
+`motor fwd <ms>` and `motor rev <ms>` exercise the same PH/EN timed sequence
+without index LED, ADC, or pulse counting — see
+[uart-console.md](uart-console.md) § motor commands (operator must visually
+confirm bench safety before each run).
+
 ## Index pulse tracking during burst
 
 - Motor-index IR LED enabled on P0.6 at burst start, disabled at burst end.

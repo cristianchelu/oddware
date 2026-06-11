@@ -10,6 +10,22 @@ static bool s_dev_ready;
 static bool s_id_pinned;
 static uint8_t s_input_p0 = 0xFFu;
 static uint8_t s_input_p1 = 0xFFu;
+static uint32_t s_set_pin_calls;
+static uint32_t s_set_pin_fail_nth;
+static uint32_t s_set_pin_fail_from;
+static uint32_t s_set_pin_fail_until;
+static port_err_t s_set_pin_fail_err = PORT_OK;
+
+#define FAKE_GPIO_SET_PIN_LOG_MAX  8u
+
+typedef struct fake_gpio_set_pin_log {
+    uint8_t port;
+    uint8_t pin;
+    bool level;
+} fake_gpio_set_pin_log_t;
+
+static fake_gpio_set_pin_log_t s_set_pin_log[FAKE_GPIO_SET_PIN_LOG_MAX];
+static uint32_t s_set_pin_log_count;
 
 static port_err_t fake_exp_reset(void)
 {
@@ -57,6 +73,22 @@ static port_err_t fake_exp_configure(uint8_t dir_p0,
 static port_err_t fake_exp_set_pin(uint8_t port, uint8_t pin, bool level)
 {
     port_err_t err;
+
+    s_set_pin_calls++;
+    if (s_set_pin_fail_nth != 0u && s_set_pin_calls == s_set_pin_fail_nth) {
+        return s_set_pin_fail_err;
+    }
+    if (s_set_pin_fail_from != 0u && s_set_pin_calls >= s_set_pin_fail_from &&
+        (s_set_pin_fail_until == 0u || s_set_pin_calls <= s_set_pin_fail_until)) {
+        return s_set_pin_fail_err;
+    }
+
+    if (s_set_pin_log_count < FAKE_GPIO_SET_PIN_LOG_MAX) {
+        s_set_pin_log[s_set_pin_log_count].port = port;
+        s_set_pin_log[s_set_pin_log_count].pin = pin;
+        s_set_pin_log[s_set_pin_log_count].level = level;
+        s_set_pin_log_count++;
+    }
 
     err = aw9523b_set_output_bit(&s_dev, port, pin, level);
     if (err != PORT_OK) {
@@ -112,8 +144,50 @@ void fake_gpio_expander_reset(void)
     s_id_pinned = false;
     s_input_p0 = 0xFFu;
     s_input_p1 = 0xFFu;
+    s_set_pin_calls = 0u;
+    s_set_pin_fail_nth = 0u;
+    s_set_pin_fail_from = 0u;
+    s_set_pin_fail_until = 0u;
+    s_set_pin_fail_err = PORT_OK;
+    s_set_pin_log_count = 0u;
     fake_i2c_bus_reset();
     fake_i2c_bus_set_read_result(PORT_OK, AW9523B_ID_EXPECTED);
+}
+
+void fake_gpio_expander_set_set_pin_fail_on(uint32_t nth, port_err_t err)
+{
+    s_set_pin_fail_nth = nth;
+    s_set_pin_fail_err = err;
+}
+
+void fake_gpio_expander_set_set_pin_fail_range(uint32_t from,
+                                             uint32_t until,
+                                             port_err_t err)
+{
+    s_set_pin_fail_from = from;
+    s_set_pin_fail_until = until;
+    s_set_pin_fail_err = err;
+}
+
+bool fake_gpio_expander_get_set_pin_log(uint32_t index,
+                                        uint8_t *port,
+                                        uint8_t *pin,
+                                        bool *level)
+{
+    if (index >= s_set_pin_log_count || port == NULL || pin == NULL ||
+        level == NULL) {
+        return false;
+    }
+
+    *port = s_set_pin_log[index].port;
+    *pin = s_set_pin_log[index].pin;
+    *level = s_set_pin_log[index].level;
+    return true;
+}
+
+uint32_t fake_gpio_expander_set_pin_calls(void)
+{
+    return s_set_pin_calls;
 }
 
 void fake_gpio_expander_set_inputs(uint8_t p0, uint8_t p1)

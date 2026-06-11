@@ -15,7 +15,11 @@
 
 /* Port P0 pin masks (bits 0–7). */
 #define BOARD_GPIO_MOTOR_PH_MASK     0x01u
+#define BOARD_GPIO_MOTOR_PH_PORT     0u
+#define BOARD_GPIO_MOTOR_PH_PIN      0u
 #define BOARD_GPIO_MOTOR_EN_MASK     0x02u
+#define BOARD_GPIO_MOTOR_EN_PORT     0u
+#define BOARD_GPIO_MOTOR_EN_PIN      1u
 #define BOARD_GPIO_CS1270_PWR_MASK   0x04u
 #define BOARD_GPIO_CS1270_PWR_PORT   0u
 #define BOARD_GPIO_CS1270_PWR_PIN    2u

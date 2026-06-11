@@ -33,9 +33,10 @@ hopper auger motor. Board marking: **SG55B**.
 
 ## Application notes
 
-- **Sequencing:** set PH first, then assert EN after a settling delay `[tune]`.
-  This avoids glitch current on direction change. Datasheet does not mandate
-  a minimum delay but recommends PH-stable-before-EN.
+- **Sequencing:** set PH first, then assert EN after a direction-setup delay
+  of `[tune]` 100 ms (see [dispense-cycle.md](../../30-processes/dispense-cycle.md)
+  § Motor sequencing). This avoids glitch current on direction change.
+  Datasheet does not mandate a minimum delay but recommends PH-stable-before-EN.
 - **Coast/stop:** de-assert EN (low) to let the motor coast. Brake mode (both
   outputs low) is not available in PH/EN mode.
 - **Stall protection:** the FAULT output goes low on overcurrent. Since
