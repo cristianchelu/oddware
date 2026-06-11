@@ -12,7 +12,6 @@
 
 void wifi_adapter_stack_init(void);
 void wifi_adapter_clear_sdk_sta_profile(void);
-void wifi_adapter_log_sta_dhcp_ready(const char *ip);
 
 size_t wifi_adapter_scan_networks(provision_scan_ap_t *out,
                                     size_t max_out,

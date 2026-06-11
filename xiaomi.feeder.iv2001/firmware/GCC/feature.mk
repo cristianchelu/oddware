@@ -1,8 +1,8 @@
 IC_CONFIG                           = mt7682
 BOARD_CONFIG                        = iv2001
 
-# debug level: none, error, warning, info, debug
-MTK_DEBUG_LEVEL                     = none
+# debug level: none, error, warning, and info
+MTK_DEBUG_LEVEL                     = info
 
 # Application log compile-time floor (debug, info, warn, error)
 APP_LOG_LEVEL                         = debug

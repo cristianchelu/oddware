@@ -10,38 +10,14 @@
 
 #include "nvdm.h"
 #include "wifi_api.h"
-#include "wifi_inband.h"
 #include "wifi_lwip_helper.h"
 #include "lwip/inet.h"
 #include "lwip/netif.h"
 #include "ethernetif.h"
 
-#include "app_log.h"
 #include "wifi_adapter.h"
 #include "wifi_port.h"
 #include "wifi_private_api.h"
-
-/* Wi-Fi ROM RAM variable — gates IOT_DBGPRINT (cmd id, MLME traces). */
-extern unsigned long RTDebugLevel;
-
-static void wifi_adapter_quiet_rt_debug(void)
-{
-    RTDebugLevel = 0;
-}
-
-static void wifi_adapter_quiet_wifi_stack_logs(void)
-{
-    static const char dbg_off[] = "0";
-
-    (void)nvdm_write_data_item("common",
-                               "DbgLevel",
-                               NVDM_DATA_ITEM_TYPE_STRING,
-                               (const uint8_t *)dbg_off,
-                               (uint32_t)(sizeof(dbg_off) - 1));
-    (void)wifi_inband_set_debug_level(0);
-    (void)wifi_inband_set_n9_consol_log_state(0);
-    wifi_adapter_quiet_rt_debug();
-}
 
 void wifi_adapter_clear_sdk_sta_profile(void)
 {
@@ -70,7 +46,6 @@ void wifi_adapter_clear_sdk_sta_profile(void)
                          (const uint8_t *)"",
                          0);
     (void)wifi_config_reload_setting();
-    wifi_adapter_quiet_wifi_stack_logs();
 }
 
 static void wifi_adapter_set_ap_network_profile(void)
@@ -92,16 +67,6 @@ static void wifi_adapter_set_ap_network_profile(void)
                          (uint32_t)strlen("192.168.4.1"));
 }
 
-void wifi_adapter_log_sta_dhcp_ready(const char *ip)
-{
-    if (ip == NULL || ip[0] == '\0') {
-        return;
-    }
-
-    APP_LOG_I("wifi", "DHCP got IP:%s", ip);
-    APP_LOG_I("wifi", "STA ready, IP %s", ip);
-}
-
 void wifi_adapter_stack_init(void)
 {
     wifi_config_t config;
@@ -115,7 +80,6 @@ void wifi_adapter_stack_init(void)
     ext.sta_auto_connect = 0;
 
     wifi_init(&config, &ext);
-    wifi_adapter_quiet_rt_debug();
     lwip_network_init(config.opmode);
     lwip_net_start(config.opmode);
 }
@@ -140,32 +104,24 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
         return PORT_ERR_INVALID_ARG;
     }
 
-    lwip_sta_prepare_connect();
-    APP_LOG_I("wifi", "connecting to \"%s\"", ssid);
-
     if (wifi_config_set_ssid(WIFI_PORT_STA, (uint8_t *)ssid, ssid_len) < 0) {
-        APP_LOG_E("wifi", "connect failed");
         return PORT_ERR_IO;
     }
 
     if (pass_len > 0) {
         if (wifi_config_set_wpa_psk_key(WIFI_PORT_STA, (uint8_t *)pass, pass_len) < 0) {
-            APP_LOG_E("wifi", "connect failed");
             return PORT_ERR_IO;
         }
     } else if (wifi_config_set_security_mode(WIFI_PORT_STA,
                                                WIFI_AUTH_MODE_OPEN,
                                                WIFI_ENCRYPT_TYPE_WEP_DISABLED) < 0) {
-        APP_LOG_E("wifi", "connect failed");
         return PORT_ERR_IO;
     }
 
     if (wifi_config_reload_setting() < 0) {
-        APP_LOG_E("wifi", "connect failed");
         return PORT_ERR_IO;
     }
 
-    wifi_adapter_quiet_wifi_stack_logs();
     return PORT_OK;
 }
 

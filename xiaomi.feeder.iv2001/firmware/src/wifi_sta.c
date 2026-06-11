@@ -18,12 +18,6 @@
 #include "wifi_adapter.h"
 #include "wifi_sta.h"
 
-#define WIFI_STA_LINK_TIMEOUT_MS 60000u
-#define WIFI_STA_DHCP_TIMEOUT_MS 60000u
-
-/* Captive-portal AP static address — not a valid STA DHCP lease. */
-#define WIFI_STA_AP_LEFTOVER_IP "192.168.4.1"
-
 static TaskHandle_t s_connect_task;
 static volatile bool s_connect_busy;
 
@@ -36,41 +30,25 @@ static void wifi_sta_post(app_event_type_t type)
     (void)app_event_post(&ev);
 }
 
-static bool wifi_sta_ip_is_valid_lease(const char *ip)
-{
-    return ip != NULL && ip[0] != '\0' && strcmp(ip, WIFI_STA_AP_LEFTOVER_IP) != 0;
-}
-
 static void wifi_sta_apply_connect(const char *ssid, const char *pass)
 {
     const wifi_port_t *wifi = wifi_port_get();
     char ip[20];
     app_event_t ev;
 
-    wifi_sta_post(EVT_WIFI_STA_CONNECTING);
+    APP_LOG_I("wifi", "connecting to \"%s\"", ssid);
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
-        wifi_sta_post(EVT_WIFI_STA_FAILED);
-        return;
-    }
-
-    if (!lwip_net_link_ready_timeout(WIFI_STA_LINK_TIMEOUT_MS)) {
         APP_LOG_E("wifi", "connect failed");
         wifi_sta_post(EVT_WIFI_STA_FAILED);
         return;
     }
 
-    APP_LOG_I("wifi", "associated");
-
-    if (!lwip_net_dhcp_ready_timeout(WIFI_STA_DHCP_TIMEOUT_MS)) {
-        APP_LOG_E("wifi", "connect failed");
-        wifi_sta_post(EVT_WIFI_STA_FAILED);
-        return;
-    }
+    lwip_net_ready();
 
     memset(&ev, 0, sizeof(ev));
-    if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK && wifi_sta_ip_is_valid_lease(ip)) {
-        wifi_adapter_log_sta_dhcp_ready(ip);
+    if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
+        APP_LOG_I("wifi", "STA ready, IP %s", ip);
         ev.type = EVT_WIFI_STA_READY;
         strncpy(ev.u.wifi_ready.ip, ip, sizeof(ev.u.wifi_ready.ip) - 1);
         (void)app_event_post(&ev);
@@ -133,6 +111,7 @@ bool wifi_sta_request_connect(void)
     }
 
     s_connect_busy = true;
+    wifi_sta_post(EVT_WIFI_STA_CONNECTING);
     xTaskNotifyGive(s_connect_task);
     return true;
 }

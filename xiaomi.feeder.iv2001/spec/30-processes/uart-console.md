@@ -331,8 +331,9 @@ the CLI prompt):
 - `connected` (once per successful session)
 
 While connected, the client does not log per-message RX or disconnect/reconnect
-chatter on UART. SDK syslog and LinkIt MQTT debug are off in the default build
-(`MTK_DEBUG_LEVEL=none`, `MTK_MQTT_DEBUG_ENABLE=n`).
+chatter on UART. LinkIt MQTT debug is off in the default build
+(`MTK_MQTT_DEBUG_ENABLE=n`). SDK syslog remains at `info` — Wi-Fi/lwip lines may
+appear alongside curated `app_log` output (see [app-logging.md](app-logging.md)).
 
 | Failure | Log / behavior |
 |---------|----------------|

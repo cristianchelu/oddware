@@ -164,18 +164,17 @@ short `ADC` profile loans, not continuous GPIO17 hold.
 | Setting | Location | Default |
 |---------|----------|---------|
 | `APP_LOG_LEVEL` | `firmware/GCC/feature.mk` | `debug` |
-| `MTK_DEBUG_LEVEL` | `firmware/GCC/feature.mk` | `none` |
+| `MTK_DEBUG_LEVEL` | `firmware/GCC/feature.mk` | `info` |
 | `MTK_MQTT_DEBUG_ENABLE` | `firmware/GCC/feature.mk` | `n` |
 
 Module: `firmware/inc/app_log.h`, `firmware/src/app_log.c`. Linked in
 `firmware/GCC/Makefile` and host `firmware/test/Makefile`.
 
-SDK syslog is off (`MTK_DEBUG_LEVEL=none` → `MTK_DEBUG_LEVEL_NONE`); UART
-output comes from `app_log` via `log_write()` (`io_def.c` console). Console
-hardware is initialized by `bsp_io_def_uart_init()` in `prvSetupHardware()`
-before `app_log_init()` — `app_log` must not deinit/reinit UART0.
-`app_log_uart_boot.patch` calls `app_log_init()` after display boot to reset
-sink state only.
+SDK syslog stays at `info`; curated application lines use `app_log` via the same
+`log_write()` console path (`io_def.c`). Console hardware is initialized by
+`bsp_io_def_uart_init()` in `prvSetupHardware()` before `app_log_init()` —
+`app_log` must not deinit/reinit UART0. `app_log_uart_boot.patch` calls
+`app_log_init()` after display boot to reset mirror-sink state only.
 
 Host tests compile `app_log.c` with `HOST_TEST` — default sink is `stdout`.
 See [app-logging.md](../30-processes/app-logging.md).

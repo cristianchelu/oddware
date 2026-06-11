@@ -8,10 +8,10 @@ serves:
 ## Purpose
 
 All application and adapter diagnostic output on UART0 uses a single
-`app_log` module. SDK syslog (`MTK_DEBUG_LEVEL=none`) stays off; connection
-milestones and bench diagnostics are emitted at adapter boundaries with fixed
-tags. Optional secondary sinks (remote telnet mirror) attach without changing
-call sites.
+`app_log` module for curated milestones and CLI responses. SDK syslog remains
+enabled at `info` (`MTK_DEBUG_LEVEL=info`) so Wi-Fi/lwip stack lines still
+appear alongside `app_log`. Optional secondary sinks (remote telnet mirror)
+attach without changing call sites.
 
 ## Line format
 
@@ -72,20 +72,10 @@ to `info` (drop `debug`-only chatter at build time).
 
 | Setting | Value |
 |---------|-------|
-| `MTK_DEBUG_LEVEL` | `none` — skips SDK `log_init()` and syslog task |
+| `MTK_DEBUG_LEVEL` | `info` — SDK syslog task active; Wi-Fi/lwip milestones may duplicate `app_log` |
 | `MTK_MQTT_DEBUG_ENABLE` | `n` — MQTT stack yield/read spam off |
 
 Do not enable additional SDK debug flags without spec review.
-
-Wi-Fi coprocessor chatter (`cmd id`, `Event 0x… not handled`, MLME traces) is
-muted by `wifi_adapter_quiet_wifi_stack_logs()` after each successful
-`wifi_config_reload_setting()`: NVDM `common/DbgLevel=0`
-(`wifi_n9_dbg_quiet.patch`), `wifi_inband_set_debug_level(0)`,
-`wifi_inband_set_n9_consol_log_state(0)`, and `RTDebugLevel = 0`. Only
-`RTDebugLevel = 0` runs at `wifi_init()` — inband calls before reload fail and
-spam UART with SDK error lines. A few unconditional Wi-Fi RAM `printf`s at
-firmware load may still appear once per boot. Re-enable only for Wi-Fi bring-up
-debugging (CLI: `wifi config set n9dbg 3`, `n9log set host`).
 
 ## Sinks
 
@@ -109,22 +99,17 @@ Canonical UART lines (message body only; full line includes timestamp prefix):
 | Event | Line |
 |-------|------|
 | Before association | `connecting to "<ssid>"` |
-| WPA / link up | `associated` |
-| DHCP complete | `DHCP got IP:<dotted-quad>` |
 | STA ready | `STA ready, IP <dotted-quad>` |
 | Connect API failure | `connect failed` |
 | Missing credentials | `no valid credentials in NVDM` |
 | Disconnect (optional) | `STA disconnected` — deferred; do not register a second `WIFI_EVENT_IOT_DISCONNECTED` handler (overwrites SDK `wifi_lwip_helper` netif/DHCP cleanup) |
 
-Emitted from `wifi_adapter` / `wifi_sta` — not from raw SDK syslog.
+Curated lines are emitted from `wifi_sta` via `app_log`. SDK syslog may also
+print link/DHCP lines (e.g. `DHCP got IP:…`) when `MTK_DEBUG_LEVEL=info`.
 
-Before STA association, `lwip_sta_prepare_connect()` releases any DHCP lease,
-clears any stale AP-mode address (`192.168.4.1`) from the STA netif, drains DHCP
-wait semaphores, and restarts the DHCP client.
-`wifi_sta` waits on `lwip_net_link_ready_timeout()` then logs `associated`, then
-`lwip_net_dhcp_ready_timeout()` (60 s each) for a real DHCP lease — not a simple
-`get_ip()` poll. `EVT_WIFI_STA_CONNECTING` is posted when the connect task runs
-so the Wi-Fi pictograph blinks after `EVT_APP_BOOT` reset.
+`wifi_sta` blocks on `lwip_net_ready()` after `wifi_port` connect, then reads
+the STA IP. `EVT_WIFI_STA_CONNECTING` is posted from `wifi_sta_request_connect`
+before the connect task runs.
 
 ## MQTT milestones (tag `mqtt`)
 
