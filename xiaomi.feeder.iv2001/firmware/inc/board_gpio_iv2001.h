@@ -30,6 +30,10 @@
 #define BOARD_GPIO_INDEX_DET_MASK    0x80u   /* P0.7 */
 #define BOARD_GPIO_INDEX_BEAM_OPEN_HIGH  1u  /* [probe] */
 
+#define BOARD_GPIO_ADC_MUX_PORT             1u
+#define BOARD_GPIO_ADC_MUX_PIN              7u
+#define BOARD_GPIO_ADC_MUX_MASK             0x80u   /* P1.7 — NC7SB3157 S */
+
 #define BOARD_GPIO_HOPPER_SENSE_MASK        0x10u   /* P1.4 */
 #define BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH 1u      /* [probe] */
 #define BOARD_GPIO_HOPPER_IR_PULSE_MS       1u      /* [tune] */

@@ -9,6 +9,7 @@
 #include "hal_gpio.h"
 #include "hal_pinmux_define.h"
 
+#include "adc_bus_adapter.h"
 #include "board_gpio_iv2001.h"
 #include "i2c_bus_adapter.h"
 #include "uart2_adapter.h"
@@ -42,6 +43,9 @@ static void profile_hw_setup(wfci_bus_profile_t profile)
     case WFCI_BUS_PROFILE_FULL:
         i2c_bus_adapter_init();
         break;
+    case WFCI_BUS_PROFILE_ADC:
+        adc_bus_adapter_init();
+        break;
     default:
         break;
     }
@@ -63,6 +67,9 @@ static void profile_hw_teardown(wfci_bus_profile_t profile)
     case WFCI_BUS_PROFILE_WEIGH:
     case WFCI_BUS_PROFILE_FULL:
         i2c_bus_adapter_deinit();
+        break;
+    case WFCI_BUS_PROFILE_ADC:
+        adc_bus_adapter_deinit();
         break;
     default:
         break;

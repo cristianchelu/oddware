@@ -40,3 +40,5 @@ Source: `[ds:NC7SB3157 §3]`
   reads happen when motor is idle.
 - ADC conversion: raw × 2500 / 4095 = millivolts `[ds:MT7682]`
 - Battery voltage likely divided before B1; actual divider ratio `[probe-needed]`.
+- Firmware mux select constants: `board_gpio_iv2001.h` (`BOARD_GPIO_ADC_MUX_*`).
+  Read API: `adc_port` ([ports.md](../../40-architecture/ports.md)).

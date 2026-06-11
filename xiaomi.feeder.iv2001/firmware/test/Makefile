@@ -51,6 +51,8 @@ HOST_SRCS := ../src/port_err.c \
              ../src/weight_rail.c \
              ../src/weight_driver.c \
              ../src/motor_driver.c \
+             ../src/adc_driver.c \
+             ../src/adc_cli.c \
              ../src/weigh_cal.c \
              ../src/gpio_expander_loan.c \
              ../src/wfci_bus_state.c \
@@ -64,6 +66,7 @@ HOST_SRCS := ../src/port_err.c \
              fakes/fake_display_port.c \
              fakes/fake_weight_port.c \
              fakes/fake_motor_port.c \
+             fakes/fake_adc_port.c \
              fakes/fake_config_port.c \
              fakes/ota_rollback_host_stubs.c \
              fakes/fake_mqtt_port.c \

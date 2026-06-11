@@ -155,11 +155,34 @@ mutex for overlapping callers.
 | `park` | Index-seal parking ([motor-index.md](../30-processes/motor-index.md)) |
 | Queue adapter | Replace synchronous `run_forward_ms` caller with `motor_ctrl` task |
 | Index LED lifecycle | P0.6 on during run ([motor-index.md](../30-processes/motor-index.md)) |
-| ADC supervision | Mux P1.7 + GPIO17 jam path ([jam-detection.md](../30-processes/jam-detection.md)) |
+| ADC supervision (ISR + burst) | GPIO17 threshold ISR, periodic jam samples during EN ([jam-detection.md](../30-processes/jam-detection.md)) — read path on `adc_port` |
 
 When `motor_ctrl` lands, adapter sends burst/park commands to the task. Results
 arrive as `EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, or `EVT_PARK_DONE` in
 `app_event_q`.
+
+### `adc_port.h`
+
+**BAT/MOT analog sense** ([battery-monitoring.md](../30-processes/battery-monitoring.md),
+[jam-detection.md](../30-processes/jam-detection.md), [analog-mux-nc7sb3157.md](../10-hardware/components/analog-mux-nc7sb3157.md)).
+NC7SB3157 select on AW9523B P1.7; sample on MT7682 GPIO17 (AUXADC0) via
+`WFCI_BUS_PROFILE_ADC` micro-loans. Bench UART `adc read motor|battery` call
+this port synchronously on the CLI task.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `read_motor_load_mv` | `(&mv) -> err` | Idempotent P1.7 low (motor path B0→COM), `[tune]` 1 ms mux settle, **1** raw sample, `mv = raw × 2500 / 4095`. `PORT_ERR_BUSY` if adapter mutex not acquired within `[tune]` 5000 ms or WFCI `ADC` loan unavailable. |
+| `read_battery_mv` | `(&mv) -> err` | If motor EN (P0.1) high → `PORT_ERR_BUSY`. P1.7 high (battery path B1→COM), settle, **10** raw samples with outlier trim (> 2σ from mean when N ≥ 4), average, **always** restore P1.7 low. Returns sense mV at GPIO17 (divider ratio not applied — `[probe-needed]`). Same mutex / loan errors as motor load. |
+
+Adapter: `adc_adapter.c` — `gpio_expander_port` + `adc_driver.c` + `adc_bus_adapter.c`
+(HAL AUXADC0); mutex for overlapping callers.
+
+**Not exposed this slice** (future `motor_ctrl` / monitoring):
+
+| Function | When |
+|----------|------|
+| `try_read_motor_load_mv` | Non-blocking jam sample during motor EN |
+| `try_read_battery_mv` | Monitoring tick when WFCI busy |
 
 ### `weight_port.h`
 

@@ -632,6 +632,37 @@ Pulses the hopper IR emitter, samples the detector, drives the emitter off.
 | Success, beam clear (low fill) | `hopper beam: clear` |
 | Failure | `hopper read failed (<reason>)` |
 
+## `adc` commands
+
+Bench helper for NC7SB3157 BAT/MOT mux + MT7682 AUXADC0 (GPIO17). Uses
+`adc_port`. Returns sense voltage in millivolts at the ADC pin — no divider
+ratio, jam thresholds, or battery-percent mapping. Not a product interface.
+`[design]`
+
+**Operator note.** `adc read battery` switches P1.7 to the battery path briefly.
+Do not run concurrently with `motor fwd` / `motor rev` (battery read refuses
+when motor EN is high).
+
+### `adc read motor`
+
+Select motor-load path (P1.7 low), sample once, convert to mV.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `adc motor: <mv> mV` |
+| Failure | `adc read failed (<reason>)` |
+
+### `adc read battery`
+
+Require motor idle (EN low), select battery path, average 10 samples, restore
+motor path.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `adc battery: <mv> mV` |
+| Motor EN asserted | `adc read failed (busy)` |
+| Other failure | `adc read failed (<reason>)` |
+
 ## `motor` commands
 
 Bench helper for auger forward and reverse timed runs (SGM42507 via AW9523B

@@ -17,6 +17,7 @@
 
 #include "boot_bank_target.h"
 #include "app_display_cli.h"
+#include "app_adc_cli.h"
 #include "app_hopper_cli.h"
 #include "app_index_cli.h"
 #include "app_weigh_cli.h"
@@ -95,6 +96,7 @@ static cmd_t app_cli_cmds[] = {
     { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },
     { "index",   "index read",                NULL, index_cli_subcmds },
     { "hopper",  "hopper read",               NULL, hopper_cli_subcmds },
+    { "adc",     "adc read motor|battery",    NULL, adc_cli_subcmds },
     { "motor",   "motor fwd|rev <ms>",        NULL, motor_cli_subcmds },
     { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
     { NULL, NULL, NULL, NULL },

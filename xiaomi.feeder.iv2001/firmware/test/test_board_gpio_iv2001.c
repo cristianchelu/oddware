@@ -37,3 +37,10 @@ void test_board_gpio_motor_pins_match_pinmap(void)
     TEST_ASSERT_EQUAL(0u, BOARD_GPIO_MOTOR_EN_PORT);
     TEST_ASSERT_EQUAL(1u, BOARD_GPIO_MOTOR_EN_PIN);
 }
+
+void test_board_gpio_adc_mux_pins_match_pinmap(void)
+{
+    TEST_ASSERT_EQUAL(1u, BOARD_GPIO_ADC_MUX_PORT);
+    TEST_ASSERT_EQUAL(7u, BOARD_GPIO_ADC_MUX_PIN);
+    TEST_ASSERT_EQUAL(0x80u, BOARD_GPIO_ADC_MUX_MASK);
+}
