@@ -128,6 +128,30 @@ separate `wifi` group (`ssid`, `pass`) per
 disabled in `wifi_adapter_stack_init()` so the SDK profile is not used for
 association; the connect task reads only the `wifi` group.
 
+`wifi_adapter_wipe_sta_caches()` runs before `wifi_init()` on every boot to
+blank the STA profile (`StaFastLink`, `PMK_INFO`, `STA/Ssid`, `STA/WpaPsk`).
+This prevents the N9 from loading stale PMKSA / credentials that cause MIC
+failures after a warm reboot. Credentials are re-set in `wifi_port_connect()`
+via `set_ssid` / `set_psk` / `set_radio(1)` / `reload_setting()`.
+
+### N9 force reset at boot (`connsys_force_n9_reset.patch`)
+
+WDT reboot (triggered by `hal_sys_reboot`) resets only the CM4 core. The N9
+coprocessor survives with stale supplicant state (PMKSA, association
+context). `connsys_force_n9_reset.patch` asserts `CONNSYS_SW_RST = 0x00`
+(held in reset) for 5 ms in `_connsys_init_activate_mcu()` before the
+existing release (`= 0x18`). This forces a full N9 RAM clear and ROM
+re-init on every boot. `[design]`
+
+### MQTT read short-poll (`mqtt_read_peek_before_select.patch`)
+
+The Paho MQTTClient-C `mqtt_read()` implementation uses a single blocking
+`select()` call. On MT7682 with LwIP, a race exists between `rcvevent`
+check and semaphore wait: data arriving in the gap is missed until select
+timeout. The patch replaces the single select with a short-poll loop
+(200 ms intervals until deadline). This eliminates subscribe timeouts and
+ensures SUBACK is processed within 200 ms of arrival. `[design]`
+
 ### Display boot before Wi-Fi SPI (`mqtt_sys_init_display_boot.patch`)
 
 On MT7682, WFCI (`wfcm_spi.c`) uses GPIO12–16 for SPI to the Wi-Fi N9.

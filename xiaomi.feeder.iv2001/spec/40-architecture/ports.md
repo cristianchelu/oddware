@@ -59,7 +59,9 @@ enabling assertion-based testing without hardware.
 | `stop_ap` | `() -> err` | Tear down AP mode |
 
 Adapter: wraps SDK `wifi_init()`, `wifi_connection_register_event_handler()`,
-`lwip_network_init()`.
+`lwip_network_init()`. Connect path: `set_ssid` → `set_wpa_psk_key` →
+`set_radio(1)` → `reload_setting()`. Radio-on is required because
+`wifi_adapter_wipe_sta_caches()` blanks the STA profile at boot.
 
 ### `mqtt_port.h`
 

@@ -82,7 +82,40 @@ the running image is untouched until verification succeeds. `[design]`
 1. Publish `.../ota/status`: `{"state": "applying"}`.
 2. Mark the verified inactive bank as the boot target.
 3. Set boot flag for new image.
-4. Reboot.
+4. Reboot (see [Pre-reboot teardown](#pre-reboot-teardown)).
+
+### Pre-reboot teardown
+
+Before WDT reboot into the new bank:
+
+1. Disconnect AP (`wifi_connection_disconnect_ap`) — sends deauth to the
+   access point so it can clean up the STA entry immediately.
+2. Wait `[tune]` 500 ms for the disconnect to propagate.
+3. Disable I-cache; trigger `hal_sys_reboot()`.
+
+The N9 coprocessor is force-reset at the next boot by
+`connsys_force_n9_reset.patch` (assert `CONNSYS_SW_RST = 0x00` + 5 ms
+before the existing MCU release in `_connsys_init_activate_mcu`). This
+ensures N9 RAM is cleared regardless of WDT warm reboot state.
+
+### Known limitation: bank-B reconnect delay
+
+After OTA reboot into bank B, the N9 firmware exhibits a ~30 s gap between
+scan-match (`__match_bssid_cb`) and start-connect (`__seek_and_connect
+L:803`) with zero log output during the interval. Subsequent WPA 4-way
+handshake shows MIC Different on msg 3, resolved internally by M3 reinstall
+attack skip. Total WiFi connect time on bank-B OTA boots: ~35 s. `[probe]`
+
+This is a fixed internal timeout in the prebuilt N9 ROM
+(`libwifi_mt7682_ram.a`). Tested mitigations that did **not** resolve it:
+
+- Force N9 SW reset at boot (clears RAM / PMKSA — still 30 s)
+- Preserve STA NVDM credentials through reboot (still 30 s)
+- Skip pre-reboot `disconnect_ap` (still 30 s)
+
+Bank-A boots after B→A OTA connect in ~1 s. Cold boots (power cycle)
+connect in ~2 s regardless of bank. The delay is specific to A→B OTA warm
+reboots and acceptable for monthly update events. `[probe]`
 
 ## Rollback
 

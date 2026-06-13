@@ -121,6 +121,12 @@ readings keep the last good sample on `PORT_ERR_BUSY`.
 | Poll | `mqtt_io` | `[tune]` 50 ms step delay while worker runs; on completion apply backoff or post `EVT_MQTT_CONNECTED` |
 | Disarm | `mqtt_client_stop()` | Clears worker state; disconnect if session was up |
 
+**Yield guard:** `mqtt_io` must not call `MQTTYield` while the `mqtt_cn`
+worker holds the socket.  The step function gates yield behind
+`!s_connect_worker_running && mqtt->is_connected()`.  Without this guard,
+select/recv on the shared socket races with the worker's subscribe call and
+causes subscribe timeouts or duplicate CONNACK processing. `[design]`
+
 Task priorities and stack sizes: [task-model.md](../40-architecture/task-model.md).
 
 Summary:

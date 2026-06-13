@@ -28,7 +28,7 @@
 
 #define MQTT_OFFLINE_PAYLOAD       "{\"online\": false}"
 #define MQTT_CMD_WILDCARD          "cmd/#"
-#define MQTT_CONNECT_WORKER_STACK  3072u
+#define MQTT_CONNECT_WORKER_STACK  4096u
 #define MQTT_CONNECT_POLL_MS       50u
 
 #ifndef APP_TASK_PRIO
@@ -389,7 +389,7 @@ uint32_t mqtt_client_step(void)
         goto done;
     }
 
-    if (!s_connect_pending && mqtt->is_connected()) {
+    if (!s_connect_pending && !s_connect_worker_running && mqtt->is_connected()) {
         mqtt_adapter_yield(250);
         delay_ms = 250;
         goto done;
@@ -407,7 +407,7 @@ uint32_t mqtt_client_step(void)
         s_connect_pending = true;
     }
 
-    if (mqtt->is_connected()) {
+    if (!s_connect_worker_running && mqtt->is_connected()) {
         s_connect_pending = false;
         s_connect_busy = false;
         mqtt_adapter_yield(250);

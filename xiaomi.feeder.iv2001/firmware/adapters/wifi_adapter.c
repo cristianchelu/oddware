@@ -15,6 +15,7 @@
 #include "lwip/netif.h"
 #include "ethernetif.h"
 
+#include "app_log.h"
 #include "wifi_adapter.h"
 #include "wifi_port.h"
 #include "wifi_private_api.h"
@@ -67,10 +68,65 @@ static void wifi_adapter_set_ap_network_profile(void)
                          (uint32_t)strlen("192.168.4.1"));
 }
 
+/*
+ * Wipe SDK-internal STA caches that poison association after reboot.
+ *
+ * wifi_init() reads ALL STA/* NVDM keys and loads them into the N9
+ * coprocessor.  After a warm reboot (OTA) the N9 RAM may still hold a
+ * stale PMKSA from the previous session.  The AP has already evicted its
+ * side, so the cached PMK causes MIC failure on msg 3 and a ~38 s gap
+ * between scan-match and connect-start in the N9 ROM.
+ *
+ * Wiping the STA/* profile forces wifi_init() to hand the N9 a blank
+ * slate.  Credentials are re-set via set_ssid/set_psk before
+ * reload_setting() in wifi_port_connect().
+ *
+ * Must run BEFORE wifi_init() which reads these keys.
+ */
+static void wifi_adapter_wipe_sta_caches(void)
+{
+    const char zero[] = "0";
+    uint8_t zeros[32 + 64 + 32];
+
+    memset(zeros, 0, sizeof(zeros));
+
+    /* Disable fast-PMK lookup in N9 ROM. */
+    nvdm_write_data_item("common",
+                         "StaFastLink",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)zero,
+                         1);
+
+    /* Zero the cached SSID+PSK+PMK tuple. */
+    nvdm_write_data_item("STA",
+                         "PMK_INFO",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         zeros,
+                         sizeof(zeros));
+
+    /* Blank the STA profile so wifi_init() does not pre-load stale
+     * credentials into the N9.  We re-set them in wifi_port_connect(). */
+    nvdm_write_data_item("STA", "SsidLen",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)zero, 1);
+    nvdm_write_data_item("STA", "Ssid",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)"", 0);
+    nvdm_write_data_item("STA", "WpaPskLen",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)zero, 1);
+    nvdm_write_data_item("STA", "WpaPsk",
+                         NVDM_DATA_ITEM_TYPE_STRING,
+                         (const uint8_t *)"", 0);
+
+    APP_LOG_I("wifi", "wiped STA profile + PMK caches");
+}
+
 void wifi_adapter_stack_init(void)
 {
     wifi_config_t config;
     wifi_config_ext_t ext;
+    TickType_t t0;
 
     memset(&config, 0, sizeof(config));
     memset(&ext, 0, sizeof(ext));
@@ -79,9 +135,17 @@ void wifi_adapter_stack_init(void)
     ext.sta_auto_connect_present = 1;
     ext.sta_auto_connect = 0;
 
+    wifi_adapter_wipe_sta_caches();
+
+    t0 = xTaskGetTickCount();
     wifi_init(&config, &ext);
+    APP_LOG_I("wifi", "wifi_init done +%lu ms",
+              (unsigned long)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS);
+
     lwip_network_init(config.opmode);
     lwip_net_start(config.opmode);
+    APP_LOG_I("wifi", "stack_init complete +%lu ms",
+              (unsigned long)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS);
 }
 
 static port_err_t wifi_port_connect(const char *ssid, const char *pass)
@@ -104,6 +168,9 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
         return PORT_ERR_INVALID_ARG;
     }
 
+    APP_LOG_I("wifi", "connect: ssid=\"%s\" tick=%lu",
+              ssid, (unsigned long)xTaskGetTickCount());
+
     if (wifi_config_set_ssid(WIFI_PORT_STA, (uint8_t *)ssid, ssid_len) < 0) {
         return PORT_ERR_IO;
     }
@@ -117,6 +184,13 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
                                                WIFI_ENCRYPT_TYPE_WEP_DISABLED) < 0) {
         return PORT_ERR_IO;
     }
+
+    if (wifi_config_set_radio(1) < 0) {
+        APP_LOG_W("wifi", "set_radio(1) failed");
+    }
+
+    APP_LOG_I("wifi", "reload_setting tick=%lu",
+              (unsigned long)xTaskGetTickCount());
 
     if (wifi_config_reload_setting() < 0) {
         return PORT_ERR_IO;

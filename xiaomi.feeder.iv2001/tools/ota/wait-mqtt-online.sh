@@ -95,7 +95,10 @@ uart_mqtt_ready() {
     if [ -z "$log" ] || [ ! -f "$log" ]; then
         return 1
     fi
-    strings "$log" 2>/dev/null | grep -qE '\[mqtt\] connected'
+    # Wait for OTA idle — the device has fully connected and published its first
+    # status message. This is a stronger signal than [mqtt] connected, which can
+    # appear during transient reconnect cycles before subscriptions succeed.
+    strings "$log" 2>/dev/null | grep -qE '\[ota\] status idle'
 }
 
 uart_boot_seen() {

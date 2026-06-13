@@ -81,6 +81,7 @@ uart_capture_acquire() {
 uart_capture_start() {
     local log_path="$1"
     local parent_pid="${2:-$$}"
+    local cat_cmd=(cat)
 
     uart_capture_stop
 
@@ -93,10 +94,14 @@ uart_capture_start() {
     : >"$log_path"
     stty -F "$UART_CAPTURE_DEV" 115200 cs8 -cstopb -parenb raw -echo 2>/dev/null || true
 
+    if command -v stdbuf >/dev/null 2>&1; then
+        cat_cmd=(stdbuf -o0 -e0 cat)
+    fi
+
     (
         trap 'exit 0' TERM INT
         while true; do
-            timeout 1 cat "$UART_CAPTURE_DEV" >>"$log_path" 2>/dev/null || sleep 0.2
+            "${cat_cmd[@]}" "$UART_CAPTURE_DEV" >>"$log_path" 2>/dev/null || sleep 0.2
         done
     ) &
     UART_CAPTURE_PID=$!
@@ -127,17 +132,38 @@ uart_capture_start() {
 }
 
 uart_capture_stop() {
+    local i
+
     if [ -n "${UART_CAPTURE_WATCHDOG_PID:-}" ] && kill -0 "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null; then
         kill -TERM "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null || true
+        for i in $(seq 1 20); do
+            kill -0 "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null || break
+            sleep 0.1
+        done
+        if kill -0 "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null; then
+            kill -KILL "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null || true
+        fi
         wait "$UART_CAPTURE_WATCHDOG_PID" 2>/dev/null || true
     fi
     UART_CAPTURE_WATCHDOG_PID=""
 
     if [ -n "${UART_CAPTURE_PID:-}" ] && kill -0 "$UART_CAPTURE_PID" 2>/dev/null; then
         kill -TERM "$UART_CAPTURE_PID" 2>/dev/null || true
+        for i in $(seq 1 20); do
+            kill -0 "$UART_CAPTURE_PID" 2>/dev/null || break
+            sleep 0.1
+        done
+        if kill -0 "$UART_CAPTURE_PID" 2>/dev/null; then
+            kill -KILL "$UART_CAPTURE_PID" 2>/dev/null || true
+        fi
         wait "$UART_CAPTURE_PID" 2>/dev/null || true
     fi
     UART_CAPTURE_PID=""
+
+    # Kill any cat child that survived (SIGTERM to subshell doesn't reach children).
+    if [ -n "${UART_CAPTURE_DEV:-}" ] && command -v fuser >/dev/null 2>&1; then
+        fuser -k "${UART_CAPTURE_DEV}" 2>/dev/null || true
+    fi
 }
 
 uart_capture_release() {

@@ -35,8 +35,10 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
     const wifi_port_t *wifi = wifi_port_get();
     char ip[20];
     app_event_t ev;
+    TickType_t t0 = xTaskGetTickCount();
 
-    APP_LOG_I("wifi", "connecting to \"%s\"", ssid);
+    APP_LOG_I("wifi", "connecting to \"%s\" tick=%lu",
+              ssid, (unsigned long)t0);
 
     if (wifi->connect(ssid, pass) != PORT_OK) {
         APP_LOG_E("wifi", "connect failed");
@@ -44,11 +46,19 @@ static void wifi_sta_apply_connect(const char *ssid, const char *pass)
         return;
     }
 
+    APP_LOG_I("wifi", "reload done, waiting PORT_SECURE+DHCP tick=%lu",
+              (unsigned long)xTaskGetTickCount());
+
     lwip_net_ready();
+
+    APP_LOG_I("wifi", "lwip_net_ready returned +%lu ms",
+              (unsigned long)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS);
 
     memset(&ev, 0, sizeof(ev));
     if (wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
-        APP_LOG_I("wifi", "STA ready, IP %s", ip);
+        APP_LOG_I("wifi", "STA ready, IP %s +%lu ms",
+                  ip,
+                  (unsigned long)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS);
         ev.type = EVT_WIFI_STA_READY;
         strncpy(ev.u.wifi_ready.ip, ip, sizeof(ev.u.wifi_ready.ip) - 1);
         (void)app_event_post(&ev);

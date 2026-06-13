@@ -1,0 +1,78 @@
+--- a/middleware/third_party/mqtt/MQTTClient-C/src/mediatek/MQTTMediatek.c
++++ b/middleware/third_party/mqtt/MQTTClient-C/src/mediatek/MQTTMediatek.c
+@@ -105,33 +105,48 @@
+     fd_set fdset;
+     struct timeval tv;
+ 
+-    FD_ZERO(&fdset);
+-    FD_SET(n->my_socket, &fdset);
+-
+-
+-    tv.tv_sec = timeout_ms / 1000;
+-    tv.tv_usec = (timeout_ms % 1000) * 1000;
+-    ret = select(n->my_socket + 1, &fdset, NULL, NULL, &tv);
+-    MQTT_DBG("mqtt read timer=%d ms", timeout_ms);
+-    if (ret < 0) {
+-        MQTT_DBG("mqtt read(select) fail ret=%d", ret);
+-        return -1;
+-    } else if (ret == 0) {
+-        MQTT_DBG("mqtt read(select) timeout");
+-        return -2;
+-    } else if (ret == 1) {
+-        do {
+-            MQTT_DBG("mqtt read recv len = %d, recvlen = %d", len, recvlen);
+-            rc = recv(n->my_socket, buffer + recvlen, len - recvlen, 0);
+-            if (rc > 0) {
+-            recvlen += rc;
+-                MQTT_DBG("mqtt read ret=%d, rc = %d, recvlen = %d", ret, rc, recvlen);
+-            } else {
+-                MQTT_DBG("mqtt read fail: ret=%d, rc = %d, recvlen = %d", ret, rc, recvlen);
+-                return -3;
+-            }
+-        } while (recvlen < len);
+-    }
++    /* Short-poll select() to work around an LwIP race on MT7682:
++       select() can miss data arriving between the rcvevent check
++       and the semaphore wait.  By using short (200 ms) polls the
++       next iteration always finds the data already buffered. */
++    unsigned int deadline = mqtt_current_time_ms() + timeout_ms;
++    MQTT_DBG("mqtt read len=%d timer=%d ms", len, timeout_ms);
++
++    while (recvlen < len) {
++        unsigned int now = mqtt_current_time_ms();
++        unsigned int remaining, poll_ms;
++
++        if (now >= deadline) {
++            MQTT_DBG("mqtt read(select) timeout");
++            return recvlen > 0 ? recvlen : -2;
++        }
++        remaining = deadline - now;
++        poll_ms = (remaining > 200) ? 200 : remaining;
++
++        FD_ZERO(&fdset);
++        FD_SET(n->my_socket, &fdset);
++        tv.tv_sec = 0;
++        tv.tv_usec = poll_ms * 1000;
++        ret = select(n->my_socket + 1, &fdset, NULL, NULL, &tv);
++
++        if (ret < 0) {
++            MQTT_DBG("mqtt read(select) fail ret=%d", ret);
++            return -1;
++        }
++        if (ret == 0) {
++            continue;
++        }
++
++        rc = recv(n->my_socket, buffer + recvlen, len - recvlen, 0);
++        if (rc > 0) {
++            recvlen += rc;
++            MQTT_DBG("mqtt read rc=%d recvlen=%d", rc, recvlen);
++        } else {
++            MQTT_DBG("mqtt read fail: rc=%d recvlen=%d", rc, recvlen);
++            return -3;
++        }
++    }
++
+     return recvlen;
+ }
+ 

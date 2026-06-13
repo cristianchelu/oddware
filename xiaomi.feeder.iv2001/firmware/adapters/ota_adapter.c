@@ -26,6 +26,7 @@
 #include "ota_port.h"
 #include "ota_preflight.h"
 #include "ota_rollback.h"
+#include "wifi_api.h"
 
 #define OTA_DL_TASK_STACK   (12288)
 #define OTA_DL_TASK_PRIO    (TASK_PRIORITY_ABOVE_NORMAL - 1)
@@ -60,7 +61,19 @@ static void ota_adapter_report(ota_status_t status, uint8_t pct, const char *err
 
 static void ota_adapter_reboot(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(200));
+    /*
+     * Disconnect then WDT reboot into the new bank.
+     *
+     * The N9 coprocessor is force-reset at boot by
+     * connsys_force_n9_reset.patch, so we only need a clean WiFi
+     * disconnect here.  A ~30s reconnect delay on bank-B boots is a
+     * known limitation of the prebuilt N9 firmware's __seek_and_connect
+     * timeout and cannot be fixed from the CM4 side.
+     */
+    APP_LOG_I("ota", "pre-reboot: disconnect AP");
+    (void)wifi_connection_disconnect_ap();
+    vTaskDelay(pdMS_TO_TICKS(500));
+
     hal_cache_disable();
     hal_cache_deinit();
     hal_sys_reboot(HAL_SYS_REBOOT_MAGIC, WHOLE_SYSTEM_REBOOT_COMMAND);

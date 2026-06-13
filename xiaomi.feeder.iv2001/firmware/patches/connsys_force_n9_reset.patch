@@ -1,0 +1,18 @@
+--- a/middleware/MTK/connsys/src/connsys_driver.c
++++ b/middleware/MTK/connsys/src/connsys_driver.c
+@@ -1847,6 +1847,15 @@ static void _connsys_init_activate_mcu(void)
+ {
+     //Enable N9 MTCMOS Power
+     spm_control_mtcmos(SPM_MTCMOS_CONN, SPM_MTCMOS_PWR_ENABLE);
++
++    /*
++     * Force N9 into reset first.  After a WDT reboot the N9 may still
++     * be running with stale PMKSA / association state.  Asserting reset
++     * clears its RAM and forces N9 ROM to re-initialise from scratch,
++     * which resets the patch semaphore and ensures a full FW re-download.
++     */
++    HAL_REG_32(CONNSYS_SW_RST) = 0x00;
++    hal_gpt_delay_ms(5);
+ 
+     hal_gpt_delay_ms(1);
+ 
