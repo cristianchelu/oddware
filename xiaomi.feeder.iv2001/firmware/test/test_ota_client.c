@@ -6,14 +6,29 @@
 
 #include "fake_mqtt_port.h"
 #include "fake_ota_port.h"
+#include "fake_time.h"
+#include "mqtt_outbox.h"
 #include "ota_client.h"
 
 #define TEST_DEVICE_ID "ddeeff"
+
+static void drain_ota_outbox(void)
+{
+    const mqtt_port_t *mqtt = fake_mqtt_port_get();
+
+    while (mqtt_outbox_pending() > 0) {
+        if (!mqtt_outbox_drain_one(mqtt)) {
+            fake_time_advance_ms(101u);
+            (void)mqtt_outbox_drain_one(mqtt);
+        }
+    }
+}
 
 static void setup_ota_client_connected(void)
 {
     fake_mqtt_port_reset();
     fake_ota_port_reset();
+    mqtt_outbox_reset();
 
     fake_mqtt_port_get()->connect(NULL);
     ota_client_set_device_id(TEST_DEVICE_ID);
@@ -30,6 +45,7 @@ void test_ota_cmd_valid_starts_download(void)
     setup_ota_client_connected();
 
     ota_client_on_mqtt_message(topic, payload, strlen(payload));
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     ota = fake_ota_port_state();
@@ -54,6 +70,7 @@ void test_ota_cmd_already_in_progress(void)
     fake_ota_port_set_start_result(PORT_ERR_BUSY);
 
     ota_client_on_mqtt_message(topic, payload, strlen(payload));
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     ota = fake_ota_port_state();
@@ -73,6 +90,7 @@ void test_ota_cmd_invalid_url(void)
     setup_ota_client_connected();
 
     ota_client_on_mqtt_message(topic, payload, strlen(payload));
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     ota = fake_ota_port_state();
@@ -92,6 +110,7 @@ void test_ota_cmd_wrong_topic_ignored(void)
     setup_ota_client_connected();
 
     ota_client_on_mqtt_message(topic, payload, strlen(payload));
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     ota = fake_ota_port_state();
@@ -107,6 +126,7 @@ void test_ota_on_mqtt_connected_publishes_idle(void)
     setup_ota_client_connected();
 
     ota_client_on_mqtt_connected();
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
@@ -127,6 +147,7 @@ void test_ota_progress_callback_publishes_status(void)
     setup_ota_client_connected();
 
     fake_ota_port_emit_progress(&progress);
+    drain_ota_outbox();
 
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);

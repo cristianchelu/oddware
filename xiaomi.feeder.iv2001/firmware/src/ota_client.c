@@ -7,6 +7,7 @@
 
 #include "app_log.h"
 
+#include "mqtt_outbox.h"
 #include "mqtt_port.h"
 #include "mqtt_route.h"
 #include "mqtt_topics.h"
@@ -20,15 +21,11 @@ static char s_status_topic[96];
 
 static void ota_client_publish_status(const char *state, uint8_t pct, const char *error)
 {
-    const mqtt_port_t *mqtt = mqtt_port_get();
     char payload[128];
     int written;
 
-    if (mqtt == NULL || !mqtt->is_connected() || s_status_topic[0] == '\0') {
-        app_log_error("ota",
-                      "status publish skipped conn=%d topic=%s",
-                      (mqtt != NULL && mqtt->is_connected()) ? 1 : 0,
-                      s_status_topic);
+    if (s_status_topic[0] == '\0') {
+        app_log_error("ota", "status publish skipped topic unset");
         return;
     }
 
@@ -42,7 +39,11 @@ static void ota_client_publish_status(const char *state, uint8_t pct, const char
         return;
     }
 
-    mqtt->publish(s_status_topic, payload, (size_t)written, 1, true);
+    if (!mqtt_outbox_enqueue(s_status_topic, payload, (size_t)written, 1, true)) {
+        app_log_error("ota", "status enqueue failed topic=%s", s_status_topic);
+        return;
+    }
+
     app_log_debug("ota",
                   "status %s pct=%u err=%s",
                   state,

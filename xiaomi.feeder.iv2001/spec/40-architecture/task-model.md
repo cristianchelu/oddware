@@ -15,7 +15,7 @@ Timer expiry ─────┼────►│ app_event_q  │────�
 OTA progress ─────┤     └──────────────┘       │
 Provisioning ─────┘                            ├─► calls port functions
                                                ├─► updates state
-                                               └─► publishes via mqtt_port
+                                               ├─► enqueues MQTT TX via mqtt_outbox
 ```
 
 ## SDK-owned tasks (do not modify)
@@ -37,7 +37,7 @@ The SDK creates these internally. Their priorities are fixed:
 | Task | Priority | Stack | Lifetime | Role |
 |------|----------|-------|----------|------|
 | `app` | NORMAL | 4096 B | Persistent | Event loop: dequeues `app_event_t`, dispatches to handler, calls ports; local `[tune]` 50 ms display heartbeat when queue idle |
-| `mqtt_io` | ABOVE_NORMAL | 4096 B | Persistent | MQTT orchestration: `MQTTYield()` when connected; starts `mqtt_cn` connect worker and polls every `[tune]` 50 ms while handshake runs; disconnected during OTA preflight |
+| `mqtt_io` | ABOVE_NORMAL | 4096 B | Persistent | MQTT orchestration: drain `mqtt_outbox` (sole post-connect publisher) then `MQTTYield()` when connected; starts `mqtt_cn` connect worker and polls every `[tune]` 50 ms while handshake runs; disconnected during OTA preflight |
 | `mqtt_cn` | NORMAL − 1 | 4096 B | Ephemeral | Blocking `ConnectNetwork` + `MQTTConnect` + post-connect subscribe/publish; self-deletes on completion |
 | `ota_dl` | NORMAL | 4096 B | Ephemeral | Spawned during OTA download only, posts progress to `app_event_q`, self-deletes on completion |
 | `motor_ctrl` | HIGH | 2048 B | Persistent (when dispense features land) | Safety-critical motor I2C: receives fault notifications from ADC ISR, performs protective I2C writes, posts `EVT_MOTOR_FAULT` to `app_event_q` |
@@ -83,13 +83,13 @@ Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-eve
 |-------|----------|-----------------|
 | `EVT_WIFI_CONNECTED` | WiFi event handler | Update state, attempt MQTT connect |
 | `EVT_WIFI_DISCONNECTED` | WiFi event handler | Start reconnect timer |
-| `EVT_MQTT_CONNECTED` | `mqtt_io` | Publish online state, confirm OTA if pending |
+| `EVT_MQTT_CONNECTED` | `mqtt_io` | `app_mqtt_on_connected()` — OTA rollback confirm, enqueue idle `ota/status`, schedule HA discovery |
 | `EVT_MQTT_DISCONNECTED` | `mqtt_io` | Start backoff reconnect |
 | `EVT_MQTT_MESSAGE` | `mqtt_io` | Dispatch by topic (cmd/dispense, cmd/ota, etc.) |
 | `EVT_MQTT_RECONNECT_TICK` | Software timer | Attempt MQTT reconnect |
-| `EVT_OTA_PROGRESS` | `ota_dl` | Publish progress via MQTT |
+| `EVT_OTA_PROGRESS` | `ota_dl` | Enqueue OTA status via mqtt_outbox |
 | `EVT_OTA_COMPLETE` | `ota_dl` | Verify image, swap banks, reboot |
-| `EVT_OTA_ERROR` | `ota_dl` | Publish error, clean up |
+| `EVT_OTA_ERROR` | `ota_dl` | Enqueue error status via mqtt_outbox |
 | `EVT_PROVISION_SUBMIT` | HTTP server callback | Validate creds, save to NVDM, reboot |
 | `EVT_TIMER_TICK` | Software timer | Periodic housekeeping |
 | `EVT_DISPLAY_TICK` | Display presentation timer (`[tune]` 50 ms) | `display_presentation_tick()` — blink phases and animation frames |
@@ -172,9 +172,10 @@ queue and drain immediately after.
 - **Extensible.** Adding a subsystem (weighing, display, scheduling) means:
   add an event type, add a handler case, write a test. The queue and
   dispatcher are unchanged.
-- **`mqtt_io` stays simple.** It only runs `MQTTYield()` in a loop. On
-  message arrival it copies topic+payload to heap, wraps in
-  `EVT_MQTT_MESSAGE`, posts to queue. No business logic.
+- **`mqtt_io` owns post-connect TX.** It drains `mqtt_outbox` (one item per
+  step, rate-spaced) then runs `MQTTYield()`. On message arrival it
+  heap-copies topic+payload to `EVT_MQTT_MESSAGE` and posts to the queue.
+  No business logic and no direct publish from `app` after connect.
 - **OTA download is isolated.** `ota_dl` does blocking HTTP GET + flash
   writes. It posts progress events. `app` never blocks on I/O. Cancellation
   is via an abort flag that `ota_dl` checks between chunks.

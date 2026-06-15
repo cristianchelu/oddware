@@ -12,6 +12,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 
 | Topic | Payload | QoS |
 |-------|---------|-----|
+| `.../connection` | `online` or `offline` (plain text) | 1 |
 | `.../state` | `{"online": true, "bank": "A"}` or `{"online": true, "bank": "B"}` | 1 |
 | `.../weight` | `{"bowl_g": 42, "eaten_today_g": 85}` | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
@@ -42,33 +43,71 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 
 | Parameter | Value |
 |-----------|-------|
-| Will topic | `.../state` |
-| Will payload | `{"online": false}` |
+| Will topic | `.../connection` |
+| Will payload | `offline` |
 | Will retain | true |
 | Will QoS | 1 |
 
-Set at CONNECT time. Broker publishes will on unclean disconnect.
+Set at CONNECT time. Broker publishes will on unclean disconnect. On
+graceful disconnect the firmware publishes `offline` on `.../connection`
+and `{"online": false}` on `.../state` before `DISCONNECT`.
 
 ## Home Assistant discovery
 
-On connect (and every `[tune]` 300 s), publish discovery configs to:
-`homeassistant/<component>/petfeeder_<device_id>/<entity>/config` (retained, QoS 1).
+On connect (and every `[tune]` 300 s when the full entity table ships),
+publish discovery configs to:
+`homeassistant/<component>/petfeeder_<device_id>/<object_id>/config`
+(retained, QoS 1). Post-connect discovery publishes go through
+[mqtt_outbox](#publish-path) — only `mqtt_io` drains the queue.
 
-| Component | Entity ID | HA device_class | Notes |
+Each discovery message includes a `device` block with `identifiers`,
+`name`, `manufacturer`, `model` for unified HA device grouping.
+Manufacturer and model strings are neutral (no Mi/MIoT/Xiaomi branding in
+firmware); see [validation slice](#home-assistant-validation-slice).
+
+### Full entity table (planned)
+
+| Component | object_id | HA device_class | Notes |
 |-----------|-----------|-----------------|-------|
 | sensor | bowl_weight | `weight` | Unit: g |
 | sensor | eaten_today | `weight` | Unit: g |
 | sensor | battery | `battery` | Unit: % |
 | sensor | hopper_level | `enum` | Options: normal, low |
 | binary_sensor | power_mains | `power` | On/off |
-| button | dispense_10g | — | Triggers default portion |
+| button | dispense | — | Triggers default portion |
 | number | dispense_custom | — | Range: 5–150 g |
 | switch | child_lock | — | On/off |
 | select | display_mode | — | Options: weight, eaten_today, off |
 | number | display_brightness | — | Range: 1–4 |
 
-Each discovery message includes a `device` block with `identifiers`,
-`name`, `manufacturer`, `model` for unified HA device grouping.
+### Home Assistant validation slice
+
+The firmware publishes one HA entity today — a **Dispense** button — to
+prove autodiscovery on a real broker before the rest of the table lands.
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/button/petfeeder_<device_id>/dispense/config` |
+| `command_topic` | `petfeeder/<device_id>/cmd/dispense` |
+| `payload_press` | `{}` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+| `device.identifiers` | `["petfeeder_<device_id>"]` |
+| `device.manufacturer` | `Oddware` `[design]` |
+| `device.model` | `IV2001 Pet Feeder` `[design]` |
+
+`cmd/dispense` accepts any payload; the handler ignores JSON and submits
+`[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
+dispense lands). UART logs use tag `dispense` — see
+[app-logging.md](app-logging.md) § Dispense diagnostics. Entity availability
+follows retained `.../connection`
+(`online` / `offline`); `.../state` carries bank and JSON online for
+automations.
+
+Discovery refresh every 300 s is deferred; the outbox path supports it when
+the full table ships. Stale discovery topics from prior firmware builds are
+not auto-deleted on `device_id` change.
 
 ## Connection
 
@@ -92,8 +131,8 @@ Bench and runtime behavior (UART details in
 | Boot | `mqtt_io` task starts; if `mqtt/host` is stored, connect when Wi-Fi STA has DHCP (no `mqtt connect` needed). Otherwise remain idle until armed |
 | `mqtt connect` (or provisioning success) | Arm client; connect when Wi-Fi STA has DHCP |
 | `mqtt disconnect` | Disarm for this boot; no reconnect until `mqtt connect` or reboot |
-| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `{"online": true, "bank": "A"|"B"}` on `.../state` (`bank` is the active A/B partition); install LWT per table above |
-| Connected idle | Process inbound commands via `MQTTYield`; route known `cmd/*` topics silently (handlers `[design]`) |
+| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `online` on `.../connection` and `{"online": true, "bank": "A"|"B"}` on `.../state` (`bank` is the active A/B partition); install LWT per table above |
+| Connected idle | `mqtt_io` drains [mqtt_outbox](#publish-path) then `MQTTYield`; inbound commands are heap-copied to `app_event_q` and routed on `app` (see [Inbound commands](#inbound-commands)) |
 | Session loss while armed | Exponential backoff reconnect (see below) |
 
 ### Session display
@@ -117,7 +156,7 @@ readings keep the last good sample on `PORT_ERR_BUSY`.
 | Step | Task | Behavior |
 |------|------|----------|
 | Arm + session sync | `mqtt_io` or `app` producer | `mqtt_client_request_connect()` sets pending flags and posts connecting phase |
-| Handshake | `mqtt_cn` worker | `ConnectNetwork`, `MQTTConnect`, subscribe `cmd/#`, publish online + OTA idle status; `taskYIELD()` after major blocking calls |
+| Handshake | `mqtt_cn` worker | `ConnectNetwork`, `MQTTConnect`, subscribe `cmd/#`, publish retained `connection` + `state`; `taskYIELD()` after major blocking calls |
 | Poll | `mqtt_io` | `[tune]` 50 ms step delay while worker runs; on completion apply backoff or post `EVT_MQTT_CONNECTED` |
 | Disarm | `mqtt_client_stop()` | Clears worker state; disconnect if session was up |
 
@@ -143,10 +182,41 @@ below — not `#`, not other devices' namespaces.
 
 **Implemented now:** connect/LWT/online state, subscribe, reconnect backoff,
 command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
-A/B bank swap, post-boot rollback timer).
+A/B bank swap, post-boot rollback timer), [mqtt_outbox](#publish-path)
+(post-connect publish queue), HA validation-slice Dispense button discovery,
+`cmd/dispense` → one portion.
 
-**Not implemented yet:** Home Assistant discovery, other retained state topics,
-non-OTA command handlers, rate limiting.
+**Not implemented yet:** remaining HA entities, 300 s discovery refresh,
+other retained state topics, non-dispense command handlers, per-topic
+last-value-wins coalescing on the outbox.
+
+### Publish path
+
+Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
+`mqtt_io`:
+
+| Phase | Who may call `mqtt_port->publish()` |
+|-------|-------------------------------------|
+| `mqtt_cn` handshake | Connect worker only (subscribe, retained online `state`, LWT already set at CONNECT) |
+| Connected session | **`mqtt_io` only**, one item per step via outbox drain |
+| `app` task | **Enqueue only** — copy topic and payload into the outbox |
+
+| Parameter | Value |
+|-----------|-------|
+| Ring depth | `[tune]` 16 slots |
+| Max payload per slot | `[tune]` 512 B (matches TX buffer) |
+| Min interval between successful drains | `[tune]` 100 ms |
+
+When the ring is full, new enqueues are dropped and a debug log is emitted.
+`mqtt_outbox` is cleared on disconnect. OTA status, HA discovery, and future
+state publishers share this path.
+
+### Inbound commands
+
+Broker → device commands do not use a separate inbox module. `mqtt_io`
+receives in the MQTT yield callback, heap-copies topic and payload, posts
+`EVT_MQTT_MESSAGE`, and returns. `app` runs `mqtt_route_classify` and
+dispatches handlers — never inside the MQTT callback or `mqtt_io` step.
 
 ### Reconnect strategy
 
@@ -161,15 +231,20 @@ Exponential backoff on disconnect:
 
 | Context | Max publish rate | Source |
 |---------|-----------------|--------|
-| State topics (general) | 1 per topic per `[tune]` 2 s | `[design]` |
-| Dispense progress | 1 per `[tune]` 500 ms | `[design]` |
+| Outbox drain (all post-connect TX) | 1 publish per `[tune]` 100 ms | `[design]` |
+| State topics (general, when implemented) | 1 per topic per `[tune]` 2 s | `[design]` |
+| Dispense progress (when implemented) | 1 per `[tune]` 500 ms | `[design]` |
 
-Newer values supersede queued publishes (last-value-wins, not queued).
+The outbox drain interval spaces connect-time bursts (e.g. ten HA entities
+≈ 1 s). Per-topic last-value-wins coalescing for high-rate state publishers
+is deferred until those topics ship.
 
 ## OTA status
 
 Topic `.../ota/status` (retained, QoS 1). Published on OTA progress and after
-MQTT connect (`state` reset to `idle`).
+MQTT connect (`state` reset to `idle`). Post-connect status updates are
+enqueued on `app` and drained by `mqtt_io` — not published directly from
+the OTA handler.
 
 | Field | Values |
 |-------|--------|

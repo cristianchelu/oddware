@@ -6,6 +6,7 @@
 #include "fake_config_port.h"
 #include "fake_mqtt_port.h"
 #include "fake_time.h"
+#include "mqtt_outbox.h"
 #include "fake_wifi_port.h"
 #include <string.h>
 
@@ -148,12 +149,25 @@ void test_connect_subscribes_and_publishes_online(void)
     TEST_ASSERT_EQUAL_UINT(1, mqtt->subscribe_calls);
     TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/cmd/#", mqtt->last_subscribe_topic);
-    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->prior_publish_topic);
-    TEST_ASSERT_EQUAL_STRING("{\"online\": true, \"bank\": \"A\"}", mqtt->prior_publish_payload);
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/connection", mqtt->prior_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("online", mqtt->prior_publish_payload);
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->last_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("{\"online\": true, \"bank\": \"A\"}", mqtt->last_publish_payload);
+    TEST_ASSERT_EQUAL_UINT(2, mqtt_outbox_pending());
+    TEST_ASSERT_TRUE(mqtt->connected);
+
+    mqtt_client_step();
+    TEST_ASSERT_EQUAL_UINT(3, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/ota/status", mqtt->last_publish_topic);
     TEST_ASSERT_EQUAL_STRING("{\"state\": \"idle\", \"pct\": 0, \"error\": \"\"}",
                              mqtt->last_publish_payload);
-    TEST_ASSERT_TRUE(mqtt->connected);
+
+    fake_time_advance_ms(101u);
+    mqtt_client_step();
+    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/button/petfeeder_ddeeff/dispense/config",
+                             mqtt->last_publish_topic);
+    TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 }
 
 void test_connected_session_survives_yield_steps(void)
@@ -177,6 +191,29 @@ void test_connected_session_survives_yield_steps(void)
     TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
     TEST_ASSERT_EQUAL_UINT(0, mqtt->disconnect_calls);
     TEST_ASSERT_TRUE(mqtt->connected);
+}
+
+void test_connected_step_drains_enqueued_item(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+    app_step();
+
+    TEST_ASSERT_EQUAL_UINT(2, mqtt_outbox_pending());
+    mqtt_client_step();
+    fake_time_advance_ms(101u);
+    mqtt_client_step();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 }
 
 void test_stop_disarms_and_disconnects(void)

@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+void app_mqtt_on_connected(void);
+
 void app_mqtt_dispatch(const char *topic,
                        const void *payload,
                        size_t len,

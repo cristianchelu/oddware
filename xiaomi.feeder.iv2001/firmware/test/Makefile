@@ -30,6 +30,9 @@ HOST_SRCS := ../src/app_log.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
+             ../src/mqtt_outbox.c \
+             ../src/mqtt_ha_discovery.c \
+             ../src/mqtt_dispense_cmd.c \
              ../src/app.c \
              ../src/app_mqtt_dispatch.c \
              ../src/button_input.c \

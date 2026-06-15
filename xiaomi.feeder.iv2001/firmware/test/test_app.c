@@ -15,6 +15,9 @@
 #include "fake_wifi_port.h"
 #include "fake_ota_port.h"
 #include "fake_weight_port.h"
+#include "fake_motor_port.h"
+#include "dispense.h"
+#include "motor_port_provider_host.h"
 #include "mqtt_client.h"
 #include "mqtt_client_test.h"
 #include "mqtt_cred.h"
@@ -142,18 +145,19 @@ void test_app_mqtt_message_ota_starts_download(void)
     TEST_ASSERT_EQUAL_UINT(1, ota->start_calls);
 }
 
-void test_app_mqtt_message_dispense_stub(void)
+void test_app_mqtt_message_dispense_submits_portion(void)
 {
     app_event_t ev;
     const char *topic = "petfeeder/ddeeff/cmd/dispense";
-    const char *payload = "{\"grams\":10}";
+    const char *payload = "{}";
 
     app_test_reset();
+    motor_port_host_reset();
+    fake_motor_port_reset();
+    dispense_test_reset();
     fake_ota_port_reset();
     mqtt_client_test_bootstrap();
     mqtt_client_test_set_device_id("ddeeff");
-    ota_client_set_device_id("ddeeff");
-    ota_client_start();
 
     memset(&ev, 0, sizeof(ev));
     ev.type = EVT_MQTT_MESSAGE;
@@ -163,7 +167,40 @@ void test_app_mqtt_message_dispense_stub(void)
     TEST_ASSERT_TRUE(app_event_post(&ev));
     app_step();
 
-    TEST_ASSERT_EQUAL_UINT(0, fake_ota_port_state()->start_calls);
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_EQUAL_UINT(0, fake_motor_port_burst_calls());
+    app_step();
+    TEST_ASSERT_EQUAL_UINT(1, fake_motor_port_burst_calls());
+    TEST_ASSERT_EQUAL_UINT(1, fake_motor_port_last_pulse_target());
+}
+
+void test_app_mqtt_message_dispense_busy_while_active(void)
+{
+    app_event_t ev;
+    const char *topic = "petfeeder/ddeeff/cmd/dispense";
+    const char *payload = "{}";
+
+    app_test_reset();
+    motor_port_host_reset();
+    fake_motor_port_reset();
+    dispense_test_reset();
+    fake_ota_port_reset();
+    mqtt_client_test_bootstrap();
+    mqtt_client_test_set_device_id("ddeeff");
+
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
+    app_step();
+
+    memset(&ev, 0, sizeof(ev));
+    ev.type = EVT_MQTT_MESSAGE;
+    ev.u.mqtt_message.topic = test_heap_strdup(topic);
+    ev.u.mqtt_message.payload = test_heap_strdup(payload);
+    ev.u.mqtt_message.len = strlen(payload);
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    app_step();
+
+    TEST_ASSERT_EQUAL_UINT(1, fake_motor_port_burst_calls());
+    TEST_ASSERT_EQUAL_UINT(2, fake_motor_port_last_pulse_target());
 }
 
 void test_app_mqtt_session_indicator_transitions(void)

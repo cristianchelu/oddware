@@ -42,6 +42,7 @@ Fixed lowercase strings. Callers pass the tag string to each `app_log_*` call.
 | `mqtt` | `mqtt_adapter`, `mqtt_client` |
 | `motor` | `motor_ctrl` jam / anti-jam diagnostics |
 | `ota` | `ota_adapter`, `ota_client` |
+| `dispense` | `dispense` supervisor, `mqtt_dispense_cmd` |
 | `provision` | Captive portal and provisioning flow |
 | `app` | `app.c`, `app_task` lifecycle, button bring-up UART |
 | `hopper` | `hopper_input` level transitions |
@@ -148,6 +149,21 @@ Bench OTA scripts under `tools/ota/` grep UART captures for tagged `ota` lines
 MQTT suspend/resume during OTA uses tag `mqtt` (`suspended for ota`,
 `resumed after ota`). OTA bench `wait-mqtt-online.sh` treats `[mqtt] connected`
 as boot-ready when UART is available.
+
+## Dispense diagnostics (tag `dispense`)
+
+MQTT `cmd/dispense` handler lines (message body only):
+
+| Event | Line |
+|-------|------|
+| Command received | `remote dispense cmd topic=<topic> len=<n>` |
+| Accepted | `remote dispense accepted portions=<n>` |
+| Busy | `remote dispense busy` |
+| Rejected | `remote dispense rejected result=<code>` |
+
+Per-message RX logging in `mqtt_io` is still not emitted (see
+[uart-console.md](uart-console.md) § MQTT connect); only routed command
+handlers log at `info`.
 
 ## API (application code)
 

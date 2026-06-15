@@ -371,7 +371,7 @@ void app_dispatch(const app_event_t *ev)
         break;
 
     case EVT_MQTT_CONNECTED:
-        ota_client_on_mqtt_connected();
+        app_mqtt_on_connected();
         break;
 
     case EVT_MQTT_MESSAGE:

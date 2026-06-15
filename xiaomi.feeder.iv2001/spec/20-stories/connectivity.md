@@ -7,7 +7,10 @@ cloud dependency and no phone-home telemetry.
 
 ## Design principles
 
-- **Home Assistant auto-discovery** — entities appear automatically.
+- **Home Assistant auto-discovery** — entities appear automatically. Today
+  the firmware publishes a **Dispense** button only; the full entity table
+  lands in a later release (see [mqtt-protocol.md](../30-processes/mqtt-protocol.md)
+  § Home Assistant validation slice).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
 - **Neutral namespace** — topic paths use `petfeeder/<device_id>/...`
