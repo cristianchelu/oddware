@@ -19,34 +19,11 @@
 #include "wifi_adapter.h"
 #include "wifi_port.h"
 #include "wifi_private_api.h"
+#include "wifi_sdk_profile.h"
 
 void wifi_adapter_clear_sdk_sta_profile(void)
 {
-    const char zero[] = "0";
-
-    (void)wifi_connection_stop_scan();
-    (void)wifi_connection_disconnect_ap();
-    nvdm_write_data_item("STA",
-                         "SsidLen",
-                         NVDM_DATA_ITEM_TYPE_STRING,
-                         (const uint8_t *)zero,
-                         1);
-    nvdm_write_data_item("STA",
-                         "Ssid",
-                         NVDM_DATA_ITEM_TYPE_STRING,
-                         (const uint8_t *)"",
-                         0);
-    nvdm_write_data_item("STA",
-                         "WpaPskLen",
-                         NVDM_DATA_ITEM_TYPE_STRING,
-                         (const uint8_t *)zero,
-                         1);
-    nvdm_write_data_item("STA",
-                         "WpaPsk",
-                         NVDM_DATA_ITEM_TYPE_STRING,
-                         (const uint8_t *)"",
-                         0);
-    (void)wifi_config_reload_setting();
+    wifi_sdk_profile_invalidate();
 }
 
 static void wifi_adapter_set_ap_network_profile(void)
@@ -137,6 +114,11 @@ void wifi_adapter_stack_init(void)
 
     wifi_adapter_wipe_sta_caches();
 
+    if (wifi_connection_register_event_handler(WIFI_EVENT_IOT_INIT_COMPLETE,
+                                               wifi_adapter_init_complete_handler) < 0) {
+        APP_LOG_W("wifi", "INIT_COMPLETE handler register failed");
+    }
+
     t0 = xTaskGetTickCount();
     wifi_init(&config, &ext);
     APP_LOG_I("wifi", "wifi_init done +%lu ms",
@@ -146,6 +128,10 @@ void wifi_adapter_stack_init(void)
     lwip_net_start(config.opmode);
     APP_LOG_I("wifi", "stack_init complete +%lu ms",
               (unsigned long)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS);
+
+    if (!s_wifi_init_complete) {
+        s_wifi_init_complete = true;
+    }
 }
 
 static port_err_t wifi_port_connect(const char *ssid, const char *pass)
@@ -185,10 +171,6 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
         return PORT_ERR_IO;
     }
 
-    if (wifi_config_set_radio(1) < 0) {
-        APP_LOG_W("wifi", "set_radio(1) failed");
-    }
-
     APP_LOG_I("wifi", "reload_setting tick=%lu",
               (unsigned long)xTaskGetTickCount());
 
@@ -197,6 +179,59 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
     }
 
     return PORT_OK;
+}
+
+static port_err_t wifi_port_disconnect(void)
+{
+    lwip_net_stop(WIFI_MODE_STA_ONLY);
+    (void)wifi_connection_disconnect_ap();
+
+    if (wifi_config_set_radio(0) < 0) {
+        APP_LOG_W("wifi", "set_radio(0) failed");
+        return PORT_ERR_IO;
+    }
+
+    return PORT_OK;
+}
+
+static port_err_t wifi_port_radio_up(void)
+{
+    if (wifi_config_set_radio(1) < 0) {
+        APP_LOG_W("wifi", "set_radio(1) failed");
+        return PORT_ERR_IO;
+    }
+
+    lwip_net_start(WIFI_MODE_STA_ONLY);
+    return PORT_OK;
+}
+
+static bool wifi_port_is_connected(void);
+static port_err_t wifi_port_get_ip(char *buf, size_t len);
+
+static port_err_t wifi_port_wait_ready(uint32_t timeout_ms)
+{
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+    TickType_t init_deadline = xTaskGetTickCount() + pdMS_TO_TICKS(5000);
+    char ip[20];
+
+    while (!s_wifi_init_complete && xTaskGetTickCount() < init_deadline) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    if (!s_wifi_init_complete) {
+        APP_LOG_W("wifi", "wait_ready: stack init not complete");
+        return PORT_ERR_IO;
+    }
+
+    while (xTaskGetTickCount() < deadline) {
+        if (wifi_port_is_connected() && wifi_port_get_ip(ip, sizeof(ip)) == PORT_OK) {
+            return PORT_OK;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    return PORT_ERR_IO;
 }
 
 static bool wifi_port_is_connected(void)
@@ -311,7 +346,10 @@ static port_err_t wifi_port_stop_ap(void)
 }
 
 static const wifi_port_t s_wifi_port = {
+    .disconnect = wifi_port_disconnect,
+    .radio_up = wifi_port_radio_up,
     .connect = wifi_port_connect,
+    .wait_ready = wifi_port_wait_ready,
     .is_connected = wifi_port_is_connected,
     .get_ip = wifi_port_get_ip,
     .start_ap = wifi_port_start_ap,
@@ -328,6 +366,22 @@ const wifi_port_t *wifi_port_get(void)
 static wifi_scan_list_item_t s_scan_table[WIFI_ADAPTER_SCAN_TABLE_SIZE];
 static SemaphoreHandle_t s_scan_done_sem;
 static bool s_scan_handler_registered;
+static bool s_wifi_init_complete;
+
+static int32_t wifi_adapter_init_complete_handler(wifi_event_t event,
+                                                  uint8_t *payload,
+                                                  uint32_t length)
+{
+    (void)payload;
+    (void)length;
+
+    if (event == WIFI_EVENT_IOT_INIT_COMPLETE) {
+        s_wifi_init_complete = true;
+        APP_LOG_I("wifi", "IOT_INIT_COMPLETE");
+    }
+
+    return 0;
+}
 
 static int32_t wifi_adapter_scan_event_handler(wifi_event_t event,
                                                uint8_t *payload,

@@ -64,6 +64,25 @@ void vTaskDelete(TaskHandle_t task)
     (void)task;
 }
 
+static uint32_t s_task_notify_count;
+
+uint32_t ulTaskNotifyTake(BaseType_t clear_count_on_exit, TickType_t block_time)
+{
+    (void)block_time;
+
+    if (clear_count_on_exit == pdTRUE && s_task_notify_count > 0u) {
+        s_task_notify_count--;
+    }
+
+    return s_task_notify_count;
+}
+
+void xTaskNotifyGive(TaskHandle_t task)
+{
+    (void)task;
+    s_task_notify_count++;
+}
+
 void *pvPortMalloc(size_t size)
 {
     return malloc(size);

@@ -105,19 +105,11 @@ cached and shown in a `<select>` sorted by RSSI. The device's own AP SSID
 If the scan fails or finds no networks, the form still works via manual SSID
 entry. A “Refresh network list” link points to `?rescan=1`.
 
-## SDK STA profile abort
+## SDK STA profile invalidate
 
 Provisioning test-connect, factory reset, and AP entry call
-`wifi_adapter_clear_sdk_sta_profile()` to stop the LinkIt STA radio from
-retrying a rejected association. Order:
-
-| Step | SDK action |
-|------|------------|
-| 1 | `wifi_connection_stop_scan()` |
-| 2 | `wifi_connection_disconnect_ap()` |
-| 3 | Clear NVDM `STA/SsidLen`, `STA/Ssid`, `STA/WpaPskLen`, `STA/WpaPsk` |
-| 4 | `wifi_config_reload_setting()` |
-
+`wifi_sdk_profile_invalidate()` (see [wifi-lifecycle.md](wifi-lifecycle.md#sdk-sta-profile-invalidate))
+to stop the LinkIt STA radio from retrying a rejected association.
 App NVDM `wifi/*` is untouched — only the SDK HAL profile is cleared.
 
 ## Provisioning STA test-connect
@@ -128,7 +120,7 @@ App NVDM `wifi/*` is untouched — only the SDK HAL profile is cleared.
 |-------|--------|
 | Enter STA test | Stop HTTP, leave AP (`stop_ap`), `display_wifi_indicator_connecting()`, `connect` + wait up to `[tune]` 15 s for IP |
 | Success | Return true — caller saves credentials |
-| Failure | `wifi_adapter_clear_sdk_sta_profile()`, 200 ms settle, `start_ap`, `display_wifi_indicator_ap_mode()`, restart HTTP on port 80 — **no** scan refresh |
+| Failure | `wifi_sdk_profile_invalidate()`, 200 ms settle, `start_ap`, `display_wifi_indicator_ap_mode()`, restart HTTP on port 80 — **no** scan refresh |
 
 Restore runs even when `connect` returns an error or `stop_ap` fails (best effort).
 AP/HTTP restore after a failed POST is scheduled **after** the CGI response

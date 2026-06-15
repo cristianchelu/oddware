@@ -116,8 +116,9 @@ only. Jam stop: brief `EXPANDER` loan to deassert EN.
 
 ## Sleep and wake
 
-Sleep: `EXPANDER` loan → peripherals off → `wifi_port.disconnect()`; do not
-call full `connsys_deinit` unless bench requires it.
+Sleep: `EXPANDER` loan → peripherals off → `wifi_port.disconnect()` (see
+[wifi-lifecycle.md](wifi-lifecycle.md#disconnect-sequence)); do not call full
+`connsys_deinit` unless bench requires it.
 
 Wake: GPIO4 / P0.3 IRQ → display boot sequence via arbiter (`DISPLAY` +
 `EXPANDER`), not a second pre-`connsys_init()` hook.

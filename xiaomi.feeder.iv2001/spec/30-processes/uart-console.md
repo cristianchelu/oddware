@@ -33,6 +33,7 @@ wifi show
 wifi set ssid <name>
 wifi set pass <password>
 wifi connect
+wifi disconnect
 mqtt show
 mqtt set host <hostname>
 mqtt set port <port>
@@ -193,6 +194,18 @@ necessarily inline with the CLI prompt):
 |---------|----------------|
 | Missing or invalid NVDM credentials | `[wifi] no valid credentials in NVDM` (connect task) |
 | SDK connect API failure | `[wifi] connect failed` (connect task) |
+
+### `wifi disconnect`
+
+Tears down the STA session (lwIP stop, AP disconnect, radio off). Runs on the
+Wi-Fi connect task (not the CLI task). See
+[wifi-lifecycle.md](wifi-lifecycle.md#disconnect-sequence).
+
+| Outcome | UART response |
+|---------|---------------|
+| Disconnect queued | `disconnecting...` |
+| Disconnect already in progress | `disconnect already in progress` |
+| Connect already in progress | `connect already in progress` |
 
 ## Boot behavior (Wi-Fi)
 

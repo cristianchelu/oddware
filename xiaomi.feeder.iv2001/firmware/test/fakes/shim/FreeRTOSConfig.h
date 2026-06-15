@@ -1,0 +1,6 @@
+#ifndef FREERTOSCONFIG_H
+#define FREERTOSCONFIG_H
+
+#define configMAX_PRIORITIES 10
+
+#endif /* FREERTOSCONFIG_H */

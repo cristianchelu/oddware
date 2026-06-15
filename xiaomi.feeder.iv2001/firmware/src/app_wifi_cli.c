@@ -138,9 +138,41 @@ static uint8_t wifi_cli_connect(uint8_t argc, char *argv[])
     return 0;
 }
 
+static uint8_t wifi_cli_disconnect(uint8_t argc, char *argv[])
+{
+    wifi_sta_busy_t busy;
+
+    (void)argc;
+    (void)argv;
+
+    busy = wifi_sta_busy();
+    if (busy == WIFI_STA_BUSY_CONNECT) {
+        app_log_info("cli", "connect already in progress");
+        return 1;
+    }
+    if (busy == WIFI_STA_BUSY_DISCONNECT) {
+        app_log_info("cli", "disconnect already in progress");
+        return 1;
+    }
+
+    if (!wifi_sta_request_disconnect()) {
+        app_log_info("cli", "disconnect already in progress");
+        return 1;
+    }
+
+    app_log_info("cli", "disconnecting...");
+    return 0;
+}
+
+uint8_t wifi_cli_run_disconnect(void)
+{
+    return wifi_cli_disconnect(0, NULL);
+}
+
 cmd_t wifi_cli_subcmds[] = {
-    { "show",    "show stored credentials", wifi_cli_show,    NULL },
-    { "set",     "set ssid|pass",           wifi_cli_set,     NULL },
-    { "connect", "connect using NVDM",      wifi_cli_connect, NULL },
+    { "show",       "show stored credentials", wifi_cli_show,       NULL },
+    { "set",        "set ssid|pass",           wifi_cli_set,        NULL },
+    { "connect",    "connect using NVDM",      wifi_cli_connect,    NULL },
+    { "disconnect", "tear down STA session",   wifi_cli_disconnect, NULL },
     { NULL, NULL, NULL, NULL },
 };

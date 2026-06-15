@@ -17,5 +17,6 @@ typedef long portSTACK_TYPE;
 
 #define portTICK_PERIOD_MS 1
 #define pdMS_TO_TICKS(ms) ((TickType_t)(ms))
+#define portMAX_DELAY      ((TickType_t)0xffffffffUL)
 
 #endif /* FREERTOS_H */
