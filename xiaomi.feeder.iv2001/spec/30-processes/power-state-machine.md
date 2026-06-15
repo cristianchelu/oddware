@@ -8,14 +8,14 @@ serves:
 
 | State | Entry condition | Behavior |
 |-------|-----------------|----------|
-| **Normal** | Mains present (P1.1 = high) | Full operation, Wi-Fi on, display on, all subsystems active |
-| **Battery** | Mains lost (P1.1 = low) | Reduced operation, Wi-Fi configurable, schedules continue |
+| **Normal** | Mains present (P1.1 = low) | Full operation, Wi-Fi on, display on, all subsystems active |
+| **Battery** | Mains lost (P1.1 = high) | Reduced operation, Wi-Fi configurable, schedules continue |
 | **Sleep** | User long-press P0.3 (~3 s) | Minimal draw, motor off, display off, Wi-Fi off |
 
 ## State transitions
 
 ```
-          mains present (P1.1 high)
+          mains present (P1.1 low)
     ┌─────────────────────────────────┐
     │                                 │
     ▼                                 │
@@ -32,9 +32,40 @@ serves:
 
 ### Mains detection
 
-- P1.1 (AW9523B input + IRQ): high = mains present, low = battery. `[probe-needed]`
-- IRQ on level change → immediate state transition.
-- On mains loss: publish `power_source: battery` via MQTT (if connected).
+- P1.1 (AW9523B input + IRQ): low = mains present, high = battery. `[probe]`
+- Debounced level and transitions: [§ Mains sense input](#mains-sense-input).
+  Wi-Fi policy and MQTT `source` on transition are not yet implemented.
+- On mains loss (confirmed): publish `power_source: battery` via MQTT (if connected).
+
+## Mains sense input
+
+`power_source_input` owns debounced P1.1 level. Uses `power_source_port` (not
+`button_port`). Shares the existing AW9523B GPIO4 IRQ coalescing path
+(`EVT_BUTTON_IRQ`); no new EINT.
+
+| Parameter | Value | Tag |
+|-----------|-------|-----|
+| IRQ debounce gate | `[tune]` 50 ms after IRQ before sampling | same starting value as button debounce |
+| Stable samples | Two consecutive identical port reads | — |
+| Polarity | Low = mains present | `[probe]` |
+
+**Boot:** `power_source_input_init` performs one immediate port read (no IRQ
+gate). Seeds internal `last` and `confirmed` state; emits no transition.
+
+**Runtime:** On `EVT_BUTTON_IRQ`, arm the 50 ms gate and poll. Also poll on
+`EVT_DISPLAY_TICK` as backup when IRQ events coalesce.
+
+**Confirmed transition → UART log** (tag `power`, see [app-logging.md](app-logging.md)):
+
+| Event | Message body |
+|-------|--------------|
+| Mains connected | `mains connected` |
+| Mains lost | `mains lost` |
+
+Transitions are also available via `power_source_input_pop_transition` for the
+power FSM and MQTT `source` field. Confirmed state and UART log always update on
+a debounced transition; `pop_transition` may drop events when the transition
+queue is full.
 
 ### Normal → Battery
 

@@ -97,4 +97,6 @@ Port-local bit masks (per AW9523B input/output byte, not 16-bit combined):
 | `BOARD_GPIO_HOPPER_SENSE_MASK` | `0x10` | P1.4 |
 | `BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH` | `1` | P1.4 polarity `[probe]` |
 | `BOARD_GPIO_HOPPER_IR_PULSE_MS` | `1` | GPIO0 on-time `[tune]` |
+| `BOARD_GPIO_MAINS_SENSE_MASK` | `0x02` | P1.1 |
+| `BOARD_GPIO_MAINS_PRESENT_HIGH` | `0` | P1.1 polarity: low = mains `[probe]` |
 

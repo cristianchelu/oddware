@@ -28,6 +28,12 @@ void test_board_gpio_hopper_ir_masks_match_pinmap(void)
     TEST_ASSERT_EQUAL(1u, BOARD_GPIO_HOPPER_IR_PULSE_MS);
 }
 
+void test_board_gpio_mains_sense_masks_match_pinmap(void)
+{
+    TEST_ASSERT_EQUAL(0x02u, BOARD_GPIO_MAINS_SENSE_MASK);
+    TEST_ASSERT_EQUAL(0u, BOARD_GPIO_MAINS_PRESENT_HIGH);
+}
+
 void test_board_gpio_motor_pins_match_pinmap(void)
 {
     TEST_ASSERT_EQUAL(0x01u, BOARD_GPIO_MOTOR_PH_MASK);

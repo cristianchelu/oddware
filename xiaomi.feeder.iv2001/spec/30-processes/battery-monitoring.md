@@ -74,7 +74,8 @@ measurements. `[tune]`
 | Battery | `[tune]` 60 s | Faster updates matter when on battery |
 | Mains | `[tune]` 300 s | Battery voltage is less critical on mains |
 
-Power source determined by P1.1 level (mains-present sense).
+Power source from debounced `power_source_input` ([power-state-machine.md](power-state-machine.md)
+§ Mains sense input), not a raw P1.1 read.
 
 ## Thresholds and actions
 

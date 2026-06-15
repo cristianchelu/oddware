@@ -21,6 +21,7 @@
 #include "app_display_cli.h"
 #include "app_adc_cli.h"
 #include "app_hopper_cli.h"
+#include "app_power_cli.h"
 #include "app_index_cli.h"
 #include "app_weigh_cli.h"
 #include "app_motor_cli.h"
@@ -127,6 +128,7 @@ static cmd_t app_cli_cmds[] = {
     { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },
     { "index",   "index read",                NULL, index_cli_subcmds },
     { "hopper",  "hopper read",               NULL, hopper_cli_subcmds },
+    { "power",   "power show",                NULL, power_cli_subcmds },
     { "adc",     "adc read|cal",              NULL, adc_cli_subcmds },
     { "motor",   "motor fwd|rev <ms>|park",   NULL, motor_cli_subcmds },
     { "dispense", "dispense [portions <N>]", app_cli_dispense, dispense_cli_subcmds },

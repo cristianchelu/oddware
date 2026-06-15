@@ -34,6 +34,7 @@ HOST_SRCS := ../src/app_log.c \
              ../src/app_mqtt_dispatch.c \
              ../src/button_input.c \
              ../src/hopper_input.c \
+             ../src/power_source_input.c \
              ../src/button_gesture.c \
              ../src/mqtt_client.c \
              ../src/ota_client.c \
@@ -69,6 +70,8 @@ HOST_SRCS := ../src/app_log.c \
              ../src/adc_driver.c \
              ../src/adc_cal.c \
              ../src/adc_cli.c \
+             ../src/power_cli.c \
+             ../src/app_power_cli.c \
              ../src/weigh_cal.c \
              ../src/gpio_expander_loan.c \
              ../src/wfci_bus_state.c \
@@ -82,6 +85,7 @@ HOST_SRCS := ../src/app_log.c \
              fakes/fake_button_port.c \
              fakes/fake_motor_index_port.c \
              fakes/fake_hopper_ir_port.c \
+             fakes/fake_power_source_port.c \
              fakes/fake_tm1637_gpio.c \
              fakes/fake_display_port.c \
              fakes/fake_weight_port.c \

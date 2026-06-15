@@ -30,6 +30,8 @@
 #include "dispense_cli.h"
 #include "hopper_input.h"
 #include "hopper_ir_port.h"
+#include "power_source_input.h"
+#include "power_source_port.h"
 #include "motor_cli.h"
 #include "motor_port.h"
 #include "weight_port.h"
@@ -386,11 +388,14 @@ void app_dispatch(const app_event_t *ev)
         (void)display_presentation_tick(ev->u.display_tick.now_ms);
         app_button_poll(ev->u.display_tick.now_ms);
         hopper_input_poll(ev->u.display_tick.now_ms);
+        power_source_input_poll(ev->u.display_tick.now_ms);
         break;
 
     case EVT_BUTTON_IRQ:
         button_input_notify_irq(ev->u.button_irq.now_ms);
+        power_source_input_notify_irq(ev->u.button_irq.now_ms);
         app_button_poll(ev->u.button_irq.now_ms);
+        power_source_input_poll(ev->u.button_irq.now_ms);
         break;
 
     case EVT_TIMER_TICK:
@@ -506,6 +511,7 @@ void app_test_reset(void)
     s_weight_resample_after_dispense = false;
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
+    power_source_input_init(power_source_port_get());
     button_gesture_reset();
     dispense_test_reset();
     dispense_cli_test_reset();

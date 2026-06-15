@@ -59,6 +59,7 @@ weigh cal span
 weigh cal status
 index read
 hopper read
+power show
 adc read motor
 adc read battery
 adc cal <true_mv>
@@ -656,6 +657,22 @@ Pulses the hopper IR emitter, samples the detector, drives the emitter off.
 | Success, food blocks beam | `hopper beam: blocked` |
 | Success, beam clear (low fill) | `hopper beam: clear` |
 | Failure | `hopper read failed (<reason>)` |
+
+## `power` commands
+
+Bench helper for debounced mains/barrel presence (AW9523B P1.1). Uses
+`power_source_input` (not a raw `power_source_port` one-shot). Not a product
+interface. `[design]`
+
+### `power show`
+
+Reports the debounced power source from `power_source_input_get`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Mains present | `power source: mains` |
+| On battery | `power source: battery` |
+| No valid read yet (boot I2C failure) | `power show failed (<reason>)` |
 
 ## `adc` commands
 

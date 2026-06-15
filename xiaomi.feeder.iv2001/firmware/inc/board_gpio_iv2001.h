@@ -38,6 +38,9 @@
 #define BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH 1u      /* [probe] */
 #define BOARD_GPIO_HOPPER_IR_PULSE_MS       1u      /* [tune] */
 
+#define BOARD_GPIO_MAINS_SENSE_MASK         0x02u   /* P1.1 */
+#define BOARD_GPIO_MAINS_PRESENT_HIGH       0u      /* [probe] low = mains */
+
 #define BOARD_GPIO_DISPLAY_RAIL_PORT  0u
 #define BOARD_GPIO_DISPLAY_RAIL_PIN   5u
 

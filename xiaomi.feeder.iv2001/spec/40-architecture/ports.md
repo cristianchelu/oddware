@@ -311,6 +311,20 @@ Adapter: `hopper_ir_port_adapter.c` — HAL GPIO0 + `gpio_expander_port.read_inp
 Polarity: `BOARD_GPIO_HOPPER_BEAM_BLOCKED_HIGH`. GPIO0 is outside WFCI — no bus
 loan for the drive pin.
 
+### `power_source_port.h`
+
+**Mains / barrel jack presence** ([power-state-machine.md](../30-processes/power-state-machine.md)
+§ Mains sense input). AW9523B P1.1 passive digital input; IRQ-enabled on the
+shared expander INT line. Process code uses `power_source_input` for debounce —
+not `button_port`.
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `read_present` | `(&mains_present) -> err` | Read P1.1; `true` = mains/barrel present |
+
+Adapter: `power_source_port_adapter.c` — `gpio_expander_port.read_inputs`.
+Polarity: `BOARD_GPIO_MAINS_PRESENT_HIGH` (`0` = low means mains `[probe]`).
+
 ### `gpio_expander_port.h`
 
 | Function | Signature | Behavior |
