@@ -10,8 +10,9 @@ motor and a bowl-mounted weight sensor.
 - A dispense request specifies a **target in grams** (range 5–150 g).
 - Requests can come from a schedule, an MQTT command, or the manual
   dispense button.
-- On the bench UART, `dispense` runs one open-loop portion (one index pulse,
-  ~10 g design target) without gram targeting or weight feedback.
+- On the bench UART, `dispense` or `dispense portions <N>` (N = 1–15) runs
+  open-loop portion dispense (~10 g design target per portion) without gram
+  targeting or weight compensation. Product paths use gram targets (5–150 g).
 
 ## Dispense modes
 
@@ -52,6 +53,6 @@ reported.
 
 ## Constraints
 
-- Only one dispense runs at a time; additional requests are queued
-  (FIFO, small fixed depth).
+- Only one dispense runs at a time; additional requests are rejected as busy
+  until the current job completes (FIFO queue is a future enhancement).
 - The feeder will not start an OTA update while a dispense is active.

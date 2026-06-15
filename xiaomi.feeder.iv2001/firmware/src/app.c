@@ -26,11 +26,11 @@
 #include "ota_client.h"
 #include "ota_rollback.h"
 #include "port_err.h"
+#include "dispense.h"
 #include "dispense_cli.h"
 #include "hopper_input.h"
 #include "hopper_ir_port.h"
 #include "motor_cli.h"
-#include "motor_jam.h"
 #include "motor_port.h"
 #include "weight_port.h"
 
@@ -51,6 +51,7 @@ static weight_boot_phase_t s_weight_boot = WEIGHT_BOOT_PENDING;
 static int32_t s_bowl_g;
 static bool s_bowl_valid;
 static uint32_t s_weight_last_sample_ms;
+static bool s_weight_resample_after_dispense;
 
 static void app_mqtt_session_apply(mqtt_session_phase_t phase)
 {
@@ -148,9 +149,33 @@ static void app_weight_idle_tick(void)
     app_weight_sync_display_scene();
 }
 
+void app_weight_notify_dispense_complete(void)
+{
+    if (s_weight_boot != WEIGHT_BOOT_DONE) {
+        return;
+    }
+
+    s_weight_resample_after_dispense = true;
+}
+
+static void app_weight_resample_after_dispense_if_needed(void)
+{
+    if (!s_weight_resample_after_dispense) {
+        return;
+    }
+
+    s_weight_resample_after_dispense = false;
+    app_weight_sample(false);
+    app_weight_sync_display_scene();
+}
+
 static void app_weight_idle_on_display_tick(uint32_t now_ms)
 {
     if (s_weight_boot != WEIGHT_BOOT_DONE) {
+        return;
+    }
+
+    if (dispense_is_active()) {
         return;
     }
 
@@ -355,6 +380,8 @@ void app_dispatch(const app_event_t *ev)
         break;
 
     case EVT_DISPLAY_TICK:
+        dispense_poll();
+        app_weight_resample_after_dispense_if_needed();
         app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
         (void)display_presentation_tick(ev->u.display_tick.now_ms);
         app_button_poll(ev->u.display_tick.now_ms);
@@ -367,38 +394,24 @@ void app_dispatch(const app_event_t *ev)
         break;
 
     case EVT_TIMER_TICK:
+        dispense_poll();
         (void)ota_rollback_poll_ms();
         app_weight_boot_advance();
         break;
 
-    case EVT_DISPENSE_START: {
-        const motor_port_t *motor = motor_port_get();
-        port_err_t err = PORT_ERR_IO;
-
-        if (motor != NULL && motor->request_burst != NULL) {
-            err = motor->request_burst(MOTOR_BURST_PULSE_DEFAULT,
-                                       MOTOR_BURST_TIMEOUT_MS);
-        }
-
-        if (err != PORT_OK) {
-            app_log_info("cli", "dispense busy");
-            dispense_cli_cancel_wait();
-        }
+    case EVT_DISPENSE_REQUEST:
+        dispense_start_from_request(&ev->u.dispense_request);
         break;
-    }
 
     case EVT_BURST_DONE:
-        if (dispense_cli_on_burst_done()) {
-            hopper_input_notify_dispense_complete();
-        }
+        (void)dispense_on_burst_done();
         break;
 
     case EVT_MOTOR_FAULT:
-        if (dispense_cli_on_motor_fault()) {
-            hopper_input_notify_dispense_complete();
+        if (!dispense_on_motor_fault()) {
+            motor_cli_on_park_fault();
+            motor_cli_on_timed_run_fault();
         }
-        motor_cli_on_park_fault();
-        motor_cli_on_timed_run_fault();
         break;
 
     case EVT_PARK_DONE:
@@ -414,6 +427,75 @@ void app_dispatch(const app_event_t *ev)
     }
 }
 
+#define APP_EVENT_DRAIN_MAX  16u
+
+static bool app_event_defer_display_tick(app_event_type_t type)
+{
+    return type == EVT_DISPLAY_TICK;
+}
+
+static void app_dispatch_event_batch(app_event_t *batch, size_t count)
+{
+    size_t i;
+    bool display_dispatched = false;
+
+    for (i = 0u; i < count; i++) {
+        if (!app_event_defer_display_tick(batch[i].type)) {
+            app_dispatch(&batch[i]);
+            app_event_release(&batch[i]);
+        }
+    }
+
+    for (i = 0u; i < count; i++) {
+        if (!app_event_defer_display_tick(batch[i].type)) {
+            continue;
+        }
+
+        if (!display_dispatched) {
+            app_dispatch(&batch[i]);
+            display_dispatched = true;
+        }
+        app_event_release(&batch[i]);
+    }
+}
+
+static size_t app_collect_queued_events(app_event_t *batch, size_t max, bool have_first,
+                                        const app_event_t *first)
+{
+    size_t count = 0u;
+    app_event_t ev;
+
+    if (have_first && first != NULL && count < max) {
+        batch[count++] = *first;
+    }
+
+    while (count < max && app_event_try_receive(&ev)) {
+        batch[count++] = ev;
+    }
+
+    return count;
+}
+
+void app_drain_queued_events(void)
+{
+    app_event_t batch[APP_EVENT_DRAIN_MAX];
+    size_t count;
+
+    count = app_collect_queued_events(batch, APP_EVENT_DRAIN_MAX, false, NULL);
+    if (count > 0u) {
+        app_dispatch_event_batch(batch, count);
+    }
+}
+
+void app_process_received_event(const app_event_t *ev)
+{
+    app_event_t batch[APP_EVENT_DRAIN_MAX];
+    size_t count;
+
+    count = app_collect_queued_events(batch, APP_EVENT_DRAIN_MAX, true, ev);
+    app_dispatch_event_batch(batch, count);
+}
+
 void app_test_reset(void)
 {
     s_display_mode = APP_DISPLAY_MODE_WEIGHT;
@@ -421,22 +503,25 @@ void app_test_reset(void)
     s_bowl_g = 0;
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
+    s_weight_resample_after_dispense = false;
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
     button_gesture_reset();
+    dispense_test_reset();
+    dispense_cli_test_reset();
     app_event_port_init();
 }
 
 bool app_step(void)
 {
-    app_event_t ev;
-    bool handled = false;
+    app_event_t batch[APP_EVENT_DRAIN_MAX];
+    size_t count;
 
-    while (app_event_try_receive(&ev)) {
-        app_dispatch(&ev);
-        app_event_release(&ev);
-        handled = true;
+    count = app_collect_queued_events(batch, APP_EVENT_DRAIN_MAX, false, NULL);
+    if (count == 0u) {
+        return false;
     }
 
-    return handled;
+    app_dispatch_event_batch(batch, count);
+    return true;
 }

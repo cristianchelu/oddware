@@ -47,6 +47,12 @@ Wi-Fi and MQTT indicators are independent — both may be active at once.
 - **Both off** when MQTT is not in use (no broker configured, provisioning,
   or Wi-Fi not ready).
 
+### Dispensing indicator
+
+- **Blinking** while a dispense job is active (motor run and, in future
+  compensated mode, through post-dispense weigh settle until bowl grams update).
+- **Off** when no dispense is running.
+
 ## Brightness
 
 - Configurable via MQTT: 4 levels (1 = dimmest, 4 = brightest).

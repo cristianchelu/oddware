@@ -66,7 +66,7 @@ adc cal reset
 motor fwd <ms>
 motor rev <ms>
 motor park
-dispense
+dispense [portions <N>]
 config factory-reset
 ```
 
@@ -793,11 +793,21 @@ ends. Completion or fault lines arrive later on separate UART lines.
 | Completed | `motor park done` |
 | Anti-jam exhausted | `motor park fault: stuck` |
 
-### `dispense`
+### `dispense` / `dispense portions <N>`
 
-Async one portion (one index pulse, `[tune]` 8 s index-timeout cap). Posts
-`EVT_DISPENSE_START` to the app event loop; the app task enqueues
-`motor_port.request_burst(1, 8000)` only — no park step in this command.
+Async open-loop portion dispense. Bare `dispense` is an alias for
+`dispense portions 1`. `<N>` is a strict unsigned decimal portion count,
+`1 ≤ N ≤ 15` (digits only — no leading zeros, same parse rules as
+`motor fwd <ms>`).
+
+Posts `EVT_DISPENSE_REQUEST` with `kind = portions` and `target = N` to the
+app event loop. The dispense supervisor enqueues one continuous
+`motor_port.request_burst(N, 8000)` — motor runs without stopping between
+index holes; holes count only until the Nth pulse stops the auger on the
+last hole (mechanical park). No separate `motor park` step.
+
+`dispense grams <G>` is reserved for future gram-targeted dispense; not
+implemented on UART yet.
 
 The CLI task prints the started line and returns to the prompt **before** motion
 ends. Completion or fault lines arrive later on separate UART lines.
@@ -805,8 +815,9 @@ ends. Completion or fault lines arrive later on separate UART lines.
 | Outcome | UART response |
 |---------|---------------|
 | Accepted | `dispense started` |
-| App event queue full or motor busy | `dispense busy` |
-| Burst completed | `dispense done` |
+| Dispense job active, motor busy, or event queue full | `dispense busy` |
+| Bad or missing `<N>` | `dispense usage: portions <1-15>` |
+| Job completed (Nth pulse) | `dispense done` |
 | Anti-jam exhausted | `dispense fault: stuck` |
 
 ## Remote telnet console

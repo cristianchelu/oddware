@@ -7,6 +7,7 @@
 #include "cli_test_assert.h"
 #include "app_event.h"
 #include "app_event_port.h"
+#include "dispense.h"
 #include "dispense_cli.h"
 #include "fake_adc_port.h"
 #include "fake_gpio_expander_port.h"
@@ -154,11 +155,12 @@ void test_motor_burst_retries_index_sample_after_poll_busy(void)
 void test_dispense_completes_when_index_pulse_seen_e2e(void)
 {
     motor_behavior_setup_adapter_stack();
+    dispense_test_reset();
     dispense_cli_test_reset();
     app_test_reset();
 
     cli_test_reset();
-    (void)dispense_cli_handle(0u, NULL);
+    (void)dispense_cli_handle_default(0u, NULL);
     assert_cli_body("dispense started");
     TEST_ASSERT_TRUE(app_step());
     motor_ctrl_test_poll();
@@ -183,10 +185,11 @@ void test_dispense_completes_when_index_pulse_seen_e2e(void)
 void test_dispense_does_not_park_after_burst_pulse(void)
 {
     motor_behavior_setup_adapter_stack();
+    dispense_test_reset();
     dispense_cli_test_reset();
     app_test_reset();
 
-    (void)dispense_cli_handle(0u, NULL);
+    (void)dispense_cli_handle_default(0u, NULL);
     (void)app_step();
     motor_ctrl_test_poll();
 

@@ -6,6 +6,7 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "cli_test_assert.h"
+#include "dispense.h"
 #include "dispense_cli.h"
 #include "fake_motor_port.h"
 #include "motor_cli.h"
@@ -19,6 +20,7 @@ static void dispense_cli_test_reset_all(void)
     motor_port_host_reset();
     fake_motor_port_reset();
     fake_app_event_q_reset();
+    dispense_test_reset();
     dispense_cli_test_reset();
     motor_cli_test_reset_timed();
     motor_cli_test_reset_park();
@@ -30,7 +32,7 @@ void test_dispense_cli_posts_start_without_blocking_motor_run(void)
 {
     dispense_cli_test_reset_all();
     cli_test_reset();
-    TEST_ASSERT_EQUAL(0u, dispense_cli_handle(0u, NULL));
+    TEST_ASSERT_EQUAL(0u, dispense_cli_handle_default(0u, NULL));
     assert_cli_body("dispense started");
 
     TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
@@ -42,12 +44,35 @@ void test_dispense_cli_posts_start_without_blocking_motor_run(void)
     TEST_ASSERT_EQUAL(MOTOR_BURST_TIMEOUT_MS, fake_motor_port_last_timeout_ms());
 }
 
+void test_dispense_cli_portions_posts_burst_target(void)
+{
+    char *argv[] = { "3" };
+
+    dispense_cli_test_reset_all();
+    cli_test_reset();
+    TEST_ASSERT_EQUAL(0u, dispense_cli_handle_portions(1u, argv));
+    assert_cli_body("dispense started");
+    TEST_ASSERT_TRUE(app_step());
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_burst_calls());
+    TEST_ASSERT_EQUAL(3u, fake_motor_port_last_pulse_target());
+}
+
+void test_dispense_cli_portions_usage_on_bad_arg(void)
+{
+    char *argv[] = { "16" };
+
+    dispense_cli_test_reset_all();
+    cli_test_reset();
+    TEST_ASSERT_EQUAL(1u, dispense_cli_handle_portions(1u, argv));
+    assert_cli_body("dispense usage: portions <1-15>");
+}
+
 void test_dispense_cli_busy_when_motor_active(void)
 {
     dispense_cli_test_reset_all();
     fake_motor_port_set_active(true);
     cli_test_reset();
-    TEST_ASSERT_EQUAL(1u, dispense_cli_handle(0u, NULL));
+    TEST_ASSERT_EQUAL(1u, dispense_cli_handle_default(0u, NULL));
     assert_cli_body("dispense busy");
     TEST_ASSERT_EQUAL(0u, fake_motor_port_burst_calls());
 }
@@ -57,7 +82,7 @@ void test_dispense_cli_done_after_burst_event(void)
     app_event_t ev;
 
     dispense_cli_test_reset_all();
-    (void)dispense_cli_handle(0u, NULL);
+    (void)dispense_cli_handle_default(0u, NULL);
     (void)app_step();
 
     ev.type = EVT_BURST_DONE;
@@ -72,7 +97,7 @@ void test_dispense_cli_fault_on_motor_fault_event(void)
     app_event_t ev;
 
     dispense_cli_test_reset_all();
-    (void)dispense_cli_handle(0u, NULL);
+    (void)dispense_cli_handle_default(0u, NULL);
     (void)app_step();
 
     ev.type = EVT_MOTOR_FAULT;

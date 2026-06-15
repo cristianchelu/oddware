@@ -9,9 +9,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-uint8_t dispense_cli_handle(uint8_t argc, char *argv[]);
-bool dispense_cli_on_burst_done(void);
-bool dispense_cli_on_motor_fault(void);
+#include "port_err.h"
+#include "dispense.h"
+
+uint8_t dispense_cli_handle_default(uint8_t argc, char *argv[]);
+uint8_t dispense_cli_handle_portions(uint8_t argc, char *argv[]);
+port_err_t dispense_cli_parse_portions(const char *text, uint8_t *out);
+bool dispense_cli_on_job_done(void);
+bool dispense_cli_on_job_fault(void);
 void dispense_cli_cancel_wait(void);
 void dispense_cli_test_reset(void);
 bool dispense_cli_test_take_line(char *buf, size_t len);

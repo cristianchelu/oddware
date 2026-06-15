@@ -5,10 +5,22 @@ serves:
 
 ## Burst planning
 
+### Gram targets (product)
+
 A dispense request carries a **target_grams** value (clamped to 5–150 g).
 
 - `bursts_planned = target_grams / 10` (integer division, minimum 1). `[design]`
 - Each burst is sized to deliver approximately 10 g. `[tune]`
+
+### Portion targets (bench UART)
+
+A portion request carries **N** portions (`1 ≤ N ≤ 15`). `[design]`
+
+- One continuous motor session with `pulse_target = N`.
+- Motor does **not** stop between index holes while portions remain; holes
+  count only until the Nth pulse de-asserts EN on the last hole (mechanical
+  park).
+- No separate `motor park` step for portion dispense.
 
 ### Modes
 
@@ -30,9 +42,9 @@ Motor is controlled through AW9523B (I2C @ 0x58) driving SGM42507.
 | 1 | Assert PH = forward | P0.0 high | — |
 | 2 | Wait direction-setup delay | — | `[tune]` 100 ms `[ds:SGM42507]` |
 | 3 | Assert EN = run | P0.1 high | — |
-| 4 | Motor runs until burst duration elapsed **or** index pulse count reached | P0.7 beam-open edges | `[tune]` index-timeout 8 s; `[tune]` 1 pulse per portion burst (180°) |
+| 4 | Motor runs until index pulse count reached (portion mode) or batch duration elapsed | P0.7 beam-open edges | `[tune]` index-timeout 8 s if zero pulses; `[tune]` N pulses for N-portion run |
 | 5 | De-assert EN (coast) | P0.1 low | — |
-| 6 | If more bursts remain, repeat from step 1 | — | — |
+| 6 | Gram batch only: if more bursts remain in batch, repeat from step 1 | — | Portion mode: single continuous run through step 5 |
 
 Hard safety cutoff: motor must not run continuously beyond `[tune]` 20 s.
 `motor_ctrl` enforces this on the **active burst/park session** (from first EN

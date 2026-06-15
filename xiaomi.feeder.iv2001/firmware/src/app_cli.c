@@ -23,6 +23,7 @@
 #include "app_index_cli.h"
 #include "app_weigh_cli.h"
 #include "app_motor_cli.h"
+#include "app_dispense_cli.h"
 #include "dispense_cli.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
@@ -72,7 +73,7 @@ static uint8_t app_cli_bank_switch(uint8_t argc, char *argv[])
 
 static uint8_t app_cli_dispense(uint8_t argc, char *argv[])
 {
-    return dispense_cli_handle(argc, argv);
+    return dispense_cli_handle_default(argc, argv);
 }
 
 static uint8_t app_cli_remote_exit(uint8_t argc, char *argv[])
@@ -127,7 +128,7 @@ static cmd_t app_cli_cmds[] = {
     { "hopper",  "hopper read",               NULL, hopper_cli_subcmds },
     { "adc",     "adc read|cal",              NULL, adc_cli_subcmds },
     { "motor",   "motor fwd|rev <ms>|park",   NULL, motor_cli_subcmds },
-    { "dispense", "dispense one portion (async)", app_cli_dispense, NULL },
+    { "dispense", "dispense [portions <N>]", app_cli_dispense, dispense_cli_subcmds },
     { "config", "config factory-reset",       NULL, app_cli_config_subcmds },
     { "exit",   "end remote session (no-op on UART)", app_cli_remote_exit, NULL },
     { NULL, NULL, NULL, NULL },

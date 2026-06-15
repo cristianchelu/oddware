@@ -22,6 +22,7 @@ power policy, lock spinner, connectivity indicators.
 | `display_presentation.c` | Scene state, blink, animation, periodic refresh |
 | `display_wifi_indicator.c` | Wi-Fi pictograph policy (connecting, AP, connected, off) |
 | `display_mqtt_indicator.c` | MQTT status lightbar policy (connecting, connected, error, off) |
+| `display_dispense_indicator.c` | Dispensing pictograph policy (active blink, idle off) |
 | `display_anim_builtin.c` | Const frame tables for OTA and lock-busy animations |
 | MQTT `cmd/display` handler | Future mode/brightness commands |
 
@@ -64,6 +65,23 @@ Transitions:
 
 Portal STA test display steps: [provisioning-flow.md](provisioning-flow.md) §
 Provisioning STA test-connect.
+
+## Dispensing indicator
+
+`display_dispense_indicator.c` drives `DISPLAY_ICON_DISPENSING`. The dispense
+supervisor calls `display_dispense_indicator_active()` when a job is accepted
+and `display_dispense_indicator_idle()` when the job completes or faults.
+User-facing semantics: [display.md](../20-stories/display.md) § Dispensing
+indicator.
+
+| State | Presentation | `[tune]` blink on/off |
+|-------|--------------|----------------------|
+| Dispense job active | `display_dispense_indicator_active()` | 500 ms / 500 ms |
+| Idle (no job) | `display_dispense_indicator_idle()` | steady off |
+
+In future **compensated** gram dispense, the job (and blink) remain active
+through post-motor weigh settle until bowl grams are stabilized and the display
+is updated — see [weight-compensation.md](weight-compensation.md).
 
 ## MQTT indicator (status lightbar)
 

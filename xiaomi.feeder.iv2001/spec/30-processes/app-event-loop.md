@@ -71,9 +71,9 @@ alone misses samples when that event is dropped; clearing the cached gram
 reading on `PORT_ERR_BUSY` blanks the scene while TM1637 may still show stale
 pixels.
 
-| `EVT_DISPENSE_START` | UART `dispense` CLI (or future button/MQTT) | Enqueue `motor_port.request_burst(1, 8000)` only; no park |
-| `EVT_BURST_DONE` | `motor_ctrl` | UART `dispense done` when a dispense burst was active; `hopper_input_notify_dispense_complete()`; otherwise no-op |
-| `EVT_MOTOR_FAULT` | `motor_ctrl` | UART `dispense fault: stuck`, `motor park fault: stuck`, or `motor fwd/rev fault: stuck` per active CLI command; `hopper_input_notify_dispense_complete()` when dispense was active |
+| `EVT_DISPENSE_REQUEST` | `dispense_submit_*` (UART CLI, future button/MQTT) | Payload: `{kind, target}` — dispense supervisor starts job, `request_burst(N, 8000)` for N portions |
+| `EVT_BURST_DONE` | `motor_ctrl` | Dispense supervisor completes job when active; UART `dispense done`; `hopper_input_notify_dispense_complete()`; deferred bowl-gram resample on next `EVT_DISPLAY_TICK`; otherwise motor CLI handlers only |
+| `EVT_MOTOR_FAULT` | `motor_ctrl` | Dispense supervisor aborts job when active; UART `dispense fault: stuck`, `motor park fault: stuck`, or `motor fwd/rev fault: stuck` per active CLI command; `hopper_input_notify_dispense_complete()` when dispense job was active |
 | `EVT_PARK_DONE` | `motor_ctrl` | UART `motor park done` when park was active |
 | `EVT_TIMED_RUN_DONE` | `motor_ctrl` | UART `motor fwd ok` or `motor rev ok` when the matching bench timed run was active |
 
@@ -81,9 +81,21 @@ pixels.
 non-blocking on the CLI task: started/busy lines print immediately; done/fault
 lines print when `app` handles the matching completion event.
 
-Reserved for later phases (handlers are no-ops when posted): multi-burst gram
-targets, dispense queue, MQTT dispense dispatch, provisioning submit, OTA
-progress/complete.
+`dispense_poll()` runs on each `EVT_DISPLAY_TICK` and `EVT_TIMER_TICK`. When a
+dispense job is active but `motor_port.is_active()` is false (motor session
+ended), the supervisor completes the job as if `EVT_BURST_DONE` arrived —
+recovery when the motor completion event was lost or delayed.
+
+While a dispense job is active, idle bowl-gram sampling on `EVT_DISPLAY_TICK`
+is suspended so WFCI / weigh UART work cannot block completion handling.
+
+The app task drains its event queue in two passes: motor/dispense completion
+events (`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`, `EVT_DISPENSE_REQUEST`, …) before
+`EVT_DISPLAY_TICK`. At most one display tick is handled per drain batch.
+
+Reserved for later phases (handlers are no-ops when posted): gram-targeted
+compensated dispense, dispense FIFO queue, MQTT dispense dispatch,
+provisioning submit, OTA progress/complete.
 
 ## MQTT session phase payload
 

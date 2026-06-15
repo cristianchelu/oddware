@@ -46,6 +46,7 @@ HOST_SRCS := ../src/app_log.c \
              ../src/display_glyph.c \
              ../src/display_presentation.c \
              ../src/display_wifi_indicator.c \
+             ../src/display_dispense_indicator.c \
              ../src/display_mqtt_indicator.c \
              ../src/display_anim_builtin.c \
              ../src/display_boot.c \
@@ -53,6 +54,7 @@ HOST_SRCS := ../src/app_log.c \
              ../src/weigh_cli.c \
              ../src/motor_cli.c \
              ../src/dispense_cli.c \
+             ../src/dispense.c \
              ../src/motor_ctrl.c \
              ../src/beam_cli.c \
              ../src/cs1270.c \

@@ -5,14 +5,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "app_event.h"
 #include "app_log.h"
+#include "dispense.h"
 #include "dispense_cli.h"
-#include "motor_port.h"
+#include "motor_cli.h"
 
 typedef enum {
     DISPENSE_CLI_IDLE = 0,
-    DISPENSE_CLI_WAIT_BURST,
+    DISPENSE_CLI_WAIT_JOB,
 } dispense_cli_state_t;
 
 static dispense_cli_state_t s_state = DISPENSE_CLI_IDLE;
@@ -24,38 +24,82 @@ static void dispense_cli_emit(const char *line)
     (void)snprintf(s_test_line, sizeof(s_test_line), "%s", line);
 }
 
-uint8_t dispense_cli_handle(uint8_t argc, char *argv[])
+port_err_t dispense_cli_parse_portions(const char *text, uint8_t *out)
 {
-    app_event_t ev;
-    const motor_port_t *motor = motor_port_get();
+    uint32_t value = 0u;
+    port_err_t err;
 
-    (void)argc;
-    (void)argv;
-
-    if (motor != NULL && motor->is_active != NULL && motor->is_active()) {
-        dispense_cli_emit("dispense busy");
-        return 1u;
+    if (out == NULL) {
+        return PORT_ERR_INVALID_ARG;
     }
+
+    err = motor_cli_parse_duration_ms(text, &value);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    if (value > DISPENSE_PORTIONS_MAX) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    *out = (uint8_t)value;
+    return PORT_OK;
+}
+
+static uint8_t dispense_cli_submit(uint8_t portions)
+{
+    dispense_submit_result_t result;
 
     if (s_state != DISPENSE_CLI_IDLE) {
         dispense_cli_emit("dispense busy");
         return 1u;
     }
 
-    ev.type = EVT_DISPENSE_START;
-    if (!app_event_post(&ev)) {
+    result = dispense_submit_portions(portions);
+    if (result == DISPENSE_SUBMIT_INVALID) {
+        dispense_cli_emit("dispense usage: portions <1-15>");
+        return 1u;
+    }
+
+    if (result != DISPENSE_SUBMIT_OK) {
         dispense_cli_emit("dispense busy");
         return 1u;
     }
 
-    s_state = DISPENSE_CLI_WAIT_BURST;
+    s_state = DISPENSE_CLI_WAIT_JOB;
     dispense_cli_emit("dispense started");
     return 0u;
 }
 
-bool dispense_cli_on_burst_done(void)
+uint8_t dispense_cli_handle_default(uint8_t argc, char *argv[])
 {
-    if (s_state != DISPENSE_CLI_WAIT_BURST) {
+    (void)argc;
+    (void)argv;
+    return dispense_cli_submit(1u);
+}
+
+uint8_t dispense_cli_handle_portions(uint8_t argc, char *argv[])
+{
+    uint8_t portions;
+    port_err_t err;
+
+    if (argc < 1u || argv == NULL || argv[0] == NULL) {
+        dispense_cli_emit("dispense usage: portions <1-15>");
+        return 1u;
+    }
+
+    err = dispense_cli_parse_portions(argv[0], &portions);
+    if (err != PORT_OK) {
+        dispense_cli_emit("dispense usage: portions <1-15>");
+        return 1u;
+    }
+
+    return dispense_cli_submit(portions);
+}
+
+bool dispense_cli_on_job_done(void)
+{
+    if (s_state != DISPENSE_CLI_WAIT_JOB) {
         return false;
     }
 
@@ -64,9 +108,9 @@ bool dispense_cli_on_burst_done(void)
     return true;
 }
 
-bool dispense_cli_on_motor_fault(void)
+bool dispense_cli_on_job_fault(void)
 {
-    if (s_state != DISPENSE_CLI_WAIT_BURST) {
+    if (s_state != DISPENSE_CLI_WAIT_JOB) {
         return false;
     }
 

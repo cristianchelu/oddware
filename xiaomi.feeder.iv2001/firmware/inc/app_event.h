@@ -10,6 +10,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "dispense.h"
+
 typedef enum {
     EVT_APP_BOOT = 0,
     EVT_WIFI_STA_CONNECTING,
@@ -23,7 +25,7 @@ typedef enum {
     EVT_TIMER_TICK,
     EVT_BUTTON_IRQ,
     EVT_BUTTON_GESTURE,
-    EVT_DISPENSE_START,
+    EVT_DISPENSE_REQUEST,
     EVT_BURST_DONE,
     EVT_MOTOR_FAULT,
     EVT_PARK_DONE,
@@ -80,6 +82,7 @@ typedef struct {
         app_display_tick_t display_tick;
         app_button_irq_t button_irq;
         app_button_gesture_t button_gesture;
+        app_dispense_request_t dispense_request;
     } u;
 } app_event_t;
 

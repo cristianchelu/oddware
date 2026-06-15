@@ -15,6 +15,7 @@
 #include "adc_jam_isr_adapter.h"
 #include "adc_port.h"
 #include "app_event.h"
+#include "app_log.h"
 #include "gpio_expander_port.h"
 #include "motor_ctrl.h"
 #include "motor_driver.h"
@@ -269,7 +270,9 @@ static void motor_ctrl_post_app_event(app_event_type_t type)
     app_event_t ev;
 
     ev.type = type;
-    (void)app_event_post(&ev);
+    if (!app_event_post(&ev)) {
+        app_log_error("motor", "app event post failed type=%u", (unsigned)type);
+    }
 }
 
 static void motor_ctrl_session_teardown(void)

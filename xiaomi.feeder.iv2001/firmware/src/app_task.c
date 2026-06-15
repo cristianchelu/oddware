@@ -104,13 +104,7 @@ static void app_task_fn(void *param)
             continue;
         }
 
-        app_dispatch(&ev);
-        app_event_release(&ev);
-
-        while (app_event_try_receive(&ev)) {
-            app_dispatch(&ev);
-            app_event_release(&ev);
-        }
+        app_process_received_event(&ev);
     }
 }
 

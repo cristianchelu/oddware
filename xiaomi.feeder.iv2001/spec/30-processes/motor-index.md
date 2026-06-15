@@ -48,8 +48,11 @@ Handled inside `motor_index_port` (adapter owns P0.6 / P0.7 sequencing):
 - Count pulses during each burst as secondary progress indicator.
 - Burst can terminate when target pulse count reached (alternative to
   fixed-duration timeout).
-- One portion burst: `[tune]` 1 pulse (180° — one hole passes).
-- Two consecutive portion bursts without park: `[tune]` 2 pulses (full revolution).
+- One portion: `[tune]` 1 pulse (180° — one hole passes).
+- N portions in one job: `[tune]` N pulses in a **single** EN-high session;
+  intermediate holes do not stop the motor — count only until the last hole
+  stops the auger.
+- Two portions without a separate park step: `[tune]` 2 pulses (full revolution).
 
 ### Jam timeout detection
 

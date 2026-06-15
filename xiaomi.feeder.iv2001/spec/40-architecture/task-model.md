@@ -92,7 +92,7 @@ Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-eve
 | `EVT_PROVISION_SUBMIT` | HTTP server callback | Validate creds, save to NVDM, reboot |
 | `EVT_TIMER_TICK` | Software timer | Periodic housekeeping |
 | `EVT_DISPLAY_TICK` | Display presentation timer (`[tune]` 50 ms) | `display_presentation_tick()` — blink phases and animation frames |
-| `EVT_DISPENSE_START` | MQTT cmd or button | Init dispense state machine, send first burst |
+| `EVT_DISPENSE_REQUEST` | MQTT cmd or button | Dispense supervisor starts job, `request_burst(N, 8000)` for N portions |
 | `EVT_BURST_DONE` | `motor_ctrl` | Read weight, update display, send next burst or park |
 | `EVT_MOTOR_FAULT` | `motor_ctrl` | Abort dispense, display error, publish fault |
 | `EVT_PARK_DONE` | `motor_ctrl` | Publish completion, update display |
@@ -142,7 +142,7 @@ buses. There is no data-path contention between them:
 ### Dispense event flow
 
 ```
-EVT_DISPENSE_START (from MQTT cmd or button)
+EVT_DISPENSE_REQUEST (from MQTT cmd or button)
   -> init state machine, send MOTOR_CMD_BURST to motor_ctrl
 EVT_BURST_DONE (from motor_ctrl, burst completed or index target reached)
   -> read weight (UART2, ~50 ms, no I2C contention)
