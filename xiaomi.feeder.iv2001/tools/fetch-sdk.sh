@@ -3,9 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SDK_DIR="$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify"
+SDK_DIR="$REPO_ROOT/external/linkit-sdk-v4.7.1"
 
-SDK_REPO="https://github.com/luvinland/linkit-sdk-v4.6.2-houndify.git"
+# Pin after bench validation: b36d06ae2ec1e19cc1a8d45d1e051d3e90e0952f
+SDK_REPO="https://github.com/dangkhoalk95/demoMT.git"
 SDK_BRANCH="master"
 
 if [ -d "$SDK_DIR/.git" ]; then
@@ -14,7 +15,7 @@ if [ -d "$SDK_DIR/.git" ]; then
     exit 0
 fi
 
-echo "Cloning LinkIt SDK v4.6.2 into $SDK_DIR ..."
+echo "Cloning Airoha IoT SDK v4.7.1 into $SDK_DIR ..."
 echo "  repo:   $SDK_REPO"
 echo "  branch: $SDK_BRANCH"
 echo ""

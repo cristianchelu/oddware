@@ -42,11 +42,11 @@ Or:
 
 ```bash
 source tools/build-env.sh
-cd external/linkit-sdk-v4.6.2-houndify
+cd external/linkit-sdk-v4.7.1
 ./build.sh mt7682_hdk petfeeder bl
 ```
 
-Build artifacts land in `external/.../out/mt7682_hdk/petfeeder/`.
+Build artifacts land in `external/LinkitSDK_OUT/mt7682_hdk/petfeeder/`.
 `build-firmware.sh` also symlinks the `.bin` files into `firmware/flash/` next
 to `flash_download.cfg` — the Flash Tool resolves ROM paths relative to that
 config file, so open **`firmware/flash/flash_download.cfg`** after each build.

@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Never edit the LinkIt SDK tree
 
-The MediaTek LinkIt SDK under `external/linkit-sdk-v4.6.2-houndify/` is
+The MediaTek / Airoha IoT SDK under `external/linkit-sdk-v4.7.1/` is
 **gitignored** and a **separate git repository**. Direct edits are lost on
 `git reset`, confuse incremental builds, and bypass review.
 

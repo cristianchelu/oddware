@@ -10,11 +10,11 @@
 These names are used **solely for descriptive/interoperability purposes**.
 This project is not affiliated with or endorsed by any of the above entities.
 
-## MediaTek LinkIt SDK
+## MediaTek / Airoha IoT SDK
 
-Firmware builds against **LinkIt SDK v4.6.2** for MT7682. The SDK is **not**
+Firmware builds against **Airoha IoT SDK v4.7.1** for MT7682. The SDK is **not**
 included in this repository. It is fetched into gitignored
-`external/linkit-sdk-v4.6.2-houndify/` by `tools/fetch-sdk.sh`.
+`external/linkit-sdk-v4.7.1/` by `tools/fetch-sdk.sh`.
 
 Builds reference SDK example sources **by path** from the local fetched tree
 (e.g. `project/mt7682_hdk/apps/fota_over_wifi/` as read-only scaffold). No SDK

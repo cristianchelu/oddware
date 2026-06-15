@@ -1,21 +1,21 @@
 /*
  * IV2001 GPIO pin variables — spec/10-hardware/pinmap.md
  *
- * UART0 console @ GPIO21 (TX) / GPIO22 (RX).
- * UART2 CS1270 @ GPIO11 (URXD2) / GPIO12 (UTXD2) per HAL pinmux.
+ * UART0 console: HAL URXD0=GPIO21, UTXD0=GPIO22 (MT7682 hal_pinmux_define.h).
+ * Module pads TP1/TP2 are the UART0 flash/console pair.
  */
 
-const char HAL_UART0_TXD_PIN = 21;
-const char HAL_UART0_TXD_PIN_M_GPIO = 0;
-const char HAL_UART0_TXD_PIN_M_UTXD0 = 1;
-const char HAL_UART0_TXD_PIN_M_EINT = 2;
-
-const char HAL_UART0_RXD_PIN = 22;
+const char HAL_UART0_RXD_PIN = 21;
 const char HAL_UART0_RXD_PIN_M_GPIO = 0;
 const char HAL_UART0_RXD_PIN_M_URXD0 = 1;
 const char HAL_UART0_RXD_PIN_M_EINT = 2;
 const char HAL_UART0_RXD_PIN_M_SCL1 = 3;
 const char HAL_UART0_RXD_PIN_M_PWM5 = 5;
+
+const char HAL_UART0_TXD_PIN = 22;
+const char HAL_UART0_TXD_PIN_M_GPIO = 0;
+const char HAL_UART0_TXD_PIN_M_UTXD0 = 1;
+const char HAL_UART0_TXD_PIN_M_EINT = 2;
 
 const char HAL_UART2_RXD_PIN = 11;
 const char HAL_UART2_RXD_PIN_M_GPIO = 0;

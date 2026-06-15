@@ -25,16 +25,9 @@ index 8d2c4315..f9a1a349 100644
  ifeq ($(FLOAT_TYPE), hard)
  FPUFLAGS = -fsingle-precision-constant -Wdouble-promotion
 diff --git a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
-index f56b00b9..ce3ddeb1 100644
+index f56b00b9..a1b2c3d4 100644
 --- a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
 +++ b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
-@@ -1,5 +1,5 @@
- IC_CONFIG                   = mt7682
--BOARD_CONFIG                = mt7682_hdk
-+BOARD_CONFIG                = iv2001
- MTK_BL_LOAD_ENABLE          = y
- 
- #can modify
 @@ -8,6 +8,7 @@ MTK_BL_DEBUG_ENABLE         = y
  MTK_FOTA_ENABLE             = y
  MTK_FOTA_FS_ENABLE          = n

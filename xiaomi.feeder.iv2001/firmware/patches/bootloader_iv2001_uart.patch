@@ -1,0 +1,25 @@
+diff --git a/project/mt7682_hdk/apps/bootloader/src/main.c b/project/mt7682_hdk/apps/bootloader/src/main.c
+index 90e77ea2..c4d5e6f7 100644
+--- a/project/mt7682_hdk/apps/bootloader/src/main.c
++++ b/project/mt7682_hdk/apps/bootloader/src/main.c
+@@ -44,6 +44,8 @@
+ #include "hal_emi.h"
+ #include "hal_clock_internal.h"
+ #include "hal_dcxo.h"
++#include "hal_gpio.h"
++#include "hal_pinmux_define.h"
+ #include "hal_wdt.h"
+ #include "hal_cache.h"
+ 
+@@ -105,6 +107,11 @@ ATTR_TEXT_IN_TCM void bl_hardware_init()
+     /* To set DCXO frequency for hal_clock_fxo_is_26m */
+     hal_clock_init();
+ 
++    /* MT7682 UART0: URXD0=GPIO21, UTXD0=GPIO22 (hal_pinmux_define.h). */
++    hal_pinmux_set_function(21, HAL_GPIO_21_URXD0);
++    hal_pinmux_set_function(22, HAL_GPIO_22_UTXD0);
++    hal_gpio_pull_up(21);
++
+     hal_uart_config_t uart_config;
+ 
+     /* UART init */

@@ -14,7 +14,7 @@ From this directory:
 ./tools/bootstrap.sh
 ```
 
-Fetches the LinkIt SDK into gitignored `external/`, runs host unit tests, and
+Fetches the Airoha IoT SDK into gitignored `external/`, runs host unit tests, and
 sources `build-env.sh`.
 
 ```bash
@@ -86,7 +86,7 @@ spec/           Specifications (source of truth)
 firmware/       Application source and board overlay
 tools/          Bootstrap, SDK fetch, build, flash helpers
   ota/          MQTT OTA bench scripts (see tools/ota/README.md)
-external/       Gitignored — LinkIt SDK and Wine flash tool
+external/       Gitignored — Airoha IoT SDK and Wine flash tool
 ```
 
 Committed tree: `firmware/`, `spec/`, `tools/`, Unity test sources. The SDK is

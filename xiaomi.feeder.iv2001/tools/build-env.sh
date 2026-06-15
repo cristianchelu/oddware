@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FIRMWARE_DIR="$REPO_ROOT/firmware"
 
-export SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
+export SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.7.1}"
 
 if [ ! -d "$SDK_ROOT" ]; then
     echo "ERROR: SDK not found at $SDK_ROOT"

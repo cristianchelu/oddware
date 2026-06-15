@@ -1,8 +1,8 @@
 diff --git a/driver/chip/mt7686/src/hal_flash_mtd_dal.c b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
-index 4fed57bd..10559494 100644
+index 897a243b..afa42bd1 100644
 --- a/driver/chip/mt7686/src/hal_flash_mtd_dal.c
 +++ b/driver/chip/mt7686/src/hal_flash_mtd_dal.c
-@@ -2577,6 +2577,10 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
+@@ -2542,6 +2542,10 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
       *  Page program loop
       */
      while (0 != Length) {
@@ -13,9 +13,9 @@ index 4fed57bd..10559494 100644
          p_data_first    = p_data;
          /*
           * Calculate how many bytes to write this loop
-@@ -2590,6 +2594,15 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
-         // stpe2. If program Length is greater than the offset to the page boundary
-         length = written = ((Length > length) ? length : Length);
+@@ -2567,6 +2571,15 @@ retry:
+             goto retry;
+         }
  
 +        /* Winbond W25Q: cap to bytes remaining in 256B NOR page (datasheet 7.2.20) */
 +        {
@@ -29,21 +29,17 @@ index 4fed57bd..10559494 100644
          if ((uint32_t)p_data & SFC_GENERIC_FLASH_BANK_MASK) {
              //only copy data to RAM when data is on flash.
              uint32_t j;
-@@ -2599,11 +2612,6 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
-             p_data_first = tmp_data_buffer;
+@@ -2577,7 +2590,6 @@ retry:
          }
- 
--        if (!(D->sf_dal_fix & sf_fix_gigadevice_b))   { //For GD 3V device, WE cmd should put into IRQMask Region to avoid enter HPM mode again before Program.
--            SF_DAL_Dev_WriteEnable(D);
--        }
--
--
+         
+         D->DriverStatus = SFDRV_PROGRAMMING;
+-        SF_DAL_Dev_WriteEnable(D);
+         
          // step3. Handling 3/4 bytes address
  #if defined(__SFI_4BYTES_ADDRESS__)
-         if (D->AddressCycle == 4) {
-@@ -2621,6 +2629,9 @@ ATTR_TEXT_IN_RAM int SF_DAL_ProgramData(void *MTDData, void *Address, void *Data
+@@ -2596,6 +2608,9 @@ retry:
          SF_Prog_Init();
-         savedMask = SaveAndSetIRQMask();
+ 
          NOR_PROFILE_60Q_START();
 +        if (!(D->sf_dal_fix & sf_fix_gigadevice_b)) {
 +            SF_DAL_Dev_WriteEnable(D);

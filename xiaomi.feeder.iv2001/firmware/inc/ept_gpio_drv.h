@@ -62,8 +62,8 @@
 #define GPIO_PORT18_MODE  MODE_NC
 #define GPIO_PORT19_MODE  MODE_NC  /* EVK UART0 — not used on IV2001 */
 #define GPIO_PORT20_MODE  MODE_NC
-#define GPIO_PORT21_MODE  MODE_1   /* UTXD0 — UART0 TX (console) */
-#define GPIO_PORT22_MODE  MODE_1   /* URXD0 — UART0 RX (console) */
+#define GPIO_PORT21_MODE  MODE_1   /* URXD0 — UART0 RX */
+#define GPIO_PORT22_MODE  MODE_1   /* UTXD0 — UART0 TX */
 
 #define GPIO_PORT0_DIR   DIR_INPUT
 #define GPIO_PORT1_DIR   DIR_OUTPUT
@@ -134,8 +134,8 @@
 #define GPIO_PORT18_PU  0
 #define GPIO_PORT19_PU  0
 #define GPIO_PORT20_PU  0
-#define GPIO_PORT21_PU  0
-#define GPIO_PORT22_PU  1   /* UART0 RX */
+#define GPIO_PORT21_PU  1   /* UART0 RX (URXD0 @ GPIO21) */
+#define GPIO_PORT22_PU  0
 #define GPIO_PORT0_PD   0
 #define GPIO_PORT1_PD   0
 #define GPIO_PORT2_PD   0

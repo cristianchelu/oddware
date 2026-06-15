@@ -1,8 +1,9 @@
 --- a/tools/scripts/build/copy_firmware.sh
 +++ b/tools/scripts/build/copy_firmware.sh
-@@ -255,8 +255,12 @@ elif [ "$BOARD_CONFIG" == "mt7686_hdk" ] || [ "$BOARD_CONFIG" == "mt7682_hdk" ]
-     change_cfg_bin_filename $OUTPUT/flash_download.cfg $BIN_FILENAME
- 
+@@ -272,9 +272,13 @@ elif [ "$BOARD_CONFIG" == "mt7686_hdk" ] || [ "$BOARD_CONFIG" == "mt7682_hdk" ]
+        cp $OUTPUT/iot_sdk_demo.bin $SOURCE_DIR/prebuilt/driver/chip/mt5932/wifi_image/mt5932_image_sdio.bin
+     fi
+     
 -    # copy bootloader
 +    # copy bootloader (iv2001 board config uses mt7682_hdk bootloader project)
 +    BL_BOARD="$BOARD_CONFIG"
@@ -14,4 +15,4 @@
 +        cp $SOURCE_DIR/project/$BL_BOARD/apps/bootloader/GCC/bootloader.bin $OUTPUT/$IC_CONFIG'_bootloader.bin'
          echo "${OUTPUT}/${IC_CONFIG}_bootloader.bin doesn't exist. copy default bootloader done."
      fi
- fi
+ 

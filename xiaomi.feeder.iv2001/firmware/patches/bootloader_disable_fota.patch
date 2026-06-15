@@ -1,0 +1,12 @@
+diff --git a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
+index f56b00b9..b7c8d9e0 100644
+--- a/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
++++ b/project/mt7682_hdk/apps/bootloader/GCC/feature.mk
+@@ -5,7 +5,7 @@ MTK_BL_LOAD_ENABLE          = y
+ #can modify
+ MTK_BL_FOTA_CUST_ENABLE     = n
+ MTK_BL_DEBUG_ENABLE         = y
+-MTK_FOTA_ENABLE             = y
++MTK_FOTA_ENABLE             = n
+ MTK_FOTA_FS_ENABLE          = n
+ MTK_USER_FAST_TX_ENABLE     = n

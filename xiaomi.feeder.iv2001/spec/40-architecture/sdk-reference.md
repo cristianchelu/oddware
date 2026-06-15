@@ -5,11 +5,12 @@
 IV2001 uses **MT7682** in the Xiaomi MHCW05P-B module. There is no external
 PSRAM on this module.
 
-All firmware builds use **LinkIt SDK v4.6.2** (houndify tree):
+All firmware builds use **Airoha IoT SDK v4.7.1** (demoMT mirror):
 
 | Property | Value |
 |----------|-------|
-| Path | `external/linkit-sdk-v4.6.2-houndify/` (gitignored, fetched locally) |
+| Path | `external/linkit-sdk-v4.7.1/` (gitignored, fetched locally) |
+| Upstream | `https://github.com/dangkhoalk95/demoMT` (`master`, pinned commit in `tools/fetch-sdk.sh`) |
 | Board family | `mt7682_hdk` |
 | `IC_CONFIG` | `mt7682` |
 | `PRODUCT_VERSION` | `7682` (via `config/chip/mt7682/chip.mk`) |

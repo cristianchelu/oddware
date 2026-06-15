@@ -52,7 +52,7 @@ echo "==> Checking SDK prerequisites"
 "$SCRIPT_DIR/check-prereqs.sh" sdk
 
 echo ""
-echo "==> Fetching LinkIt SDK v4.6.2 (large clone, one-time)"
+echo "==> Fetching Airoha IoT SDK v4.7.1 (large clone, one-time)"
 "$SCRIPT_DIR/fetch-sdk.sh"
 
 echo ""

@@ -2,7 +2,7 @@
 
 ## Repository rules
 
-1. **SDK stays out of git.** `external/` is gitignored. The LinkIt SDK is
+1. **SDK stays out of git.** `external/` is gitignored. The Airoha IoT SDK is
    cloned locally by `tools/fetch-sdk.sh`. Never commit SDK files, prebuilt
    libraries, or vendored example app sources. Patches and oddware firmware
    only.
@@ -23,7 +23,7 @@ LinkIt SDK `build.sh` expects:
 project/mt7682_hdk/apps/<name>/GCC/Makefile
 ```
 
-Fetched to: `external/linkit-sdk-v4.6.2-houndify/` (gitignored).
+Fetched to: `external/linkit-sdk-v4.7.1/` (gitignored).
 
 Oddware firmware lives at `xiaomi.feeder.iv2001/firmware/`. `build-env.sh`
 creates a real directory (not a symlink — `build.sh` does not follow symlinked
@@ -62,13 +62,14 @@ Prerequisites: `git`, `make`, `gcc`, `patch` (for SDK patches),
 
 ```
 source tools/build-env.sh
-cd external/linkit-sdk-v4.6.2-houndify
+cd external/linkit-sdk-v4.7.1
 ./build.sh mt7682_hdk petfeeder bl
 ```
 
 Or: `./tools/build-firmware.sh`
 
-Flash package: `external/linkit-sdk-v4.6.2-houndify/out/mt7682_hdk/petfeeder/`
+Build artifacts: `external/LinkitSDK_OUT/mt7682_hdk/petfeeder/`
+(copied to `firmware/flash/` by `build-firmware.sh`)
 
 `firmware/flash/flash_download.cfg` supplies IV2001 2 MB addresses for the
 MediaTek Flash Tool (overrides the SDK default 1 MB layout).
@@ -104,7 +105,7 @@ do **not** revert SDK edits on their own.
 A local stamp (`.sdk-patches-stamp`, gitignored) lets `build-env.sh` skip
 redundant work when the patch set and SDK HEAD are unchanged and the tree is
 clean. `./tools/build-firmware.sh` always re-syncs before building and drops
-stale `out/.../obj` when the SDK was reset.
+stale `LinkitSDK_OUT/.../obj` when the SDK was reset.
 
 After `git checkout` or `git pull`, run `source tools/build-env.sh` or install
 hooks once: `./tools/install-git-hooks.sh` (post-checkout / post-merge).
@@ -170,7 +171,7 @@ apply breaks AW9523B I2C (`[probe]` 2026-06-10).
 Verify after `source tools/build-env.sh`:
 
 ```
-grep display_boot_run external/linkit-sdk-v4.6.2-houndify/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
+grep display_boot_run external/linkit-sdk-v4.7.1/project/mt7682_hdk/apps/mqtt_client/src/sys_init.c
 ```
 
 Runtime GPIO expander, display, ADC, and UART2 access after Wi-Fi start use

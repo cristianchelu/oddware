@@ -12,7 +12,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PATCHES_DIR="$REPO_ROOT/firmware/patches"
 SERIES_FILE="$PATCHES_DIR/series"
 STAMP_FILE="$REPO_ROOT/.sdk-patches-stamp"
-SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
+SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.7.1}"
 
 IF_NEEDED=0
 for arg in "$@"; do

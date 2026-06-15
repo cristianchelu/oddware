@@ -187,7 +187,7 @@ Read `spec/40-architecture/build-integration.md` and
 `tools/`.
 
 1. **No SDK in git.** The MediaTek LinkIt SDK lives only in gitignored
-   `external/linkit-sdk-v4.6.2-houndify/`, fetched by `tools/fetch-sdk.sh`.
+   `external/linkit-sdk-v4.7.1/`, fetched by `tools/fetch-sdk.sh`.
    Do not commit SDK sources, prebuilt `.a`/`.bin`, or copy example apps into
    the repo. Unity (test harness) is the only third-party C code committed under
    `firmware/`.
@@ -218,7 +218,7 @@ Read `spec/40-architecture/build-integration.md` and
    `firmware/patches/series`) and sync. Install `./tools/install-git-hooks.sh`
    once so checkout/merge re-syncs when the tree drifts. See
    `spec/40-architecture/build-integration.md` § SDK patches.
-7. **Single SDK.** LinkIt v4.6.2 houndify tree only.
+7. **Single SDK.** Airoha IoT SDK v4.7.1 (demoMT) only.
 8. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 

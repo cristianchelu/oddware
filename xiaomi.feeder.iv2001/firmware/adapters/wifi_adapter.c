@@ -99,6 +99,23 @@ static void wifi_adapter_wipe_sta_caches(void)
     APP_LOG_I("wifi", "wiped STA profile + PMK caches");
 }
 
+static bool s_wifi_init_complete;
+
+static int32_t wifi_adapter_init_complete_handler(wifi_event_t event,
+                                                  uint8_t *payload,
+                                                  uint32_t length)
+{
+    (void)payload;
+    (void)length;
+
+    if (event == WIFI_EVENT_IOT_INIT_COMPLETE) {
+        s_wifi_init_complete = true;
+        APP_LOG_I("wifi", "IOT_INIT_COMPLETE");
+    }
+
+    return 0;
+}
+
 void wifi_adapter_stack_init(void)
 {
     wifi_config_t config;
@@ -366,22 +383,6 @@ const wifi_port_t *wifi_port_get(void)
 static wifi_scan_list_item_t s_scan_table[WIFI_ADAPTER_SCAN_TABLE_SIZE];
 static SemaphoreHandle_t s_scan_done_sem;
 static bool s_scan_handler_registered;
-static bool s_wifi_init_complete;
-
-static int32_t wifi_adapter_init_complete_handler(wifi_event_t event,
-                                                  uint8_t *payload,
-                                                  uint32_t length)
-{
-    (void)payload;
-    (void)length;
-
-    if (event == WIFI_EVENT_IOT_INIT_COMPLETE) {
-        s_wifi_init_complete = true;
-        APP_LOG_I("wifi", "IOT_INIT_COMPLETE");
-    }
-
-    return 0;
-}
 
 static int32_t wifi_adapter_scan_event_handler(wifi_event_t event,
                                                uint8_t *payload,

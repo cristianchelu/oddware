@@ -1,10 +1,11 @@
+diff --git a/middleware/MTK/connsys/src/connsys_driver.c b/middleware/MTK/connsys/src/connsys_driver.c
+index b6faffc7..ee2aa6c9 100644
 --- a/middleware/MTK/connsys/src/connsys_driver.c
 +++ b/middleware/MTK/connsys/src/connsys_driver.c
-@@ -1847,6 +1847,15 @@ static void _connsys_init_activate_mcu(void)
- {
-     //Enable N9 MTCMOS Power
+@@ -1863,6 +1863,15 @@ static void _connsys_init_activate_mcu(void)
      spm_control_mtcmos(SPM_MTCMOS_CONN, SPM_MTCMOS_PWR_ENABLE);
-+
+ #endif
+ 
 +    /*
 +     * Force N9 into reset first.  After a WDT reboot the N9 may still
 +     * be running with stale PMKSA / association state.  Asserting reset
@@ -13,6 +14,7 @@
 +     */
 +    HAL_REG_32(CONNSYS_SW_RST) = 0x00;
 +    hal_gpt_delay_ms(5);
- 
++
      hal_gpt_delay_ms(1);
  
+     // Release SW reset of connsys

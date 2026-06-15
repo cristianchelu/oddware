@@ -9,7 +9,7 @@ resolve_paths() {
         return 1
     fi
 
-    SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify}"
+    SDK_ROOT="${SDK_ROOT:-$REPO_ROOT/external/linkit-sdk-v4.7.1}"
     SDK_PC_TOOL_ZIP="$SDK_ROOT/tools/PC_tool.zip"
     FT_WIN="${IOT_FLASH_TOOL_ROOT:-$REPO_ROOT/external/iot-flash-tool/win}"
     export WINEPREFIX="${WINEPREFIX:-$REPO_ROOT/external/.wine-iot-flash}"

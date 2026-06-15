@@ -133,7 +133,6 @@ static int remote_cli_telnet_rx_byte(uint8_t c)
 
 #include "cli.h"
 #include "lwip/sockets.h"
-#include <sys/select.h>
 #include "task_def.h"
 
 #include "app_cli.h"

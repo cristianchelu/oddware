@@ -2,6 +2,8 @@
  * SDK Wi-Fi HAL shims — spec/30-processes/wifi-lifecycle.md
  */
 
+#include <stddef.h>
+
 #include "nvdm.h"
 #include "wifi_api.h"
 
