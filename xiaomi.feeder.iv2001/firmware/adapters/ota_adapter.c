@@ -486,11 +486,15 @@ static port_err_t ota_adapter_start(const char *url,
 
     if (xTaskCreate(ota_adapter_task,
                     "ota_dl",
-                    OTA_DL_TASK_STACK / sizeof(portSTACK_TYPE),
+                    OTA_DL_TASK_STACK / sizeof(StackType_t),
                     job,
                     OTA_DL_TASK_PRIO,
                     &s_ota_task) != pdPASS) {
-        app_log_error("ota", "task create failed");
+        app_log_error("ota",
+                      "task create failed heap free=%u min=%u need_stack=%u",
+                      (unsigned)xPortGetFreeHeapSize(),
+                      (unsigned)xPortGetMinimumEverFreeHeapSize(),
+                      (unsigned)OTA_DL_TASK_STACK);
         ota_preflight_resume_idle_tasks();
         vPortFree(job);
         s_status = OTA_STATUS_IDLE;

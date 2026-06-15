@@ -9,7 +9,11 @@
 
 #include "port_err.h"
 
-#define WIFI_SESSION_CONNECT_TIMEOUT_MS 30000u
+/*
+ * Bank-B OTA warm boots need ~35 s for N9 scan/connect (spec/30-processes/ota-flow.md).
+ * 30 s caused connect to abort before DHCP, clearing the Wi-Fi icon.
+ */
+#define WIFI_SESSION_CONNECT_TIMEOUT_MS 60000u
 
 port_err_t wifi_session_down(void);
 port_err_t wifi_session_up(void);

@@ -10,7 +10,7 @@
 #include "ota_rollback.h"
 #include "ota_rollback_host_stubs.h"
 
-#define OTA_ROLLBACK_TIMEOUT_MS 60000u
+#define OTA_ROLLBACK_TIMEOUT_MS 120000u
 
 static void system_config_set(const char *key, const char *value)
 {

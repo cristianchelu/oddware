@@ -19,5 +19,7 @@ mqtt_quiet_debug.patch
 mqtt_read_peek_before_select.patch
 wifi_scan_time_t.patch
 connsys_force_n9_reset.patch
+freertos_heap_192k.patch
+lwip_net_ready_timed.patch
 task_def_httpd.patch
 httpd_provision.patch

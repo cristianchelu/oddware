@@ -1,0 +1,14 @@
+--- a/project/mt7682_hdk/apps/minicli/inc/FreeRTOSConfig.h
++++ b/project/mt7682_hdk/apps/minicli/inc/FreeRTOSConfig.h
+@@ -98,9 +98,9 @@ extern uint32_t SystemCoreClock;
+ #define configMAX_PRIORITIES            ( 20 )
+ #define configMINIMAL_STACK_SIZE        ( ( unsigned short ) 256 )
+ #if defined(MTK_WIFI_TGN_VERIFY_ENABLE)
+-#define configTOTAL_HEAP_SIZE           ( ( size_t ) ( 100 * 1024 ) ) /* 2 iperf instances need 68KB to run on AP mode */
++#define configTOTAL_HEAP_SIZE           ( ( size_t ) ( 192 * 1024 ) )
+ #else
+-#define configTOTAL_HEAP_SIZE           ( ( size_t ) ( 100 * 1024 ) ) /* 2 iperf instances need 68KB to run on AP mode */
++#define configTOTAL_HEAP_SIZE           ( ( size_t ) ( 192 * 1024 ) )
+ #endif
+ 
+ #define configMAX_TASK_NAME_LEN         ( 6 )

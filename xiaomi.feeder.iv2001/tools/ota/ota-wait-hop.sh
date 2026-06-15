@@ -22,6 +22,7 @@ MQTT_USER="${MQTT_USER:-petfeeder-flasher}"
 MQTT_PASS="${MQTT_PASS:-petfeeder}"
 HOP_TIMEOUT="${HOP_TIMEOUT:-300}"
 PROGRESS_TIMEOUT="${PROGRESS_TIMEOUT:-90}"
+REBOOT_GRACE_TIMEOUT="${REBOOT_GRACE_TIMEOUT:-180}"
 POLL_INTERVAL="${POLL_INTERVAL:-5}"
 
 DEVICE_ID=""
@@ -116,6 +117,14 @@ uart_ota_started() {
     strings "$UART_LOG" 2>/dev/null | grep -qE '\[ota\] (accepted|download started)'
 }
 
+uart_reboot_phase() {
+    if [ -z "$UART_LOG" ] || [ ! -f "$UART_LOG" ]; then
+        return 1
+    fi
+    strings "$UART_LOG" 2>/dev/null \
+        | grep -qE 'bank swap pending|download complete|\[ota\] 100%'
+}
+
 deadline=$((SECONDS + HOP_TIMEOUT))
 last_progress_at=$SECONDS
 http_baseline="$(http_hits)"
@@ -123,8 +132,9 @@ last_http="$http_baseline"
 last_pct=-1
 saw_activity=0
 saw_uart_start=0
+reboot_phase=0
 
-echo "waiting for bank ${WANT_BANK} (hop max ${HOP_TIMEOUT}s, stall ${PROGRESS_TIMEOUT}s)"
+echo "waiting for bank ${WANT_BANK} (hop max ${HOP_TIMEOUT}s, stall ${PROGRESS_TIMEOUT}s, reboot_grace ${REBOOT_GRACE_TIMEOUT}s)"
 
 while [ "$SECONDS" -lt "$deadline" ]; do
     bank="$(read_bank)"
@@ -163,6 +173,15 @@ while [ "$SECONDS" -lt "$deadline" ]; do
         saw_uart_start=1
     fi
 
+    if uart_reboot_phase; then
+        if [ "$reboot_phase" -eq 0 ]; then
+            reboot_phase=1
+            last_progress_at=$SECONDS
+            echo "  reboot phase: download done, waiting for bank ${WANT_BANK} (grace ${REBOOT_GRACE_TIMEOUT}s)"
+        fi
+        progressed=1
+    fi
+
     if [ "$bank" = "offline" ]; then
         progressed=1
         saw_activity=1
@@ -171,11 +190,16 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     if [ "$progressed" -eq 1 ]; then
         last_progress_at=$SECONDS
         saw_activity=1
-        echo "  progress: bank=${bank} http_hop=${hop_hits} uart=${pct}%"
+        echo "  progress: bank=${bank} http_hop=${hop_hits} uart=${pct}% reboot=${reboot_phase}"
     fi
 
-    if [ "$saw_activity" -eq 1 ] && [ $((SECONDS - last_progress_at)) -ge "$PROGRESS_TIMEOUT" ]; then
-        echo "  FAIL: no progress for ${PROGRESS_TIMEOUT}s (bank=${bank}, http_hop=${hop_hits}, uart=${pct}%)" >&2
+    stall_limit="$PROGRESS_TIMEOUT"
+    if [ "$reboot_phase" -eq 1 ]; then
+        stall_limit="$REBOOT_GRACE_TIMEOUT"
+    fi
+
+    if [ "$saw_activity" -eq 1 ] && [ $((SECONDS - last_progress_at)) -ge "$stall_limit" ]; then
+        echo "  FAIL: no progress for ${stall_limit}s (bank=${bank}, http_hop=${hop_hits}, uart=${pct}%, reboot=${reboot_phase})" >&2
         exit 1
     fi
 

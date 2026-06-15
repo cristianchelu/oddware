@@ -13,5 +13,7 @@ void wifi_sta_start(void);
 bool wifi_sta_request_connect(void);
 bool wifi_sta_request_disconnect(void);
 wifi_sta_busy_t wifi_sta_busy(void);
+void wifi_sta_suspend_for_ota(void);
+void wifi_sta_resume_after_ota(void);
 
 #endif /* WIFI_STA_H */

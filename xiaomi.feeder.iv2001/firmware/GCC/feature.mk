@@ -35,7 +35,7 @@ MTK_WIFI_REPEATER_ENABLE            = n
 MTK_WIFI_PROFILE_ENABLE             = y
 MTK_CM4_WIFI_TASK_ENABLE            = y
 MTK_WIFI_ROM_ENABLE                 = y
-MTK_PING_OUT_ENABLE                 = y
+MTK_PING_OUT_ENABLE                 = n
 
 # MQTT client (plain TCP; TLS deferred)
 MTK_MBEDTLS_CONFIG_FILE             = config-mtk-basic.h

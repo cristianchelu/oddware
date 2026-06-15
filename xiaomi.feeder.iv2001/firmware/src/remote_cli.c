@@ -416,11 +416,17 @@ static void remote_cli_task(void *param)
     for (;;) {
         if (s_suspended_for_ota) {
             remote_cli_enter_ota_suspend();
-            continue;
         }
 
         if (!remote_cli_open_listener()) {
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            TickType_t retry_until = xTaskGetTickCount() + pdMS_TO_TICKS(2000);
+
+            while (xTaskGetTickCount() < retry_until) {
+                if (s_suspended_for_ota) {
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
             continue;
         }
 
@@ -489,7 +495,7 @@ void remote_cli_suspend_for_ota(void)
     s_session_end = true;
     app_log_info("cli", "remote console suspended for ota");
 
-    if (remote_cli_wait_suspended_for_ota(500u)) {
+    if (remote_cli_wait_suspended_for_ota(2000u)) {
         return;
     }
 

@@ -92,3 +92,13 @@ void vPortFree(void *ptr)
 {
     free(ptr);
 }
+
+size_t xPortGetFreeHeapSize(void)
+{
+    return 192u * 1024u;
+}
+
+size_t xPortGetMinimumEverFreeHeapSize(void)
+{
+    return 64u * 1024u;
+}

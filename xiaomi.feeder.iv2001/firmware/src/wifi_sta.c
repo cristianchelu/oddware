@@ -27,6 +27,8 @@ typedef enum {
 
 static TaskHandle_t s_connect_task;
 static volatile bool s_connect_busy;
+static volatile bool s_suspended_for_ota;
+static volatile bool s_task_reclaimed;
 static bool s_unit_test_mode;
 static wifi_sta_op_t s_pending_op;
 
@@ -109,21 +111,57 @@ static void wifi_sta_worker_run(wifi_sta_op_t op)
     s_pending_op = WIFI_STA_OP_NONE;
 }
 
+#ifndef HOST_TEST
+
+static void wifi_sta_enter_ota_suspend(void)
+{
+    s_task_reclaimed = true;
+    s_connect_task = NULL;
+    s_connect_busy = false;
+    s_pending_op = WIFI_STA_OP_NONE;
+    vTaskDelete(NULL);
+}
+
+static bool wifi_sta_wait_suspended(uint32_t timeout_ms)
+{
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+
+    while (xTaskGetTickCount() < deadline) {
+        if (s_task_reclaimed) {
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    return s_task_reclaimed;
+}
+
 static void wifi_sta_connect_task(void *param)
 {
     (void)param;
 
     for (;;) {
+        if (s_suspended_for_ota) {
+            wifi_sta_enter_ota_suspend();
+        }
+
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        if (s_suspended_for_ota) {
+            continue;
+        }
+
         wifi_sta_worker_run(s_pending_op);
     }
 }
 
-void wifi_sta_start(void)
+static bool wifi_sta_spawn_connect_task(void)
 {
-#ifndef HOST_TEST
-    wifi_adapter_stack_init();
-#endif
+    if (s_connect_task != NULL) {
+        return true;
+    }
+
+    s_task_reclaimed = false;
 
     if (xTaskCreate(wifi_sta_connect_task,
                     "wifi_sta",
@@ -132,6 +170,19 @@ void wifi_sta_start(void)
                     APP_TASK_PRIO,
                     &s_connect_task) != pdPASS) {
         APP_LOG_E("wifi", "failed to start connect task");
+        return false;
+    }
+
+    return true;
+}
+
+void wifi_sta_start(void)
+{
+#ifndef HOST_TEST
+    wifi_adapter_stack_init();
+#endif
+
+    if (!wifi_sta_spawn_connect_task()) {
         return;
     }
 
@@ -139,6 +190,55 @@ void wifi_sta_start(void)
         wifi_sta_request_connect();
     }
 }
+
+void wifi_sta_suspend_for_ota(void)
+{
+    TaskHandle_t task;
+
+    s_suspended_for_ota = true;
+
+    if (wifi_sta_wait_suspended(2000u)) {
+        return;
+    }
+
+    task = s_connect_task;
+    if (task != NULL) {
+        APP_LOG_W("wifi", "connect task: force delete for ota");
+        s_connect_task = NULL;
+        s_task_reclaimed = true;
+        s_connect_busy = false;
+        s_pending_op = WIFI_STA_OP_NONE;
+        vTaskDelete(task);
+    }
+}
+
+void wifi_sta_resume_after_ota(void)
+{
+    s_suspended_for_ota = false;
+    s_task_reclaimed = false;
+
+    if (s_connect_task == NULL) {
+        (void)wifi_sta_spawn_connect_task();
+    }
+}
+
+#else /* HOST_TEST */
+
+void wifi_sta_suspend_for_ota(void)
+{
+    s_suspended_for_ota = true;
+    s_task_reclaimed = true;
+    s_connect_busy = false;
+    s_pending_op = WIFI_STA_OP_NONE;
+}
+
+void wifi_sta_resume_after_ota(void)
+{
+    s_suspended_for_ota = false;
+    s_task_reclaimed = false;
+}
+
+#endif /* HOST_TEST */
 
 static bool wifi_sta_queue_op(wifi_sta_op_t op)
 {
@@ -193,6 +293,8 @@ void wifi_sta_test_reset(void)
 {
     s_connect_task = NULL;
     s_connect_busy = false;
+    s_suspended_for_ota = false;
+    s_task_reclaimed = false;
     s_unit_test_mode = false;
     s_pending_op = WIFI_STA_OP_NONE;
 }

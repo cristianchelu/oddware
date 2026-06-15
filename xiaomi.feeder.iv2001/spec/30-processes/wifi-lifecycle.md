@@ -24,7 +24,11 @@ Association and DHCP run on the Wi-Fi connect task (not the CLI task).
 |------|--------|
 | 1 | `radio_up` — enable radio and start lwIP STA netif if stopped |
 | 2 | `connect` — set SSID/PSK (or open security), `wifi_config_reload_setting()`; returns immediately |
-| 3 | `wait_ready` — block up to `[tune]` 30 s for `WIFI_EVENT_IOT_PORT_SECURE` (4-way complete) and DHCP |
+| 3 | `wait_ready` — block up to `[tune]` 60 s on SDK `PORT_SECURE` and DHCP semaphores (`lwip_net_ready_timed`) |
+
+`wait_ready` must not poll `wifi_connection_get_link_status()` alone — during
+bank-B boot the link stays down for ~30 s while the N9 is idle, then events
+arrive in quick succession. `[probe]`
 
 `PORT_SECURE` means the 4-way handshake is complete; DHCP follows (Dev Guide
 Table 5). On success the connect task posts `EVT_WIFI_STA_READY` with the

@@ -58,7 +58,7 @@ disconnect, and wait semantics.
 | `disconnect` | `() -> err` | `lwip_net_stop(STA)` → `disconnect_ap` → `set_radio(0)`; idempotent |
 | `radio_up` | `() -> err` | `set_radio(1)` and `lwip_net_start(STA)` when stopped |
 | `connect` | `(ssid, pass) -> err` | Set SSID/PSK (or open), `reload_setting()`; **does not block** for DHCP |
-| `wait_ready` | `(timeout_ms) -> err` | Block for `PORT_SECURE` + DHCP; fails fast if stack init not complete |
+| `wait_ready` | `(timeout_ms) -> err` | Block on SDK `PORT_SECURE` + DHCP semaphores via `lwip_net_ready_timed`; fails fast if stack init not complete |
 | `is_connected` | `() -> bool` | Current association state |
 | `get_ip` | `(buf, len) -> err` | Copy current IP string into buffer |
 | `start_ap` | `(ssid, pass, channel) -> err` | Start AP mode for provisioning |

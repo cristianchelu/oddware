@@ -32,18 +32,20 @@ exists (`dispense-cycle.md`).
 ### Pre-download memory reclaim
 
 Before spawning the download worker, firmware suspends non-essential
-persistent tasks to free RTOS stack RAM (~100–200 KB free at runtime; the
-download worker needs `[tune]` 12 KB stack). `[design]`
+persistent tasks to free RTOS stack RAM. The FreeRTOS heap is `[tune]`
+192 KB (`freertos_heap_192k.patch` on `minicli/inc/FreeRTOSConfig.h`); the
+download worker needs `[tune]` 12 KB stack. `[design]`
 
 | Task | Action during OTA window |
 |------|--------------------------|
-| `mqtt_io` | Disarm reconnect, disconnect broker session (task keeps running; broker buffers freed) |
 | `remote_cli` | End active telnet session, close port 2323 listener, delete task to free stack (when `REMOTE_CLI_ENABLE`; recreated after failed OTA) |
+| `app_cli` | Suspend UART0 console task and delete to free stack; recreated after failed OTA |
+| `wifi_sta` | Suspend connect worker and delete to free stack; recreated after failed OTA |
+| `mqtt_io` | Disarm reconnect, disconnect broker session (task keeps running; broker buffers freed) |
 
-UART0 CLI (`app_cli`) stays up. On download-worker spawn failure or any
-download/verify/apply failure before reboot: resume suspended tasks (MQTT
-reconnects when credentials are stored; telnet re-binds port 2323). On
-successful apply: reboot — no resume. See
+On download-worker spawn failure or any download/verify/apply failure before
+reboot: resume suspended tasks in reverse order (MQTT, `wifi_sta`, `app_cli`,
+`remote_cli` when enabled). On successful apply: reboot — no resume. See
 [uart-console.md](uart-console.md) § Remote telnet console.
 
 ### Steps
@@ -98,24 +100,29 @@ The N9 coprocessor is force-reset at the next boot by
 before the existing MCU release in `_connsys_init_activate_mcu`). This
 ensures N9 RAM is cleared regardless of WDT warm reboot state.
 
-### Known limitation: bank-B reconnect delay
+### Known limitation: bank-B boot delay
 
-After OTA reboot into bank B, the N9 firmware exhibits a ~30 s gap between
-scan-match (`__match_bssid_cb`) and start-connect (`__seek_and_connect
-L:803`) with zero log output during the interval. Subsequent WPA 4-way
-handshake shows MIC Different on msg 3, resolved internally by M3 reinstall
-attack skip. Total WiFi connect time on bank-B OTA boots: ~35 s. `[probe]`
+Booting from flash bank B (OTA apply, manual `bank switch`, or cold start
+when bank B is active) exhibits a ~30 s gap with no UART progress while the
+N9 coprocessor is idle, then Wi-Fi association and DHCP complete in a few
+more seconds (~38 s total to `EVT_WIFI_STA_READY` on bench). `[probe]`
 
-This is a fixed internal timeout in the prebuilt N9 ROM
-(`libwifi_mt7682_ram.a`). Tested mitigations that did **not** resolve it:
+During the gap the display shows no Wi-Fi icon (connect task is blocked in
+`wait_ready`; `EVT_WIFI_STA_CONNECTING` was already posted). This is **not**
+OTA-download-specific — any bank-B boot shows the same freeze.
 
-- Force N9 SW reset at boot (clears RAM / PMKSA — still 30 s)
-- Preserve STA NVDM credentials through reboot (still 30 s)
-- Skip pre-reboot `disconnect_ap` (still 30 s)
+Subsequent WPA 4-way handshake may log MIC Different on msg 3, resolved
+internally by M3 reinstall attack skip. This is a fixed internal timeout
+in the prebuilt N9 ROM (`libwifi_mt7682_ram.a`). Tested mitigations that did
+**not** resolve it:
 
-Bank-A boots after B→A OTA connect in ~1 s. Cold boots (power cycle)
-connect in ~2 s regardless of bank. The delay is specific to A→B OTA warm
-reboots and acceptable for monthly update events. `[probe]`
+- Force N9 SW reset at boot (clears RAM / PMKSA — still ~30 s)
+- Preserve STA NVDM credentials through reboot (still ~30 s)
+- Skip pre-reboot `disconnect_ap` (still ~30 s)
+
+Bank-A boots after B→A OTA connect in ~1 s. Cold boots when bank A is active
+connect in ~2 s. A→B OTA warm reboots are the slow path; acceptable for
+monthly update events. `[probe]`
 
 ## Rollback
 
@@ -123,7 +130,7 @@ On boot after OTA:
 
 1. Increment `system/boot_count` in NVDM.
 2. Attempt Wi-Fi + MQTT connect.
-3. If no successful MQTT connection within `[tune]` 60 s:
+3. If no successful MQTT connection within `[tune]` 120 s:
    - Mark current bank as bad.
    - Revert bootloader pointer to previous bank.
    - Reboot into known-good image.

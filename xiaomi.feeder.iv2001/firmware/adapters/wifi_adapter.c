@@ -21,6 +21,8 @@
 #include "wifi_private_api.h"
 #include "wifi_sdk_profile.h"
 
+int lwip_net_ready_timed(uint32_t timeout_ms);
+
 void wifi_adapter_clear_sdk_sta_profile(void)
 {
     wifi_sdk_profile_invalidate();
@@ -227,9 +229,7 @@ static port_err_t wifi_port_get_ip(char *buf, size_t len);
 
 static port_err_t wifi_port_wait_ready(uint32_t timeout_ms)
 {
-    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
     TickType_t init_deadline = xTaskGetTickCount() + pdMS_TO_TICKS(5000);
-    char ip[20];
 
     while (!s_wifi_init_complete && xTaskGetTickCount() < init_deadline) {
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -240,15 +240,19 @@ static port_err_t wifi_port_wait_ready(uint32_t timeout_ms)
         return PORT_ERR_IO;
     }
 
-    while (xTaskGetTickCount() < deadline) {
-        if (wifi_port_is_connected() && wifi_port_get_ip(ip, sizeof(ip)) == PORT_OK) {
-            return PORT_OK;
-        }
+    /*
+     * Poll on link_status misses bank-B OTA boots: N9 is silent ~30 s then
+     * fires PORT_SECURE.  Block on the same semaphores as lwip_net_ready().
+     */
+    APP_LOG_I("wifi", "waiting PORT_SECURE+DHCP tick=%lu",
+              (unsigned long)xTaskGetTickCount());
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+    if (lwip_net_ready_timed(timeout_ms) != 0) {
+        APP_LOG_W("wifi", "wait_ready: timeout %u ms", (unsigned)timeout_ms);
+        return PORT_ERR_IO;
     }
 
-    return PORT_ERR_IO;
+    return PORT_OK;
 }
 
 static bool wifi_port_is_connected(void)

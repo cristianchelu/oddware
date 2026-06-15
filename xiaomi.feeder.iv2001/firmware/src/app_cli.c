@@ -9,7 +9,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "cli.h"
+#include "app_cli.h"
+#include "app_cli_ota.h"
 #include "io_def.h"
 #include "task_def.h"
 
@@ -142,6 +143,54 @@ static cli_t s_cli = {
     .cmd   = app_cli_cmds,
 };
 
+static TaskHandle_t s_app_cli_task;
+static volatile bool s_suspended_for_ota;
+static volatile bool s_task_reclaimed;
+
+static void app_cli_task(void *param);
+
+static void app_cli_enter_ota_suspend(void)
+{
+    s_task_reclaimed = true;
+    s_app_cli_task = NULL;
+    vTaskDelete(NULL);
+}
+
+static bool app_cli_wait_suspended(uint32_t timeout_ms)
+{
+    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
+
+    while (xTaskGetTickCount() < deadline) {
+        if (s_task_reclaimed) {
+            return true;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    return s_task_reclaimed;
+}
+
+static bool app_cli_spawn_task(void)
+{
+    if (s_app_cli_task != NULL) {
+        return true;
+    }
+
+    s_task_reclaimed = false;
+
+    if (xTaskCreate(app_cli_task,
+                    "app_cli",
+                    APP_TASK_STACKSIZE / sizeof(portSTACK_TYPE),
+                    NULL,
+                    APP_TASK_PRIO,
+                    &s_app_cli_task) != pdPASS) {
+        app_log_error("cli", "uart console: task create failed");
+        return false;
+    }
+
+    return true;
+}
+
 static void app_cli_history_bind(cli_t *cli,
                                  char (*lines)[CLI_HISTORY_LINE],
                                  char **ptrs,
@@ -201,6 +250,10 @@ static void app_cli_task(void *param)
 #endif
 
     for (;;) {
+        if (s_suspended_for_ota) {
+            app_cli_enter_ota_suspend();
+        }
+
 #if REMOTE_CLI_ENABLE
         if (console_mux_remote_active()) {
             remote_cli_poll_override();
@@ -216,10 +269,34 @@ static void app_cli_task(void *param)
 
 void app_cli_start(void)
 {
-    xTaskCreate(app_cli_task,
-                "app_cli",
-                APP_TASK_STACKSIZE / sizeof(portSTACK_TYPE),
-                NULL,
-                APP_TASK_PRIO,
-                NULL);
+    (void)app_cli_spawn_task();
+}
+
+void app_cli_suspend_for_ota(void)
+{
+    TaskHandle_t task;
+
+    s_suspended_for_ota = true;
+
+    if (app_cli_wait_suspended(2000u)) {
+        return;
+    }
+
+    task = s_app_cli_task;
+    if (task != NULL) {
+        app_log_warn("cli", "uart console: force delete for ota");
+        s_app_cli_task = NULL;
+        s_task_reclaimed = true;
+        vTaskDelete(task);
+    }
+}
+
+void app_cli_resume_after_ota(void)
+{
+    s_suspended_for_ota = false;
+    s_task_reclaimed = false;
+
+    if (s_app_cli_task == NULL) {
+        (void)app_cli_spawn_task();
+    }
 }

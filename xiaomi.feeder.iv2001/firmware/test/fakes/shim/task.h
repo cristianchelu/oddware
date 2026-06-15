@@ -37,4 +37,7 @@ BaseType_t xTaskNotify(TaskHandle_t xTaskHandle,
 void *pvPortMalloc(size_t size);
 void vPortFree(void *ptr);
 
+size_t xPortGetFreeHeapSize(void);
+size_t xPortGetMinimumEverFreeHeapSize(void);
+
 #endif /* TASK_H */

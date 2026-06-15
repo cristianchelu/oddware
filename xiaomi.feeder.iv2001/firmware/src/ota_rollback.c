@@ -16,7 +16,8 @@
 #include "hal_cache.h"
 #include "hal_sys.h"
 
-#define OTA_ROLLBACK_TIMEOUT_MS 60000u
+/* Bank-B OTA warm boots need ~35 s Wi-Fi before MQTT; allow headroom. */
+#define OTA_ROLLBACK_TIMEOUT_MS 120000u
 
 static bool s_pending;
 static bool s_timer_running;

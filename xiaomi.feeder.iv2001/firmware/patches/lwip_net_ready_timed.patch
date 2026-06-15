@@ -1,0 +1,32 @@
+diff --git a/project/mt7682_hdk/apps/mqtt_client/src/wifi_lwip_helper.c b/project/mt7682_hdk/apps/mqtt_client/src/wifi_lwip_helper.c
+index e581eca9..fe2e8410 100644
+--- a/project/mt7682_hdk/apps/mqtt_client/src/wifi_lwip_helper.c
++++ b/project/mt7682_hdk/apps/mqtt_client/src/wifi_lwip_helper.c
+@@ -246,12 +246,24 @@ void lwip_net_stop(uint8_t opmode)
+   * @param None
+   * @retval None
+   */
+-void lwip_net_ready()
++int lwip_net_ready_timed(uint32_t timeout_ms)
+ {
+-    xSemaphoreTake(wifi_connected, portMAX_DELAY);
++    TickType_t ticks = (timeout_ms == 0u) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
++
++    if (xSemaphoreTake(wifi_connected, ticks) != pdTRUE) {
++        return -1;
++    }
+     if (dhcp_config_init() == STA_IP_MODE_DHCP) {
+-        xSemaphoreTake(ip_ready, portMAX_DELAY);
++        if (xSemaphoreTake(ip_ready, ticks) != pdTRUE) {
++            return -1;
++        }
+     }
++    return 0;
++}
++
++void lwip_net_ready()
++{
++    (void)lwip_net_ready_timed(0);
+ }
+ 
+ /**

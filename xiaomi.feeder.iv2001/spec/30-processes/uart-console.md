@@ -905,12 +905,11 @@ Override does **not** disable the listener or require an escape sequence.
 ### OTA download window
 
 During an OTA download (from preflight through verify/apply or failure),
-the telnet listener is torn down: active session closed, port 2323 not
-accepting connections, `remote_cli` task suspended. UART0 remains available
-for bench commands. After a failed OTA the listener restarts and logs
-`remote console listening on port 2323` on UART; after a successful OTA
-the device reboots and the listener comes up on the next boot when STA is
-ready. See [ota-flow.md](ota-flow.md) § Pre-download memory reclaim.
+the telnet listener is torn down and `app_cli` / `wifi_sta` tasks are
+suspended (stacks reclaimed). UART0 is not serviced until resume or reboot.
+After a failed OTA suspended tasks restart and logs include
+`remote console listening on port 2323` when enabled; after a successful OTA
+the device reboots. See [ota-flow.md](ota-flow.md) § Pre-download memory reclaim.
 
 ### Security
 

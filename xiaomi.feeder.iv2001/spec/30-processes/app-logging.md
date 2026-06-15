@@ -111,9 +111,9 @@ Canonical UART lines (message body only; full line includes timestamp prefix):
 Curated lines are emitted from `wifi_sta` via `app_log`. SDK syslog may also
 print link/DHCP lines (e.g. `DHCP got IP:…`) when `MTK_DEBUG_LEVEL=info`.
 
-`wifi_sta` blocks on `lwip_net_ready()` after `wifi_port` connect, then reads
-the STA IP. `EVT_WIFI_STA_CONNECTING` is posted from `wifi_sta_request_connect`
-before the connect task runs.
+`wifi_sta` calls `wifi_session_connect`, which blocks in `wait_ready` on
+SDK `PORT_SECURE` + DHCP semaphores. `EVT_WIFI_STA_CONNECTING` is posted from
+`wifi_sta_request_connect` before the connect task runs.
 
 ## MQTT milestones (tag `mqtt`)
 

@@ -15,6 +15,7 @@
 #include "mqtt_cred.h"
 #include "ota_preflight.h"
 #include "remote_cli.h"
+#include "app_cli_ota.h"
 
 static void seed_broker_config(void)
 {
@@ -64,6 +65,7 @@ void test_preflight_suspend_mqtt_blocks_connect(void)
 void test_preflight_suspend_remote_cli_ends_session(void)
 {
     remote_cli_test_reset_all();
+    app_cli_test_reset();
 
     TEST_ASSERT_TRUE(remote_cli_test_begin_session());
     TEST_ASSERT_TRUE(console_mux_remote_active());
@@ -73,6 +75,18 @@ void test_preflight_suspend_remote_cli_ends_session(void)
     TEST_ASSERT_FALSE(remote_cli_test_session_active());
     TEST_ASSERT_FALSE(console_mux_remote_active());
     TEST_ASSERT_TRUE(remote_cli_test_is_suspended_for_ota());
+    TEST_ASSERT_TRUE(app_cli_test_is_suspended_for_ota());
+}
+
+void test_preflight_resume_restores_app_cli(void)
+{
+    app_cli_test_reset();
+
+    TEST_ASSERT_EQUAL(PORT_OK, ota_preflight_suspend_idle_tasks());
+    TEST_ASSERT_TRUE(app_cli_test_is_suspended_for_ota());
+
+    ota_preflight_resume_idle_tasks();
+    TEST_ASSERT_FALSE(app_cli_test_is_suspended_for_ota());
 }
 
 void test_preflight_resume_restores_remote_cli(void)

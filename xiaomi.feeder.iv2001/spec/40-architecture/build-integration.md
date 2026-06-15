@@ -144,6 +144,20 @@ context). `connsys_force_n9_reset.patch` asserts `CONNSYS_SW_RST = 0x00`
 existing release (`= 0x18`). This forces a full N9 RAM clear and ROM
 re-init on every boot. `[design]`
 
+### FreeRTOS heap (`freertos_heap_192k.patch`)
+
+Petfeeder links `minicli/inc/FreeRTOSConfig.h`, not the mqtt_client copy.
+Patch raises `configTOTAL_HEAP_SIZE` to `[tune]` 192 KB so OTA preflight can
+reclaim idle task stacks and still spawn the `[tune]` 12 KB `ota_dl` worker.
+`[design]`
+
+### STA ready wait (`lwip_net_ready_timed.patch`)
+
+Adds `lwip_net_ready_timed(timeout_ms)` beside SDK `lwip_net_ready()`.
+`wifi_port.wait_ready` blocks on the same binary semaphores as the SDK helper
+instead of polling link status — required for bank-B boots where the N9 is
+silent for ~30 s before `PORT_SECURE`. `[design]`
+
 ### MQTT read short-poll (`mqtt_read_peek_before_select.patch`)
 
 The Paho MQTTClient-C `mqtt_read()` implementation uses a single blocking
