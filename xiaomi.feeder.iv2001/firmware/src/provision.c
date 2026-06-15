@@ -17,6 +17,7 @@
 #include "config_port.h"
 #include "http_server_adapter.h"
 #include "wifi_adapter.h"
+#include "wifi_sdk_profile.h"
 #include "mqtt_adapter.h"
 #include "mqtt_client.h"
 #include "mqtt_cred.h"
@@ -96,17 +97,12 @@ static void provision_build_ap_ssid(char *buf, size_t len)
 static bool provision_wait_wifi_ready(uint32_t timeout_ms)
 {
     const wifi_port_t *wifi = wifi_port_get();
-    TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(timeout_ms);
-    char ip[20];
 
-    while (xTaskGetTickCount() < deadline) {
-        if (wifi->is_connected() && wifi->get_ip(ip, sizeof(ip)) == PORT_OK) {
-            return true;
-        }
-        vTaskDelay(pdMS_TO_TICKS(200));
+    if (wifi == NULL || wifi->wait_ready == NULL) {
+        return false;
     }
 
-    return false;
+    return wifi->wait_ready(timeout_ms) == PORT_OK;
 }
 
 static port_err_t provision_http_stop(void)
@@ -172,7 +168,7 @@ static port_err_t provision_sta_connect(const char *ssid, const char *pass)
 
 static void provision_sta_abort(void)
 {
-    wifi_adapter_clear_sdk_sta_profile();
+    wifi_sdk_profile_invalidate();
 }
 
 static const provision_wifi_try_deps_t s_wifi_try_deps = {
@@ -352,7 +348,7 @@ static void provision_task(void *param)
     vTaskDelay(pdMS_TO_TICKS(PROVISION_SCHEDULER_DELAY_MS));
 
     mqtt_client_stop();
-    wifi_adapter_clear_sdk_sta_profile();
+    wifi_sdk_profile_invalidate();
     provision_build_ap_ssid(s_ap_ssid, sizeof(s_ap_ssid));
 
     if (wifi->start_ap(s_ap_ssid, "", PROVISION_AP_CHANNEL) != PORT_OK) {
@@ -406,7 +402,7 @@ bool provision_factory_reset(void)
         return false;
     }
 
-    wifi_adapter_clear_sdk_sta_profile();
+    wifi_sdk_profile_invalidate();
 
     hal_cache_disable();
     hal_cache_deinit();

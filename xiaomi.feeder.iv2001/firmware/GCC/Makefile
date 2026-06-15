@@ -97,6 +97,8 @@ endif
 APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
 APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_session.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_sdk_profile.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_cred.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_backoff.c
@@ -152,6 +154,7 @@ APP_FILES      += $(APP_PATH_SRC)/display_anim_builtin.c
 APP_FILES      += $(APP_PATH_SRC)/display_boot.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/wifi_sdk_hal.c
 APP_FILES      += $(APP_PATH_ADAPT)/http_server_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/provision_cgi.c
 APP_FILES      += $(APP_PATH_ADAPT)/mqtt_adapter.c

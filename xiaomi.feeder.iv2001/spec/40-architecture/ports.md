@@ -50,18 +50,24 @@ enabling assertion-based testing without hardware.
 
 ### `wifi_port.h`
 
+See [wifi-lifecycle.md](../30-processes/wifi-lifecycle.md) for connect,
+disconnect, and wait semantics.
+
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `connect` | `(ssid, pass) -> err` | Start STA association, return immediately; result arrives as `EVT_WIFI_CONNECTED` or `EVT_WIFI_DISCONNECTED` |
+| `disconnect` | `() -> err` | `lwip_net_stop(STA)` → `disconnect_ap` → `set_radio(0)`; idempotent |
+| `radio_up` | `() -> err` | `set_radio(1)` and `lwip_net_start(STA)` when stopped |
+| `connect` | `(ssid, pass) -> err` | Set SSID/PSK (or open), `reload_setting()`; **does not block** for DHCP |
+| `wait_ready` | `(timeout_ms) -> err` | Block for `PORT_SECURE` + DHCP; fails fast if stack init not complete |
 | `is_connected` | `() -> bool` | Current association state |
 | `get_ip` | `(buf, len) -> err` | Copy current IP string into buffer |
 | `start_ap` | `(ssid, pass, channel) -> err` | Start AP mode for provisioning |
 | `stop_ap` | `() -> err` | Tear down AP mode |
 
 Adapter: wraps SDK `wifi_init()`, `wifi_connection_register_event_handler()`,
-`lwip_network_init()`. Connect path: `set_ssid` → `set_wpa_psk_key` →
-`set_radio(1)` → `reload_setting()`. Radio-on is required because
-`wifi_adapter_wipe_sta_caches()` blanks the STA profile at boot.
+`lwip_network_init()`, and `wifi_lwip_helper` semaphores. Session orchestration
+(`radio_up` → `connect` → `wait_ready`) lives in `wifi_session.c`; the adapter
+binds individual SDK calls only.
 
 ### `mqtt_port.h`
 

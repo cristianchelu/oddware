@@ -1,9 +1,23 @@
 #ifndef TASK_DEF_H
 #define TASK_DEF_H
 
-#define TASK_PRIORITY_NORMAL         2
-#define TASK_PRIORITY_ABOVE_NORMAL     3
+#include "FreeRTOSConfig.h"
 
-#define APP_TASK_PRIO                TASK_PRIORITY_NORMAL
+typedef enum {
+    TASK_PRIORITY_IDLE = 0,
+    TASK_PRIORITY_SYSLOG,
+    TASK_PRIORITY_LOW,
+    TASK_PRIORITY_BELOW_NORMAL,
+    TASK_PRIORITY_NORMAL,
+    TASK_PRIORITY_ABOVE_NORMAL,
+    TASK_PRIORITY_HIGH,
+    TASK_PRIORITY_SOFT_REALTIME,
+    TASK_PRIORITY_HARD_REALTIME,
+    TASK_PRIORITY_TIMER = configMAX_PRIORITIES - 1,
+} task_priority_type_t;
+
+#define APP_TASK_NAME        "user entry"
+#define APP_TASK_STACKSIZE   (2048u * 4u)
+#define APP_TASK_PRIO        TASK_PRIORITY_NORMAL
 
 #endif /* TASK_DEF_H */

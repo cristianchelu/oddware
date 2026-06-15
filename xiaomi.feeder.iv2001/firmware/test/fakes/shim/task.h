@@ -19,6 +19,9 @@ void vTaskPrioritySet(TaskHandle_t task, UBaseType_t priority);
 UBaseType_t uxTaskPriorityGet(TaskHandle_t task);
 void vTaskDelete(TaskHandle_t task);
 
+uint32_t ulTaskNotifyTake(BaseType_t clear_count_on_exit, TickType_t block_time);
+void xTaskNotifyGive(TaskHandle_t task);
+
 BaseType_t xTaskNotifyWait(uint32_t ulBitsToClearOnEntry,
                            uint32_t ulBitsToClearOnExit,
                            uint32_t *pulNotificationValue,

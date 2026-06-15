@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SDK_DIR="$REPO_ROOT/external/linkit-sdk-v4.6.2-houndify"
 
 SDK_REPO="https://github.com/luvinland/linkit-sdk-v4.6.2-houndify.git"
-SDK_BRANCH="main"
+SDK_BRANCH="master"
 
 if [ -d "$SDK_DIR/.git" ]; then
     echo "SDK already present at $SDK_DIR"

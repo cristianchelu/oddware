@@ -12,7 +12,10 @@
 #include "port_err.h"
 
 typedef struct wifi_port {
+    port_err_t (*disconnect)(void);
+    port_err_t (*radio_up)(void);
     port_err_t (*connect)(const char *ssid, const char *pass);
+    port_err_t (*wait_ready)(uint32_t timeout_ms);
     bool (*is_connected)(void);
     port_err_t (*get_ip)(char *buf, size_t len);
     port_err_t (*start_ap)(const char *ssid, const char *pass, uint8_t channel);
