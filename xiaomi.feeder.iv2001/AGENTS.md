@@ -173,7 +173,8 @@ report it rather than guessing from OEM behavior.
 When writing firmware:
 
 - MQTT topics use `petfeeder/<device_id>/` only (see `spec/00-overview.md`).
-- No Mi/MIoT/Xiaomi strings in compiled source.
+- No Mi/MIoT/Xiaomi strings in compiled source, except HA discovery
+  `device.manufacturer` / `device.model` (retail hardware identity).
 - No OEM flash addresses, ROM symbol names, or RE tooling vocabulary in code.
 - Use datasheet-cited constants as written; use `[tune]` values from Tier 3
   specs and refine on the bench — do not invent undocumented timings or thresholds.

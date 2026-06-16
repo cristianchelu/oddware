@@ -34,7 +34,9 @@ Key hardware (detail in `10-hardware/`):
   used descriptively to identify compatible hardware.
 - **Project codename:** none needed; the repo path is the identifier.
 - **MQTT namespace:** `petfeeder/<device_id>/` — fully neutral, no brand strings.
-- **Firmware binary:** no Mi/MIoT/Xiaomi strings compiled into shipped code.
+- **Firmware binary:** no Mi/MIoT/Xiaomi strings in compiled code, except
+  Home Assistant discovery `device.manufacturer` / `device.model` (retail
+  product identity for the physical unit).
 
 ## Non-goals
 

@@ -7,8 +7,8 @@
 
 #include <stddef.h>
 
-#define MQTT_HA_MANUFACTURER  "Oddware"
-#define MQTT_HA_MODEL         "IV2001 Pet Feeder"
+#define MQTT_HA_MANUFACTURER  "Xiaomi"
+#define MQTT_HA_MODEL         "Smart Pet Food Feeder 2"
 
 int mqtt_ha_format_dispense_button_config(char *buf,
                                           size_t len,

@@ -62,8 +62,8 @@ publish discovery configs to:
 
 Each discovery message includes a `device` block with `identifiers`,
 `name`, `manufacturer`, `model` for unified HA device grouping.
-Manufacturer and model strings are neutral (no Mi/MIoT/Xiaomi branding in
-firmware); see [validation slice](#home-assistant-validation-slice).
+`manufacturer` and `model` identify the **physical hardware** (retail
+product), not the firmware author — see [validation slice](#home-assistant-validation-slice).
 
 ### Full entity table (planned)
 
@@ -94,8 +94,8 @@ prove autodiscovery on a real broker before the rest of the table lands.
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
 | `device.identifiers` | `["petfeeder_<device_id>"]` |
-| `device.manufacturer` | `Oddware` `[design]` |
-| `device.model` | `IV2001 Pet Feeder` `[design]` |
+| `device.manufacturer` | `Xiaomi` |
+| `device.model` | `Smart Pet Food Feeder 2` |
 
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based

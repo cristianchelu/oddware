@@ -37,8 +37,8 @@ void test_mqtt_ha_format_dispense_button_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_available\":\"online\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_not_available\":\"offline\""));
     TEST_ASSERT_NULL(strstr(buf, "value_template"));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"manufacturer\":\"Oddware\""));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"model\":\"IV2001 Pet Feeder\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"manufacturer\":\"" MQTT_HA_MANUFACTURER "\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"model\":\"" MQTT_HA_MODEL "\""));
 }
 
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
