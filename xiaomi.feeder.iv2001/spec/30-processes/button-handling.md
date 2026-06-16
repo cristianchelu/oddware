@@ -61,8 +61,9 @@ console ([app-logging.md](app-logging.md); tag `app`; message body only below):
   `EVT_DISPLAY_TICK` (same cadence as presentation refresh).
 - P0.3 and P1.0 also wake `EVT_BUTTON_IRQ` from GPIO4; `button_input` reads
   `button_port` after the IRQ debounce window — not in the ISR.
-- Classified gestures log stub UART lines until real actions are wired (see
-  below).
+- Classified gestures log UART lines at `debug` (tag `app`; see
+  [app-logging.md](app-logging.md)). Wired gestures also perform their
+  actions below.
 
 ## Gesture state machine
 
@@ -88,10 +89,13 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Short | Dispense one portion (`feed/default_g`, default `[tune]` 10 g) |
 | Long | `[design]` dispense double portion or ignore |
 
-- Blocked when child lock is active (no response; see lock indicator in
-  `display-presentation.md`).
+- Blocked when child lock is active: no dispense; blank digits and blink
+  `DISPLAY_ICON_CHILD_LOCK` at `[tune]` 200 ms on / 200 ms off for
+  `[tune]` 1 s per [display-presentation.md](display-presentation.md) § Lock
+  indicator; log `child_lock blocked` at `info`.
+- Short press calls `dispense_submit_portions(1)` when unlocked.
 - Queued if dispense already in progress.
-- Bring-up stub UART: `btn dispense short` / `btn dispense long`.
+- Gesture UART at `debug`: `btn dispense short` / `btn dispense long`.
 
 ### Rear power (P0.3)
 
@@ -118,7 +122,9 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 
 - **Physical:** hold P0.4 (reset) + P1.0 (dispense) simultaneously for
   `[tune]` 3 s → toggle child lock state.
-- Bring-up stub UART: `btn child_lock toggle`.
+- Toggles `feed/child_lock` in NVDM; sets or clears `DISPLAY_ICON_CHILD_LOCK`;
+  logs `child_lock on` / `child_lock off` at `info`. Gesture UART at `debug`:
+  `btn child_lock toggle`.
 - **MQTT:** `cmd/config {"child_lock": true|false}`.
 
 ### Behavior when locked

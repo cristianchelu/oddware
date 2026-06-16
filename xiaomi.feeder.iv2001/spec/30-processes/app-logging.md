@@ -185,6 +185,16 @@ Completion / fault lines (`done`, `fault: stuck`) remain on tag `cli` from
 `dispense_cli` until a later refactor. MQTT ingress is logged once at tag
 `mqtt` (see above); `mqtt_dispense_cmd` does not log.
 
+## Button and child lock (tag `app`)
+
+| Event | Level | Line |
+|-------|-------|------|
+| Debounced press (any button) | `info` | `btn <name> pressed` |
+| Classified gesture | `debug` | `btn <name> short` / `btn <name> long` / `btn child_lock toggle` |
+| Child lock toggled on | `info` | `child_lock on` |
+| Child lock toggled off | `info` | `child_lock off` |
+| Dispense blocked while locked | `info` | `child_lock blocked` |
+
 ## API (application code)
 
 ```c

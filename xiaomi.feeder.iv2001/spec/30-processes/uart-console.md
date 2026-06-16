@@ -49,7 +49,7 @@ display number <0-999> [g|%]
 display icon <name> on|off
 display icon <name> blink <on_ms> <off_ms>
 display icon <name> steady
-display anim <ota|lock> [loop]
+display anim <ota> [loop]
 display anim stop
 display brightness <1-4>
 weigh power on|off
@@ -529,14 +529,14 @@ started.
 | Unknown name | `unknown icon` |
 | Presentation failure | `display icon steady failed (<reason>)` |
 
-### `display anim <ota|lock> [loop]`
+### `display anim <ota> [loop]`
 
 Plays built-in animation. Optional `loop` repeats until `display anim stop`.
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `display anim ok` |
-| Missing name | `usage: display anim <ota|lock> [loop]` |
+| Missing name | `usage: display anim <ota> [loop]` |
 | Unknown name | `unknown animation` |
 | Presentation failure | `display anim failed (<reason>)` |
 

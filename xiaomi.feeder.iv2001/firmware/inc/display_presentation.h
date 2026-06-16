@@ -32,7 +32,6 @@ typedef struct display_animation {
 
 typedef enum {
     DISPLAY_ANIM_OTA,
-    DISPLAY_ANIM_LOCK_BUSY,
     DISPLAY_BUILTIN_ANIM_COUNT
 } display_builtin_anim_t;
 

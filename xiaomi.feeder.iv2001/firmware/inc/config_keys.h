@@ -26,6 +26,9 @@
 #define CONFIG_KEY_CALIB_SPAN_G    "span_g"
 #define CONFIG_KEY_CALIB_SPAN_RAW  "span_raw"
 
+#define CONFIG_GROUP_FEED          "feed"
+#define CONFIG_KEY_CHILD_LOCK      "child_lock"
+
 #define CONFIG_GROUP_POWER                 "power"
 #define CONFIG_KEY_POWER_BATT_SCALE_X1000  "batt_scale_x1000"
 

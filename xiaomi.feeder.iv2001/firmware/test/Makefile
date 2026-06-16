@@ -29,6 +29,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/provision_portal.c \
              ../src/provision_reset.c \
              ../src/mqtt_cred.c \
+             ../src/feed_config.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
@@ -60,6 +61,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_presentation.c \
              ../src/display_wifi_indicator.c \
              ../src/display_dispense_indicator.c \
+             ../src/display_child_lock_indicator.c \
              ../src/display_mqtt_indicator.c \
              ../src/display_anim_builtin.c \
              ../src/display_boot.c \

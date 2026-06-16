@@ -15,6 +15,7 @@
 #include "button_port.h"
 #include "config_port.h"
 #include "display_mqtt_indicator.h"
+#include "display_child_lock_indicator.h"
 #include "display_presentation.h"
 #include "display_wifi_indicator.h"
 #include "mqtt_client.h"
@@ -28,6 +29,7 @@
 #include "port_err.h"
 #include "dispense.h"
 #include "dispense_cli.h"
+#include "feed_config.h"
 #include "hopper_input.h"
 #include "hopper_ir_port.h"
 #include "power_source_input.h"
@@ -272,14 +274,51 @@ static void app_button_log_gesture(const button_gesture_event_t *ev)
     }
 
     if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
-        app_button_log_line("btn child_lock toggle");
+        (void)snprintf(line, sizeof(line), "btn child_lock toggle");
+        app_log_debug("app", "%s", line);
+        (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "%s", line);
         return;
     }
 
     label = app_button_press_label(ev->id);
     kind = (ev->kind == BUTTON_GESTURE_LONG) ? "long" : "short";
     (void)snprintf(line, sizeof(line), "btn %s %s", label, kind);
-    app_button_log_line(line);
+    app_log_debug("app", "%s", line);
+    (void)snprintf(s_test_btn_log, sizeof(s_test_btn_log), "%s", line);
+}
+
+static void app_child_lock_sync_display(bool locked)
+{
+    if (display_child_lock_indicator_feedback_active()) {
+        return;
+    }
+
+    (void)display_presentation_icon_set(DISPLAY_ICON_CHILD_LOCK, locked);
+}
+
+static void app_button_handle_gesture(const button_gesture_event_t *ev)
+{
+    if (ev == NULL) {
+        return;
+    }
+
+    if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
+        bool locked = feed_config_child_lock_toggle();
+
+        app_child_lock_sync_display(locked);
+        app_log_info("app", "child_lock %s", locked ? "on" : "off");
+        return;
+    }
+
+    if (ev->id == BUTTON_ID_DISPENSE && ev->kind == BUTTON_GESTURE_SHORT) {
+        if (feed_config_child_lock_is_active()) {
+            display_child_lock_indicator_blocked_feedback(true, ev->at_ms);
+            app_log_info("app", "child_lock blocked");
+            return;
+        }
+
+        (void)dispense_submit_portions(1u);
+    }
 }
 
 void app_test_clear_btn_log(void)
@@ -320,6 +359,7 @@ static void app_button_drain(void)
 
     while (button_gesture_pop(&gesture)) {
         app_button_log_gesture(&gesture);
+        app_button_handle_gesture(&gesture);
     }
 }
 
@@ -340,6 +380,7 @@ void app_dispatch(const app_event_t *ev)
     case EVT_APP_BOOT:
         s_display_mode = APP_DISPLAY_MODE_WEIGHT;
         display_presentation_reset();
+        app_child_lock_sync_display(feed_config_child_lock_is_active());
         app_weight_boot_arm();
         break;
 
@@ -383,10 +424,17 @@ void app_dispatch(const app_event_t *ev)
 
     case EVT_DISPLAY_TICK:
         dispense_poll();
-        app_weight_resample_after_dispense_if_needed();
-        app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
-        (void)display_presentation_tick(ev->u.display_tick.now_ms);
         app_button_poll(ev->u.display_tick.now_ms);
+        if (!display_child_lock_indicator_feedback_active()) {
+            app_weight_resample_after_dispense_if_needed();
+            app_weight_idle_on_display_tick(ev->u.display_tick.now_ms);
+        }
+        (void)display_presentation_tick(ev->u.display_tick.now_ms);
+        if (display_child_lock_indicator_poll(ev->u.display_tick.now_ms)) {
+            app_child_lock_sync_display(feed_config_child_lock_is_active());
+            app_weight_sync_display_scene();
+            (void)display_presentation_refresh();
+        }
         hopper_input_poll(ev->u.display_tick.now_ms);
         power_source_input_poll(ev->u.display_tick.now_ms);
         break;

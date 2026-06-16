@@ -1,4 +1,4 @@
-/* Tests: spec/30-processes/app-event-loop.md */
+/* Tests: spec/30-processes/app-event-loop.md, button-handling.md */
 
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +7,7 @@
 
 #include "app.h"
 #include "app_event.h"
+#include "button_gesture.h"
 #include "config_keys.h"
 #include "fake_button_port.h"
 #include "fake_config_port.h"
@@ -17,12 +18,14 @@
 #include "fake_weight_port.h"
 #include "fake_motor_port.h"
 #include "dispense.h"
+#include "feed_config.h"
 #include "motor_port_provider_host.h"
 #include "mqtt_client.h"
 #include "mqtt_client_test.h"
 #include "mqtt_cred.h"
 #include "ota_client.h"
 #include "display_presentation.h"
+#include "display_child_lock_indicator.h"
 #include "display_wifi_indicator.h"
 #include "display_mqtt_indicator.h"
 
@@ -528,6 +531,155 @@ void test_app_button_short_gesture_logs_on_release(void)
 
     TEST_ASSERT_TRUE(app_test_take_btn_log(log, sizeof(log)));
     TEST_ASSERT_EQUAL_STRING("btn power short", log);
+}
+
+static void app_dispense_short_press_sequence(void)
+{
+    button_sample_t down = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = true,
+    };
+    button_sample_t up = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+
+    fake_button_port_set_sample(&down);
+    post_display_tick(0u);
+    app_step();
+    post_display_tick(50u);
+    app_step();
+
+    fake_button_port_set_sample(&up);
+    post_display_tick(100u);
+    app_step();
+    post_display_tick(150u);
+    app_step();
+}
+
+void test_app_dispense_short_submits_portion(void)
+{
+    app_test_reset();
+    motor_port_host_reset();
+    fake_motor_port_reset();
+    dispense_test_reset();
+    fake_button_port_reset();
+
+    app_dispense_short_press_sequence();
+
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_EQUAL_UINT(0, fake_motor_port_burst_calls());
+    app_step();
+    TEST_ASSERT_EQUAL_UINT(1, fake_motor_port_burst_calls());
+    TEST_ASSERT_EQUAL_UINT(1, fake_motor_port_last_pulse_target());
+}
+
+void test_app_dispense_short_blocked_when_locked(void)
+{
+    app_test_reset();
+    motor_port_host_reset();
+    fake_motor_port_reset();
+    dispense_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    app_dispense_short_press_sequence();
+
+    TEST_ASSERT_FALSE(dispense_is_active());
+    TEST_ASSERT_EQUAL_UINT(0, fake_motor_port_burst_calls());
+}
+
+void test_app_child_lock_blocked_keeps_digits_blank_during_feedback(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+    button_sample_t down = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = true,
+    };
+    button_sample_t up = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+
+    app_test_reset();
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    fake_weight_port_set_read_grams(42);
+    fake_display_port_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    post_event(EVT_APP_BOOT);
+    app_step();
+    post_timer_tick();
+    app_step();
+    post_timer_tick();
+    app_step();
+
+    post_display_tick(500u);
+    app_step();
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_NOT_EQUAL(0x00u, grids[2]);
+
+    fake_button_port_set_sample(&down);
+    post_display_tick(550u);
+    app_step();
+    post_display_tick(600u);
+    app_step();
+    fake_button_port_set_sample(&up);
+    post_display_tick(650u);
+    app_step();
+    post_display_tick(700u);
+    app_step();
+
+    TEST_ASSERT_TRUE(display_child_lock_indicator_feedback_active());
+
+    post_display_tick(900u);
+    app_step();
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_UINT8(0x00u, grids[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x00u, grids[1]);
+    TEST_ASSERT_EQUAL_UINT8(0x00u, grids[2]);
+
+    post_display_tick(1700u);
+    app_step();
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_NOT_EQUAL(0x00u, grids[2]);
+}
+
+void test_app_child_lock_combo_toggles_state(void)
+{
+    const config_port_t *cfg = fake_config_port_get();
+    char buf[8];
+    button_sample_t both_down = {
+        .power_pressed = false,
+        .reset_pressed = true,
+        .dispense_pressed = true,
+    };
+
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+
+    fake_button_port_set_sample(&both_down);
+    post_display_tick(0u);
+    app_step();
+    post_display_tick(50u);
+    app_step();
+    post_display_tick(50u + BUTTON_GESTURE_CHILD_LOCK_MS + 50u);
+    app_step();
+
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      cfg->read(CONFIG_GROUP_FEED, CONFIG_KEY_CHILD_LOCK, buf, sizeof(buf)));
+    TEST_ASSERT_EQUAL_STRING("1", buf);
+    TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
 }
 
 void test_app_weight_updates_during_mqtt_connecting(void)

@@ -637,11 +637,5 @@ bool display_presentation_parse_builtin_anim(const char *name,
         }
         return true;
     }
-    if (strcmp(name, "lock") == 0) {
-        if (out != NULL) {
-            *out = DISPLAY_ANIM_LOCK_BUSY;
-        }
-        return true;
-    }
     return false;
 }

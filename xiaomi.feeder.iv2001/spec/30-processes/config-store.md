@@ -38,6 +38,13 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | system | ota_pending | bool | 0 | Set to `1` before bank swap; cleared on successful post-OTA MQTT connect (OTA rollback health check) |
 | system | last_reset | enum | — | Reason for last reset (watchdog / ota / user / power) |
 
+Firmware constants in `firmware/inc/config_keys.h`:
+
+| Constant | Value |
+|----------|-------|
+| `CONFIG_GROUP_FEED` | `feed` |
+| `CONFIG_KEY_CHILD_LOCK` | `child_lock` |
+
 ## Access pattern
 
 | Phase | Behavior |

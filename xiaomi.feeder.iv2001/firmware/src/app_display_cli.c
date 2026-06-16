@@ -183,7 +183,7 @@ static uint8_t display_cli_anim_cmd(uint8_t argc, char *argv[])
     port_err_t err;
 
     if (argc < 1 || argv[0] == NULL) {
-        app_log_info("cli", "usage: display anim <ota|lock> [loop]");
+        app_log_info("cli", "usage: display anim <ota> [loop]");
         return 1;
     }
 

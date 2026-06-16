@@ -246,22 +246,6 @@ oval. Segment order per digit: A, B, C, D, E, F (`0x01`, `0x02`, `0x04`,
 | 4 | `0x10` | `0x01` | `0x04` |
 | 5 | `0x20` | `0x02` | `0x08` |
 
-### Lock busy (`DISPLAY_ANIM_LOCK_BUSY`)
-
-Eight frames, `[tune]` 125 ms each. Segment chase on the tens digit (grid 1)
-only; grids 0, 2, 3, 4 are `0x00`.
-
-| Frame | Grid 1 |
-|-------|--------|
-| 0 | `0x01` |
-| 1 | `0x02` |
-| 2 | `0x04` |
-| 3 | `0x08` |
-| 4 | `0x10` |
-| 5 | `0x20` |
-| 6 | `0x40` |
-| 7 | `0x20` |
-
 ## Display modes
 
 | Mode | Content | When | Update rate |
@@ -290,9 +274,10 @@ local midnight per [monitoring.md](../20-stories/monitoring.md).
 
 ## Lock indicator
 
-When child lock blocks a button press, show the busy/lock spinner pattern
-(multi-frame digit animation in [display-driver.md](display-driver.md)) for
-`[tune]` ~1 s, then restore the active mode content.
+When child lock blocks a button press, blank the digit area and unit for
+`[tune]` 1 s while `DISPLAY_ICON_CHILD_LOCK` blinks at `[tune]` 200 ms on /
+200 ms off, then restore the active mode content (steady lock icon remains if
+child lock is still active).
 
 ## Power policy
 

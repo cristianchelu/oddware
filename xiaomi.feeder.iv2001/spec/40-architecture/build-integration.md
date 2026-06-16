@@ -211,6 +211,16 @@ short `ADC` profile loans, not continuous GPIO17 hold.
 Module: `firmware/inc/app_log.h`, `firmware/src/app_log.c`. Linked in
 `firmware/GCC/Makefile` and host `firmware/test/Makefile`.
 
+### Feed config (`feed_config`)
+
+Module: `firmware/inc/feed_config.h`, `firmware/src/feed_config.c`. Loads and
+stores `feed/child_lock` via `config_port`. Linked in `firmware/GCC/Makefile`
+and host `firmware/test/Makefile` (`HOST_SRCS`).
+
+Child-lock blocked feedback (`display_child_lock_indicator.c`) blanks digits and
+blinks `DISPLAY_ICON_CHILD_LOCK` for `[tune]` 1 s — linked alongside other
+display indicator helpers.
+
 SDK syslog stays at `info`; curated application lines use `app_log` via the same
 `log_write()` console path (`io_def.c`). Console hardware is initialized by
 `bsp_io_def_uart_init()` in `prvSetupHardware()` before `app_log_init()` —
