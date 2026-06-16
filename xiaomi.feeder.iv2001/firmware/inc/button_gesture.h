@@ -33,5 +33,6 @@ void button_gesture_reset(void);
 void button_gesture_on_transition(const button_transition_t *tr);
 void button_gesture_step(uint32_t now_ms);
 bool button_gesture_pop(button_gesture_event_t *ev);
+bool button_gesture_is_combo_partner_gesture(const button_gesture_event_t *ev);
 
 #endif /* BUTTON_GESTURE_H */

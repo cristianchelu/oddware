@@ -218,8 +218,11 @@ stores `feed/child_lock` via `config_port`. Linked in `firmware/GCC/Makefile`
 and host `firmware/test/Makefile` (`HOST_SRCS`).
 
 Child-lock blocked feedback (`display_child_lock_indicator.c`) blanks digits and
-blinks `DISPLAY_ICON_CHILD_LOCK` for `[tune]` 1 s — linked alongside other
-display indicator helpers.
+blinks `DISPLAY_ICON_CHILD_LOCK` for `[tune]` 1 s; `cancel()` stops feedback
+when the combo toggles lock. Combo partner gestures are suppressed in
+`button_gesture.c` (session from both-down until both-up) and dropped in
+`app.c` after `CHILD_LOCK_TOGGLE` in the same drain batch — linked alongside
+other display indicator helpers.
 
 SDK syslog stays at `info`; curated application lines use `app_log` via the same
 `log_write()` console path (`io_def.c`). Console hardware is initialized by

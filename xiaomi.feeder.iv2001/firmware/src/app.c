@@ -293,6 +293,7 @@ static void app_child_lock_sync_display(bool locked)
         return;
     }
 
+    (void)display_presentation_icon_blink_stop(DISPLAY_ICON_CHILD_LOCK);
     (void)display_presentation_icon_set(DISPLAY_ICON_CHILD_LOCK, locked);
 }
 
@@ -303,20 +304,22 @@ static void app_button_handle_gesture(const button_gesture_event_t *ev)
     }
 
     if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
-        bool locked = feed_config_child_lock_toggle();
+        bool locked;
 
+        display_child_lock_indicator_cancel();
+        locked = feed_config_child_lock_toggle();
         app_child_lock_sync_display(locked);
         app_log_info("app", "child_lock %s", locked ? "on" : "off");
         return;
     }
 
-    if (ev->id == BUTTON_ID_DISPENSE && ev->kind == BUTTON_GESTURE_SHORT) {
-        if (feed_config_child_lock_is_active()) {
-            display_child_lock_indicator_blocked_feedback(true, ev->at_ms);
-            app_log_info("app", "child_lock blocked");
-            return;
-        }
+    if (feed_config_child_lock_is_active()) {
+        display_child_lock_indicator_blocked_feedback(true, ev->at_ms);
+        app_log_info("app", "child_lock blocked");
+        return;
+    }
 
+    if (ev->id == BUTTON_ID_DISPENSE && ev->kind == BUTTON_GESTURE_SHORT) {
         (void)dispense_submit_portions(1u);
     }
 }
@@ -345,10 +348,9 @@ bool app_test_take_btn_log(char *buf, size_t len)
     return true;
 }
 
-static void app_button_drain(void)
+static void app_button_apply_transitions(void)
 {
     button_transition_t tr;
-    button_gesture_event_t gesture;
 
     while (button_input_pop_transition(&tr)) {
         if (tr.edge == BUTTON_EDGE_DOWN) {
@@ -356,8 +358,21 @@ static void app_button_drain(void)
         }
         button_gesture_on_transition(&tr);
     }
+}
+
+static void app_button_drain_gestures(void)
+{
+    button_gesture_event_t gesture;
+    bool suppress_combo_partners = false;
 
     while (button_gesture_pop(&gesture)) {
+        if (gesture.kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
+            suppress_combo_partners = true;
+        } else if (suppress_combo_partners &&
+                   button_gesture_is_combo_partner_gesture(&gesture)) {
+            continue;
+        }
+
         app_button_log_gesture(&gesture);
         app_button_handle_gesture(&gesture);
     }
@@ -366,8 +381,9 @@ static void app_button_drain(void)
 static void app_button_poll(uint32_t now_ms)
 {
     button_input_poll(now_ms);
+    app_button_apply_transitions();
     button_gesture_step(now_ms);
-    app_button_drain();
+    app_button_drain_gestures();
 }
 
 void app_dispatch(const app_event_t *ev)

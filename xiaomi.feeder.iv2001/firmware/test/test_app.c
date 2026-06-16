@@ -8,6 +8,7 @@
 #include "app.h"
 #include "app_event.h"
 #include "button_gesture.h"
+#include "button_input.h"
 #include "config_keys.h"
 #include "fake_button_port.h"
 #include "fake_config_port.h"
@@ -533,12 +534,12 @@ void test_app_button_short_gesture_logs_on_release(void)
     TEST_ASSERT_EQUAL_STRING("btn power short", log);
 }
 
-static void app_dispense_short_press_sequence(void)
+static void app_button_short_press(button_id_t id, uint32_t base_ms)
 {
     button_sample_t down = {
         .power_pressed = false,
         .reset_pressed = false,
-        .dispense_pressed = true,
+        .dispense_pressed = false,
     };
     button_sample_t up = {
         .power_pressed = false,
@@ -546,17 +547,36 @@ static void app_dispense_short_press_sequence(void)
         .dispense_pressed = false,
     };
 
+    switch (id) {
+    case BUTTON_ID_POWER:
+        down.power_pressed = true;
+        break;
+    case BUTTON_ID_RESET:
+        down.reset_pressed = true;
+        break;
+    case BUTTON_ID_DISPENSE:
+        down.dispense_pressed = true;
+        break;
+    default:
+        break;
+    }
+
     fake_button_port_set_sample(&down);
-    post_display_tick(0u);
+    post_display_tick(base_ms);
     app_step();
-    post_display_tick(50u);
+    post_display_tick(base_ms + 50u);
     app_step();
 
     fake_button_port_set_sample(&up);
-    post_display_tick(100u);
+    post_display_tick(base_ms + 100u);
     app_step();
-    post_display_tick(150u);
+    post_display_tick(base_ms + 150u);
     app_step();
+}
+
+static void app_dispense_short_press_sequence(void)
+{
+    app_button_short_press(BUTTON_ID_DISPENSE, 0u);
 }
 
 void test_app_dispense_short_submits_portion(void)
@@ -590,6 +610,130 @@ void test_app_dispense_short_blocked_when_locked(void)
 
     TEST_ASSERT_FALSE(dispense_is_active());
     TEST_ASSERT_EQUAL_UINT(0, fake_motor_port_burst_calls());
+}
+
+void test_app_power_short_blocked_when_locked(void)
+{
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    app_button_short_press(BUTTON_ID_POWER, 0u);
+
+    TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
+    TEST_ASSERT_TRUE(display_child_lock_indicator_feedback_active());
+}
+
+void test_app_reset_short_blocked_when_locked(void)
+{
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    app_button_short_press(BUTTON_ID_RESET, 0u);
+
+    TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
+    TEST_ASSERT_TRUE(display_child_lock_indicator_feedback_active());
+}
+
+void test_app_child_lock_combo_unlocks_when_locked(void)
+{
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    {
+        button_sample_t both_down = {
+            .power_pressed = false,
+            .reset_pressed = true,
+            .dispense_pressed = true,
+        };
+
+        fake_button_port_set_sample(&both_down);
+        post_display_tick(0u);
+        app_step();
+        post_display_tick(50u);
+        app_step();
+        post_display_tick(50u + BUTTON_GESTURE_CHILD_LOCK_MS + 50u);
+        app_step();
+    }
+
+    TEST_ASSERT_FALSE(feed_config_child_lock_is_active());
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+}
+
+void test_app_child_lock_combo_unlocks_staggered_press(void)
+{
+    button_sample_t reset_down = {
+        .power_pressed = false,
+        .reset_pressed = true,
+        .dispense_pressed = false,
+    };
+    button_sample_t both_down = {
+        .power_pressed = false,
+        .reset_pressed = true,
+        .dispense_pressed = true,
+    };
+
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    fake_button_port_set_sample(&reset_down);
+    post_display_tick(0u);
+    app_step();
+    post_display_tick(50u);
+    app_step();
+    post_display_tick(400u);
+    app_step();
+
+    fake_button_port_set_sample(&both_down);
+    post_display_tick(500u);
+    app_step();
+    post_display_tick(550u);
+    app_step();
+
+    post_display_tick(BUTTON_GESTURE_CHILD_LOCK_MS + 50u);
+    app_step();
+
+    TEST_ASSERT_FALSE(feed_config_child_lock_is_active());
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+}
+
+void test_app_child_lock_combo_unlocks_without_blocked_feedback(void)
+{
+    app_test_reset();
+    fake_button_port_reset();
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_child_lock_set(true));
+
+    {
+        button_sample_t both_down = {
+            .power_pressed = false,
+            .reset_pressed = true,
+            .dispense_pressed = true,
+        };
+
+        fake_button_port_set_sample(&both_down);
+        post_display_tick(0u);
+        app_step();
+        post_display_tick(50u);
+        app_step();
+        post_display_tick(50u + BUTTON_GESTURE_DISPENSE_LONG_MS);
+        app_step();
+        TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
+        TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+
+        post_display_tick(50u + BUTTON_GESTURE_CHILD_LOCK_MS + 50u);
+        app_step();
+    }
+
+    TEST_ASSERT_FALSE(feed_config_child_lock_is_active());
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
 }
 
 void test_app_child_lock_blocked_keeps_digits_blank_during_feedback(void)
@@ -654,32 +798,77 @@ void test_app_child_lock_blocked_keeps_digits_blank_during_feedback(void)
     TEST_ASSERT_NOT_EQUAL(0x00u, grids[2]);
 }
 
-void test_app_child_lock_combo_toggles_state(void)
+static void app_child_lock_combo_lock_on_staggered_ticks(bool dispense_first)
 {
     const config_port_t *cfg = fake_config_port_get();
     char buf[8];
+    button_sample_t first_down = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
     button_sample_t both_down = {
         .power_pressed = false,
         .reset_pressed = true,
         .dispense_pressed = true,
     };
+    button_sample_t all_up = {
+        .power_pressed = false,
+        .reset_pressed = false,
+        .dispense_pressed = false,
+    };
+    uint32_t t;
+
+    if (dispense_first) {
+        first_down.dispense_pressed = true;
+    } else {
+        first_down.reset_pressed = true;
+    }
 
     app_test_reset();
     fake_button_port_reset();
     fake_config_port_reset();
+    TEST_ASSERT_FALSE(feed_config_child_lock_is_active());
+
+    fake_button_port_set_sample(&first_down);
+    for (t = 0u; t <= 400u; t += 50u) {
+        post_display_tick(t);
+        app_step();
+        TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+    }
 
     fake_button_port_set_sample(&both_down);
-    post_display_tick(0u);
-    app_step();
-    post_display_tick(50u);
-    app_step();
-    post_display_tick(50u + BUTTON_GESTURE_CHILD_LOCK_MS + 50u);
-    app_step();
+    for (t = 450u; t <= (BUTTON_GESTURE_CHILD_LOCK_MS + 100u); t += 50u) {
+        post_display_tick(t);
+        app_step();
+        TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+    }
 
+    TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
     TEST_ASSERT_EQUAL(PORT_OK,
                       cfg->read(CONFIG_GROUP_FEED, CONFIG_KEY_CHILD_LOCK, buf, sizeof(buf)));
     TEST_ASSERT_EQUAL_STRING("1", buf);
+
+    fake_button_port_set_sample(&all_up);
+    post_display_tick(BUTTON_GESTURE_CHILD_LOCK_MS + 150u);
+    app_step();
+    post_display_tick(BUTTON_GESTURE_CHILD_LOCK_MS + 200u);
+    app_step();
+
     TEST_ASSERT_TRUE(feed_config_child_lock_is_active());
+    TEST_ASSERT_FALSE(display_child_lock_indicator_feedback_active());
+}
+
+/* Regression: lock-on must not show blocked-feedback blink */
+void test_app_child_lock_combo_locks_on_reset_first_staggered(void)
+{
+    app_child_lock_combo_lock_on_staggered_ticks(false);
+}
+
+void test_app_child_lock_combo_locks_on_dispense_first_staggered(void)
+{
+    app_child_lock_combo_lock_on_staggered_ticks(true);
 }
 
 void test_app_weight_updates_during_mqtt_connecting(void)

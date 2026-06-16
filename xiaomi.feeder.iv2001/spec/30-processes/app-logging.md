@@ -193,7 +193,7 @@ Completion / fault lines (`done`, `fault: stuck`) remain on tag `cli` from
 | Classified gesture | `debug` | `btn <name> short` / `btn <name> long` / `btn child_lock toggle` |
 | Child lock toggled on | `info` | `child_lock on` |
 | Child lock toggled off | `info` | `child_lock off` |
-| Dispense blocked while locked | `info` | `child_lock blocked` |
+| Physical gesture blocked while locked | `info` | `child_lock blocked` |
 
 ## API (application code)
 

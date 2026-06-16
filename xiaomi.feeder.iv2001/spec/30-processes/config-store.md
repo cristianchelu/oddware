@@ -23,7 +23,7 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | mqtt | tls | bool | false | Enable TLS; `true` rejected at `mqtt_cred_load` until TLS adapter exists |
 | feed | mode | enum | open_loop | Dispense mode: open_loop / compensated |
 | feed | default_g | uint8 | 10 | Manual button portion grams |
-| feed | child_lock | bool | false | Physical controls locked |
+| feed | child_lock | bool | false | All physical button gestures blocked except unlock combo |
 | display | mode | enum | weight | Display mode: weight / eaten_today / off |
 | display | brightness | uint8 | 4 | TM1637 brightness (1–4, maps to `0x88`–`0x8B`) |
 | schedule | slots | blob | [] | Serialized schedule array (up to 32 slots) |

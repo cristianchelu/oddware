@@ -26,6 +26,58 @@ static uint8_t s_event_tail;
 static uint32_t s_combo_start_ms;
 static bool s_combo_active;
 static bool s_combo_fired;
+static bool s_combo_session;
+
+static bool button_gesture_is_combo_partner(button_id_t id)
+{
+    return id == BUTTON_ID_RESET || id == BUTTON_ID_DISPENSE;
+}
+
+bool button_gesture_is_combo_partner_gesture(const button_gesture_event_t *ev)
+{
+    if (ev == NULL) {
+        return false;
+    }
+
+    if (ev->kind == BUTTON_GESTURE_CHILD_LOCK_TOGGLE) {
+        return false;
+    }
+
+    return button_gesture_is_combo_partner(ev->id) &&
+           (ev->kind == BUTTON_GESTURE_SHORT || ev->kind == BUTTON_GESTURE_LONG);
+}
+
+static void button_gesture_purge_combo_partner_events(void)
+{
+    button_gesture_event_t kept[BUTTON_GESTURE_EVENT_QUEUE_DEPTH];
+    uint8_t kept_count = 0u;
+    uint8_t idx = s_event_head;
+
+    while (idx != s_event_tail) {
+        const button_gesture_event_t *ev = &s_event_queue[idx];
+
+        if (!button_gesture_is_combo_partner_gesture(ev) &&
+            kept_count < BUTTON_GESTURE_EVENT_QUEUE_DEPTH) {
+            kept[kept_count] = *ev;
+            kept_count++;
+        }
+
+        idx = (uint8_t)((idx + 1u) % BUTTON_GESTURE_EVENT_QUEUE_DEPTH);
+    }
+
+    s_event_head = 0u;
+    s_event_tail = kept_count;
+    for (uint8_t i = 0u; i < kept_count; i++) {
+        s_event_queue[i] = kept[i];
+    }
+}
+
+static void button_gesture_end_combo_session_if_released(void)
+{
+    if (!s_down[BUTTON_ID_RESET] && !s_down[BUTTON_ID_DISPENSE]) {
+        s_combo_session = false;
+    }
+}
 
 static uint32_t button_gesture_long_ms(button_id_t id)
 {
@@ -57,19 +109,31 @@ static void button_gesture_enqueue(button_id_t id,
     s_event_tail = next;
 }
 
+static uint32_t button_gesture_combo_anchor_ms(void)
+{
+    uint32_t reset_ms = s_channels[BUTTON_ID_RESET].down_ms;
+    uint32_t dispense_ms = s_channels[BUTTON_ID_DISPENSE].down_ms;
+
+    return reset_ms < dispense_ms ? reset_ms : dispense_ms;
+}
+
 static void button_gesture_update_combo(uint32_t at_ms)
 {
+    (void)at_ms;
+
     if (s_down[BUTTON_ID_RESET] && s_down[BUTTON_ID_DISPENSE]) {
         if (!s_combo_active) {
             s_combo_active = true;
-            s_combo_start_ms = at_ms;
+            s_combo_start_ms = button_gesture_combo_anchor_ms();
             s_combo_fired = false;
+            s_combo_session = true;
         }
         return;
     }
 
     s_combo_active = false;
     s_combo_fired = false;
+    button_gesture_end_combo_session_if_released();
 }
 
 void button_gesture_reset(void)
@@ -80,6 +144,7 @@ void button_gesture_reset(void)
     s_event_tail = 0u;
     s_combo_active = false;
     s_combo_fired = false;
+    s_combo_session = false;
     s_combo_start_ms = 0u;
 
     for (i = 0u; i < (sizeof(s_channels) / sizeof(s_channels[0])); i++) {
@@ -110,6 +175,14 @@ void button_gesture_on_transition(const button_transition_t *tr)
     }
 
     s_down[tr->id] = false;
+
+    if (s_combo_session && button_gesture_is_combo_partner(tr->id)) {
+        button_gesture_update_combo(tr->at_ms);
+        ch->state = BTN_GESTURE_STATE_IDLE;
+        ch->long_fired = false;
+        return;
+    }
+
     button_gesture_update_combo(tr->at_ms);
 
     if (ch->state == BTN_GESTURE_STATE_HELD && !ch->long_fired) {
@@ -131,12 +204,18 @@ void button_gesture_step(uint32_t now_ms)
                                BUTTON_GESTURE_CHILD_LOCK_TOGGLE,
                                now_ms);
         s_combo_fired = true;
+        button_gesture_purge_combo_partner_events();
     }
 
     for (i = 0u; i < (sizeof(s_channels) / sizeof(s_channels[0])); i++) {
         btn_channel_gesture_t *ch = &s_channels[i];
 
         if (ch->state != BTN_GESTURE_STATE_HELD || ch->long_fired) {
+            continue;
+        }
+
+        if (s_combo_session &&
+            (i == (size_t)BUTTON_ID_RESET || i == (size_t)BUTTON_ID_DISPENSE)) {
             continue;
         }
 

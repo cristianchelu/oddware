@@ -14,6 +14,7 @@
 
 void display_child_lock_indicator_blocked_feedback(bool restore_steady_icon,
                                                    uint32_t now_ms);
+void display_child_lock_indicator_cancel(void);
 bool display_child_lock_indicator_poll(uint32_t now_ms);
 bool display_child_lock_indicator_feedback_active(void);
 void display_child_lock_indicator_test_reset(void);

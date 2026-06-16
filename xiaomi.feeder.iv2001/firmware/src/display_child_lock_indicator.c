@@ -40,6 +40,17 @@ void display_child_lock_indicator_blocked_feedback(bool restore_steady_icon,
     (void)display_presentation_refresh();
 }
 
+void display_child_lock_indicator_cancel(void)
+{
+    if (!s_feedback_active) {
+        return;
+    }
+
+    (void)display_presentation_icon_blink_stop(DISPLAY_ICON_CHILD_LOCK);
+    s_feedback_active = false;
+    s_feedback_until_ms = 0u;
+}
+
 bool display_child_lock_indicator_poll(uint32_t now_ms)
 {
     if (!s_feedback_active) {

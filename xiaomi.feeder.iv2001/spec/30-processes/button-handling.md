@@ -79,8 +79,18 @@ threshold and no long press fired for that down cycle.
 | Reset (P0.4) | release before long fired, hold &lt; `[tune]` 1 s | hold ≥ `[tune]` 7 s | `[tune]` 7000 ms |
 | Combo (P0.4 + P1.0) | — | both held ≥ `[tune]` 3 s | `[tune]` 3000 ms |
 
-Combo emits `CHILD_LOCK_TOGGLE` (not per-button). Child-lock policy (ignore
-dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
+Combo timer starts from the **earlier** of the two button down times once both
+are held (staggered press within a few hundred ms still counts as one 3 s hold).
+
+Combo emits `CHILD_LOCK_TOGGLE` (not per-button). Child-lock policy (block
+every physical gesture except combo when locked) is applied in `app`, not in
+`button_gesture`.
+
+While reset and dispense are both held and the combo has not fired yet,
+per-button **long** gestures on those two buttons are suppressed so dispense
+long (`[tune]` 2 s) does not preempt the `[tune]` 3 s combo. After the combo
+fires, reset/dispense short and long are suppressed until both buttons are
+released so lock-on/off does not look like a blocked gesture.
 
 ### Manual dispense (P1.0)
 
@@ -89,7 +99,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Short | Dispense one portion (`feed/default_g`, default `[tune]` 10 g) |
 | Long | `[design]` dispense double portion or ignore |
 
-- Blocked when child lock is active: no dispense; blank digits and blink
+- Blocked when child lock is active: no action; blank digits and blink
   `DISPLAY_ICON_CHILD_LOCK` at `[tune]` 200 ms on / 200 ms off for
   `[tune]` 1 s per [display-presentation.md](display-presentation.md) § Lock
   indicator; log `child_lock blocked` at `info`.
@@ -104,6 +114,7 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Short | Wake from sleep / toggle Wi-Fi indicator |
 | Long | Enter sleep mode (see `power-state-machine.md`) |
 
+- Blocked when child lock is active (see § Child lock).
 - IRQ remains enabled in sleep mode for wake-up.
 - Bring-up stub UART: `btn power short` / `btn power long`.
 
@@ -114,27 +125,29 @@ dispense/reset short when locked) is applied in `app`, not in `button_gesture`.
 | Short | Re-enter AP mode temporarily (30 s timeout, see `provisioning-flow.md`) |
 | Long | Full factory reset: clear all NVDM, reboot into provisioning |
 
-- Bring-up stub UART: `btn reset short` / `btn reset long`.
+- Blocked when child lock is active (see § Child lock).
 
 ## Child lock
 
 ### Activation
 
-- **Physical:** hold P0.4 (reset) + P1.0 (dispense) simultaneously for
-  `[tune]` 3 s → toggle child lock state.
-- Toggles `feed/child_lock` in NVDM; sets or clears `DISPLAY_ICON_CHILD_LOCK`;
-  logs `child_lock on` / `child_lock off` at `info`. Gesture UART at `debug`:
-  `btn child_lock toggle`.
+- **Physical:** hold P0.4 (reset) + P1.0 (dispense) for `[tune]` 3 s → toggle
+  child lock state. The 3 s window starts when the **first** of the two buttons
+  goes down; the second may follow within a few hundred ms.
+- Toggles `feed/child_lock` in NVDM; sets or clears `DISPLAY_ICON_CHILD_LOCK`
+  (steady on when active); logs `child_lock on` / `child_lock off` at `info`.
+  No blocked-feedback blink on toggle — only the steady icon changes. Gesture
+  UART at `debug`: `btn child_lock toggle`.
 - **MQTT:** `cmd/config {"child_lock": true|false}`.
 
 ### Behavior when locked
 
-- Manual dispense button (P1.0): ignored (lock indicator per
-  `display-presentation.md`).
-- Pin-hole reset short press (P0.4): ignored.
-- Pin-hole reset long press (P0.4, 7 s): **still works** (factory reset must
-  always be accessible).
-- Rear power (P0.3): **still works** (sleep/wake must always be accessible).
+- **Only** the reset+dispense combo (`CHILD_LOCK_TOGGLE`) is handled; it
+  toggles child lock off.
+- Every other classified gesture on any button (dispense, reset, power — short
+  or long) is ignored: no dispense, provisioning, sleep, or factory reset.
+  Show lock feedback per `display-presentation.md` § Lock indicator; log
+  `child_lock blocked` at `info`.
 - MQTT commands: **unaffected** by child lock.
 
 ### Persistence

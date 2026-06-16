@@ -53,6 +53,13 @@ Wi-Fi and MQTT indicators are independent — both may be active at once.
   compensated mode, through post-dispense weigh settle until bowl grams update).
 - **Off** when no dispense is running.
 
+### Child lock indicator
+
+- **Steady on** while child lock is active.
+- **Brief blank digits + blinking lock pictograph** when a physical button
+  gesture is blocked by child lock (see [controls.md](controls.md) § Child
+  lock). MQTT and other status pictographs stay as they were during feedback.
+
 ## Brightness
 
 - Configurable via MQTT: 4 levels (1 = dimmest, 4 = brightest).

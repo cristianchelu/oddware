@@ -274,10 +274,11 @@ local midnight per [monitoring.md](../20-stories/monitoring.md).
 
 ## Lock indicator
 
-When child lock blocks a button press, blank the digit area and unit for
-`[tune]` 1 s while `DISPLAY_ICON_CHILD_LOCK` blinks at `[tune]` 200 ms on /
-200 ms off, then restore the active mode content (steady lock icon remains if
-child lock is still active).
+When child lock blocks a physical button gesture, blank the digit area and
+unit for `[tune]` 1 s while `DISPLAY_ICON_CHILD_LOCK` blinks at `[tune]`
+200 ms on / 200 ms off, then restore the active mode content (steady lock
+icon remains if child lock is still active). The reset+dispense combo toggle
+does **not** use this feedback — only the steady lock icon changes.
 
 ## Power policy
 

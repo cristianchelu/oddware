@@ -55,8 +55,8 @@ Replacement firmware is under active development. User goals live in
 ### Controls
 
 - [x] Physical button input and gesture detection
-- [ ] Manual dispense button
-- [ ] Child lock
+- [x] Manual dispense button
+- [x] Child lock [partial] (all physical gestures blocked except unlock combo; MQTT `cmd/config` pending)
 
 ### Power & battery
 
