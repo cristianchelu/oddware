@@ -57,7 +57,9 @@ disconnect, and wait semantics.
 |----------|-----------|----------|
 | `disconnect` | `() -> err` | `lwip_net_stop(STA)` → `disconnect_ap` → `set_radio(0)`; idempotent |
 | `radio_up` | `() -> err` | `set_radio(1)` and `lwip_net_start(STA)` when stopped |
-| `connect` | `(ssid, pass) -> err` | Set SSID/PSK (or open), `reload_setting()`; **does not block** for DHCP |
+| `set_credentials` | `(ssid, pass) -> err` | Set SSID/PSK (or open security); **no** `reload_setting` |
+| `arm_connect` | `() -> err` | `wifi_config_reload_setting()` only |
+| `connect` | `(ssid, pass) -> err` | `set_credentials` then `arm_connect`; convenience for provisioning |
 | `wait_ready` | `(timeout_ms) -> err` | Block on SDK `PORT_SECURE` + DHCP semaphores via `lwip_net_ready_timed`; fails fast if stack init not complete |
 | `is_connected` | `() -> bool` | Current association state |
 | `get_ip` | `(buf, len) -> err` | Copy current IP string into buffer |
@@ -66,8 +68,8 @@ disconnect, and wait semantics.
 
 Adapter: wraps SDK `wifi_init()`, `wifi_connection_register_event_handler()`,
 `lwip_network_init()`, and `wifi_lwip_helper` semaphores. Session orchestration
-(`radio_up` → `connect` → `wait_ready`) lives in `wifi_session.c`; the adapter
-binds individual SDK calls only.
+(`set_credentials` → `radio_up` → `arm_connect` → `wait_ready`) lives in
+`wifi_session.c`; the adapter binds individual SDK calls only.
 
 ### `mqtt_port.h`
 

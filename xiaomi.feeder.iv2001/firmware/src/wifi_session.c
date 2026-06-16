@@ -1,5 +1,7 @@
 /*
  * Wi-Fi session orchestration — spec/30-processes/wifi-lifecycle.md
+ *
+ * Connect order: set_credentials → radio_up → arm_connect → wait_ready.
  */
 
 #include "wifi_port.h"
@@ -31,7 +33,15 @@ port_err_t wifi_session_connect(const char *ssid, const char *pass, uint32_t tim
 {
     const wifi_port_t *wifi = wifi_port_get();
 
-    if (wifi == NULL || wifi->connect == NULL || wifi->wait_ready == NULL) {
+    if (wifi == NULL
+        || wifi->set_credentials == NULL
+        || wifi->radio_up == NULL
+        || wifi->arm_connect == NULL
+        || wifi->wait_ready == NULL) {
+        return PORT_ERR_IO;
+    }
+
+    if (wifi->set_credentials(ssid, pass) != PORT_OK) {
         return PORT_ERR_IO;
     }
 
@@ -39,7 +49,7 @@ port_err_t wifi_session_connect(const char *ssid, const char *pass, uint32_t tim
         return PORT_ERR_IO;
     }
 
-    if (wifi->connect(ssid, pass) != PORT_OK) {
+    if (wifi->arm_connect() != PORT_OK) {
         return PORT_ERR_IO;
     }
 

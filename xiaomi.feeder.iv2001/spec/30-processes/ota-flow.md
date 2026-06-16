@@ -102,10 +102,12 @@ ensures N9 RAM is cleared regardless of WDT warm reboot state.
 
 ### Known limitation: bank-B boot delay
 
+Canonical description: [wifi-lifecycle.md](wifi-lifecycle.md) § Bank-B boot delay.
+
 Booting from flash bank B (OTA apply, manual `bank switch`, or cold start
 when bank B is active) exhibits a ~30 s gap with no UART progress while the
 N9 coprocessor is idle, then Wi-Fi association and DHCP complete in a few
-more seconds (~38 s total to `EVT_WIFI_STA_READY` on bench). `[probe]`
+more seconds (~42 s total to `EVT_WIFI_STA_READY` on bench). `[probe]`
 
 During the gap the display shows no Wi-Fi icon (connect task is blocked in
 `wait_ready`; `EVT_WIFI_STA_CONNECTING` was already posted). This is **not**
@@ -119,10 +121,13 @@ in the prebuilt N9 ROM (`libwifi_mt7682_ram.a`). Tested mitigations that did
 - Force N9 SW reset at boot (clears RAM / PMKSA — still ~30 s)
 - Preserve STA NVDM credentials through reboot (still ~30 s)
 - Skip pre-reboot `disconnect_ap` (still ~30 s)
+- Credential-before-radio connect order (`set_credentials` → `radio_up` →
+  `arm_connect`) `[probe]` 2026-06-16 — still ~42 s to `STA ready` on
+  `bank switch` to B
 
-Bank-A boots after B→A OTA connect in ~1 s. Cold boots when bank A is active
-connect in ~2 s. A→B OTA warm reboots are the slow path; acceptable for
-monthly update events. `[probe]`
+Bank-A boots after B→A hop reach `STA ready` in ~1 s. Cold boots when bank A
+is active connect in ~2 s. Any bank-B boot is the slow path (~42 s on bench);
+acceptable for monthly OTA events. `[probe]`
 
 ## Rollback
 

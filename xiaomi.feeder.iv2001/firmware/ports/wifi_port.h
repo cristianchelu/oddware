@@ -1,5 +1,8 @@
 /*
  * WiFi port — spec/40-architecture/ports.md
+ *
+ * STA connect stages: set_credentials → radio_up → arm_connect → wait_ready
+ * (wifi_session.c). connect() is set_credentials + arm_connect for provisioning.
  */
 
 #ifndef WIFI_PORT_H
@@ -14,6 +17,8 @@
 typedef struct wifi_port {
     port_err_t (*disconnect)(void);
     port_err_t (*radio_up)(void);
+    port_err_t (*set_credentials)(const char *ssid, const char *pass);
+    port_err_t (*arm_connect)(void);
     port_err_t (*connect)(const char *ssid, const char *pass);
     port_err_t (*wait_ready)(uint32_t timeout_ms);
     bool (*is_connected)(void);

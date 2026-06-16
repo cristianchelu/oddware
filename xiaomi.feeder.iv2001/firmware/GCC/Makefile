@@ -100,6 +100,7 @@ APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
 APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_session.c
+APP_FILES      += $(APP_PATH_SRC)/wifi_boot_policy.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sdk_profile.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_cred.c

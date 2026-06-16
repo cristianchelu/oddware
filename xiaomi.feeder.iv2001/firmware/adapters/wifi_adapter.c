@@ -48,19 +48,14 @@ static void wifi_adapter_set_ap_network_profile(void)
 }
 
 /*
- * Wipe SDK-internal STA caches that poison association after reboot.
+ * Wipe SDK-internal STA caches before wifi_init().
  *
- * wifi_init() reads ALL STA/* NVDM keys and loads them into the N9
- * coprocessor.  After a warm reboot (OTA) the N9 RAM may still hold a
- * stale PMKSA from the previous session.  The AP has already evicted its
- * side, so the cached PMK causes MIC failure on msg 3 and a ~38 s gap
- * between scan-match and connect-start in the N9 ROM.
+ * wifi_init() reads STA/* NVDM keys and loads them into the N9. Blanking the
+ * profile avoids ghost credentials and PMK_INFO confusing association. App
+ * credentials are staged again in wifi_session_connect
+ * (set_credentials → radio_up → arm_connect).
  *
- * Wiping the STA/* profile forces wifi_init() to hand the N9 a blank
- * slate.  Credentials are re-set via set_ssid/set_psk before
- * reload_setting() in wifi_port_connect().
- *
- * Must run BEFORE wifi_init() which reads these keys.
+ * Must run BEFORE wifi_init().
  */
 static void wifi_adapter_wipe_sta_caches(void)
 {
@@ -84,7 +79,7 @@ static void wifi_adapter_wipe_sta_caches(void)
                          sizeof(zeros));
 
     /* Blank the STA profile so wifi_init() does not pre-load stale
-     * credentials into the N9.  We re-set them in wifi_port_connect(). */
+     * credentials into the N9.  We re-set them in wifi_port_set_credentials(). */
     nvdm_write_data_item("STA", "SsidLen",
                          NVDM_DATA_ITEM_TYPE_STRING,
                          (const uint8_t *)zero, 1);
@@ -153,7 +148,7 @@ void wifi_adapter_stack_init(void)
     }
 }
 
-static port_err_t wifi_port_connect(const char *ssid, const char *pass)
+static port_err_t wifi_port_set_credentials(const char *ssid, const char *pass)
 {
     uint8_t ssid_len;
     uint8_t pass_len;
@@ -173,9 +168,6 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
         return PORT_ERR_INVALID_ARG;
     }
 
-    APP_LOG_I("wifi", "connect: ssid=\"%s\" tick=%lu",
-              ssid, (unsigned long)xTaskGetTickCount());
-
     if (wifi_config_set_ssid(WIFI_PORT_STA, (uint8_t *)ssid, ssid_len) < 0) {
         return PORT_ERR_IO;
     }
@@ -190,6 +182,11 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
         return PORT_ERR_IO;
     }
 
+    return PORT_OK;
+}
+
+static port_err_t wifi_port_arm_connect(void)
+{
     APP_LOG_I("wifi", "reload_setting tick=%lu",
               (unsigned long)xTaskGetTickCount());
 
@@ -198,6 +195,22 @@ static port_err_t wifi_port_connect(const char *ssid, const char *pass)
     }
 
     return PORT_OK;
+}
+
+static port_err_t wifi_port_connect(const char *ssid, const char *pass)
+{
+    port_err_t err;
+
+    /* Provisioning convenience: set_credentials + arm_connect when radio is already up. */
+    APP_LOG_I("wifi", "connect: ssid=\"%s\" tick=%lu",
+              ssid, (unsigned long)xTaskGetTickCount());
+
+    err = wifi_port_set_credentials(ssid, pass);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    return wifi_port_arm_connect();
 }
 
 static port_err_t wifi_port_disconnect(void)
@@ -241,8 +254,8 @@ static port_err_t wifi_port_wait_ready(uint32_t timeout_ms)
     }
 
     /*
-     * Poll on link_status misses bank-B OTA boots: N9 is silent ~30 s then
-     * fires PORT_SECURE.  Block on the same semaphores as lwip_net_ready().
+     * Bank-B boots: link_status stays down while N9 is idle (~30 s) before
+     * PORT_SECURE. Block on the same semaphores as lwip_net_ready().
      */
     APP_LOG_I("wifi", "waiting PORT_SECURE+DHCP tick=%lu",
               (unsigned long)xTaskGetTickCount());
@@ -369,6 +382,8 @@ static port_err_t wifi_port_stop_ap(void)
 static const wifi_port_t s_wifi_port = {
     .disconnect = wifi_port_disconnect,
     .radio_up = wifi_port_radio_up,
+    .set_credentials = wifi_port_set_credentials,
+    .arm_connect = wifi_port_arm_connect,
     .connect = wifi_port_connect,
     .wait_ready = wifi_port_wait_ready,
     .is_connected = wifi_port_is_connected,

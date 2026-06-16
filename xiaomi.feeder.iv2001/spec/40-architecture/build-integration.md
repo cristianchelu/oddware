@@ -131,9 +131,11 @@ association; the connect task reads only the `wifi` group.
 
 `wifi_adapter_wipe_sta_caches()` runs before `wifi_init()` on every boot to
 blank the STA profile (`StaFastLink`, `PMK_INFO`, `STA/Ssid`, `STA/WpaPsk`).
-This prevents the N9 from loading stale PMKSA / credentials that cause MIC
-failures after a warm reboot. Credentials are re-set in `wifi_port_connect()`
-via `set_ssid` / `set_psk` / `set_radio(1)` / `reload_setting()`.
+This prevents the N9 from loading stale PMKSA / credentials that can confuse
+association after WDT reboot. Credentials are staged in `wifi_port_set_credentials()`
+and association is armed after `wifi_port_radio_up()` via `wifi_port_arm_connect()`
+(`set_credentials` → `radio_up` → `arm_connect`); see
+[wifi-lifecycle.md](../30-processes/wifi-lifecycle.md).
 
 ### N9 force reset at boot (`connsys_force_n9_reset.patch`)
 

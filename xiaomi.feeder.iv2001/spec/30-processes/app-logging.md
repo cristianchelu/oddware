@@ -105,7 +105,10 @@ Canonical UART lines (message body only; full line includes timestamp prefix):
 
 | Event | Line |
 |-------|------|
+| Stack init | `wiped STA profile + PMK caches` |
 | Before association | `connecting to "<ssid>"` |
+| Arm connect | `reload_setting` |
+| Waiting link | `waiting PORT_SECURE+DHCP` — may block ~30 s on bank-B boots while N9 is idle |
 | STA ready | `STA ready, IP <dotted-quad>` |
 | Connect API failure | `connect failed` |
 | Missing credentials | `no valid credentials in NVDM` |
@@ -114,9 +117,12 @@ Canonical UART lines (message body only; full line includes timestamp prefix):
 Curated lines are emitted from `wifi_sta` via `app_log`. SDK syslog may also
 print link/DHCP lines (e.g. `DHCP got IP:…`) when `MTK_DEBUG_LEVEL=info`.
 
-`wifi_sta` calls `wifi_session_connect`, which blocks in `wait_ready` on
-SDK `PORT_SECURE` + DHCP semaphores. `EVT_WIFI_STA_CONNECTING` is posted from
-`wifi_sta_request_connect` before the connect task runs.
+`wifi_sta` calls `wifi_session_connect`
+(`set_credentials` → `radio_up` → `arm_connect` → `wait_ready`), which blocks in
+`wait_ready` on SDK `PORT_SECURE` + DHCP semaphores. `EVT_WIFI_STA_CONNECTING`
+is posted from `wifi_sta_request_connect` before the connect task runs.
+Connect timeout uses `wifi_boot_connect_timeout_ms(active bank)` — see
+[wifi-lifecycle.md](wifi-lifecycle.md) § Bank-B boot delay.
 
 ## MQTT milestones (tag `mqtt`)
 

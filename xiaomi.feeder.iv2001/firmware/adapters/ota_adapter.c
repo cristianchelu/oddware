@@ -62,13 +62,10 @@ static void ota_adapter_report(ota_status_t status, uint8_t pct, const char *err
 static void ota_adapter_reboot(void)
 {
     /*
-     * Disconnect then WDT reboot into the new bank.
-     *
-     * The N9 coprocessor is force-reset at boot by
-     * connsys_force_n9_reset.patch, so we only need a clean WiFi
-     * disconnect here.  A ~30s reconnect delay on bank-B boots is a
-     * known limitation of the prebuilt N9 firmware's __seek_and_connect
-     * timeout and cannot be fixed from the CM4 side.
+     * Disconnect before WDT reboot into the inactive bank. N9 is force-reset on
+     * next boot (connsys_force_n9_reset.patch). Bank-B boots may show ~30 s
+     * N9 idle before STA ready (__seek_and_connect in N9 ROM) — not fixable
+     * from CM4; see spec/30-processes/wifi-lifecycle.md § Bank-B boot delay.
      */
     APP_LOG_I("ota", "pre-reboot: disconnect AP");
     (void)wifi_connection_disconnect_ap();

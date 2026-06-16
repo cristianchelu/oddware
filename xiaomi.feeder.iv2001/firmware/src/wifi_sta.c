@@ -1,5 +1,7 @@
 /*
  * Wi-Fi STA bring-up — spec/30-processes/wifi-lifecycle.md, uart-console.md
+ *
+ * Connect timeout comes from wifi_boot_connect_timeout_ms(active bank).
  */
 
 #include <string.h>
@@ -9,9 +11,11 @@
 
 #include "app_log.h"
 #include "app_event.h"
+#include "boot_bank_target.h"
 #include "config_port.h"
 #include "wifi_cred.h"
 #include "wifi_port.h"
+#include "wifi_boot_policy.h"
 #include "task_def.h"
 #ifndef HOST_TEST
 #include "wifi_adapter.h"
@@ -61,7 +65,8 @@ static void wifi_sta_run_connect(void)
     APP_LOG_I("wifi", "connecting to \"%s\" tick=%lu",
               ssid, (unsigned long)t0);
 
-    if (wifi_session_connect(ssid, pass, WIFI_SESSION_CONNECT_TIMEOUT_MS) != PORT_OK) {
+    if (wifi_session_connect(ssid, pass,
+                             wifi_boot_connect_timeout_ms(boot_bank_query_active())) != PORT_OK) {
         APP_LOG_E("wifi", "connect failed");
         wifi_sta_post(EVT_WIFI_STA_FAILED);
         return;

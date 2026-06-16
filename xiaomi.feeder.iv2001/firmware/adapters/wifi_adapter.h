@@ -1,5 +1,7 @@
 /*
  * Wi-Fi adapter helpers — spec/40-architecture/ports.md
+ *
+ * stack_init() wipes STA/* before wifi_init(); connect stages live in wifi_port.
  */
 
 #ifndef WIFI_ADAPTER_H
