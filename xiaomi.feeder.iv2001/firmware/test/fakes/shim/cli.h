@@ -12,4 +12,30 @@ typedef struct cmd {
     struct cmd *sub;
 } cmd_t;
 
+typedef struct cli_history {
+    char **history;
+    char *input;
+    char *parse_token;
+    int history_max;
+    int line_max;
+    int index;
+    int position;
+    int full;
+} cli_history_t;
+
+typedef struct cli {
+    int state;
+    int echo;
+    int (*get)(void);
+    int (*put)(int);
+    cmd_t *cmd;
+    cli_history_t history;
+} cli_t;
+
+void cli_init(cli_t *cb);
+
+#ifdef HOST_TEST
+cli_t *cli_host_active(void);
+#endif
+
 #endif /* CLI_H */

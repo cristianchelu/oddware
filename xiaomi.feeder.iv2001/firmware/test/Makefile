@@ -8,7 +8,8 @@ BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
 UNITY_SRC := unity/unity.c
 TEST_SRCS := $(wildcard test_*.c)
-HOST_SRCS := ../src/app_log.c \
+HOST_SRCS :=              ../src/app_log.c \
+             ../src/app_cli_active.c \
              ../src/console_mux.c \
              ../src/console_uart.c \
              ../src/remote_cli.c \
@@ -43,6 +44,8 @@ HOST_SRCS := ../src/app_log.c \
              ../src/ota_client.c \
              ../src/ota_preflight.c \
              fakes/stub_app_cli_ota.c \
+             fakes/stub_app_cli_session.c \
+             fakes/shim/minicli_host.c \
              ../src/ota_url.c \
              ../src/ota_image.c \
              ../src/ota_rollback.c \

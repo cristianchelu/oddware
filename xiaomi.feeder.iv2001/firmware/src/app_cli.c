@@ -10,6 +10,7 @@
 #include "task.h"
 
 #include "app_cli.h"
+#include "app_cli_active.h"
 #include "app_cli_ota.h"
 #include "io_def.h"
 #include "task_def.h"
@@ -245,6 +246,7 @@ static void app_cli_task(void *param)
     s_cli.get   = __io_getchar;
     s_cli.put   = __io_putchar;
     s_cli.cmd   = app_cli_cmds;
+    app_cli_set_uart_cli(&s_cli);
     cli_init(&s_cli);
 
 #if REMOTE_CLI_ENABLE
@@ -261,6 +263,7 @@ static void app_cli_task(void *param)
             remote_cli_poll_override();
             vTaskDelay(1);
         } else {
+            app_cli_restore_local();
             cli_task();
         }
 #else

@@ -55,6 +55,61 @@ void test_remote_cli_mux_released_after_disconnect(void)
     console_mux_release_remote();
 }
 
+void test_remote_cli_second_session_after_disconnect(void)
+{
+    /* Regression: second telnet connect must succeed after remote exit. */
+    remote_cli_test_reset_all();
+
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_request_disconnect();
+
+    TEST_ASSERT_FALSE(remote_cli_test_session_active());
+    TEST_ASSERT_FALSE(console_mux_remote_active());
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_end_session();
+}
+
+void test_remote_cli_second_session_after_peer_hangup(void)
+{
+    /* Regression: mux and listener must accept a new client after peer FIN. */
+    remote_cli_test_reset_all();
+
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_peer_hangup();
+
+    TEST_ASSERT_FALSE(remote_cli_test_session_active());
+    TEST_ASSERT_FALSE(console_mux_remote_active());
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_end_session();
+}
+
+void test_remote_cli_new_connect_preempts_stale_session(void)
+{
+    /* Regression: new TCP connect must preempt an active session (latest wins). */
+    remote_cli_test_reset_all();
+
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_set_reconnect_pending(true);
+    remote_cli_test_session_io_tick();
+
+    TEST_ASSERT_FALSE(remote_cli_test_session_active());
+    TEST_ASSERT_FALSE(console_mux_remote_active());
+    TEST_ASSERT_TRUE(remote_cli_test_begin_session());
+    remote_cli_test_end_session();
+}
+
+/* Regression: MiniCLI uxtb(-1) is 0xFF (telnet IAC) and spins in _cli_getline(). */
+void test_remote_cli_session_end_get_avoids_minicli_uxtb_trap(void)
+{
+    int end_byte = remote_cli_test_session_end_get_byte();
+    unsigned char uxtb_minus_one = (unsigned char)-1;
+
+    TEST_ASSERT_EQUAL_UINT8(0xFFu, uxtb_minus_one);
+    TEST_ASSERT_NOT_EQUAL(-1, end_byte);
+    TEST_ASSERT_EQUAL_INT('\n', end_byte);
+    TEST_ASSERT_EQUAL_UINT8((unsigned char)'\n', (unsigned char)end_byte);
+}
+
 void test_remote_cli_disconnect_no_local_message(void)
 {
     remote_cli_test_reset_all();

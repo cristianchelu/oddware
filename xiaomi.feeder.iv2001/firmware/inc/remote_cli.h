@@ -14,8 +14,12 @@ void remote_cli_resume_after_ota(void);
 
 #ifdef HOST_TEST
 void remote_cli_test_reset(void);
+int remote_cli_test_session_end_get_byte(void);
 bool remote_cli_test_begin_session(void);
 void remote_cli_test_end_session(void);
+void remote_cli_test_peer_hangup(void);
+void remote_cli_test_set_reconnect_pending(bool pending);
+void remote_cli_test_session_io_tick(void);
 bool remote_cli_test_service_session(void);
 bool remote_cli_test_sink_attached(void);
 bool remote_cli_test_session_active(void);

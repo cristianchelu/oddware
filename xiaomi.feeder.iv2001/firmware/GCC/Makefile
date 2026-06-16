@@ -87,6 +87,7 @@ APP_FILES      += $(APP_PATH_SRC)/app_log.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank.c
 APP_FILES      += $(APP_PATH_SRC)/boot_bank_target.c
 APP_FILES      += $(APP_PATH_SRC)/app_cli.c
+APP_FILES      += $(APP_PATH_SRC)/app_cli_active.c
 APP_FILES      += $(APP_PATH_SRC)/console_mux.c
 ifeq ($(REMOTE_CLI_ENABLE),y)
 CFLAGS += -DREMOTE_CLI_ENABLE=1

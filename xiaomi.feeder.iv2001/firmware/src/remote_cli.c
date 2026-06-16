@@ -123,6 +123,16 @@ static int remote_cli_telnet_rx_byte(uint8_t c)
     }
 }
 
+/*
+ * MiniCLI _cli_getline() applies uxtb() to get() — returning -1 becomes 0xFF
+ * (telnet IAC) and spins forever without checking cb->state. Return '\n' so
+ * the current line ends and cli_task() can exit when state==0.
+ */
+int remote_cli_session_end_get_byte(void)
+{
+    return (int)(unsigned char)'\n';
+}
+
 #ifndef HOST_TEST
 
 #include <errno.h>
@@ -132,25 +142,52 @@ static int remote_cli_telnet_rx_byte(uint8_t c)
 #include "task.h"
 
 #include "cli.h"
+#include "lwip/inet.h"
 #include "lwip/sockets.h"
 #include "task_def.h"
 
 #include "app_cli.h"
 
+#define RCLI_TAG                  "rcli"
 #define REMOTE_CLI_PORT           2323
 #define REMOTE_CLI_STACK_WORDS    (APP_TASK_STACKSIZE / sizeof(portSTACK_TYPE))
+/* [tune] 0 = disabled; non-zero ends idle sessions with no client bytes. */
+#define REMOTE_CLI_IDLE_TIMEOUT_MS  0u
+#define REMOTE_CLI_SOCK_RCVTIMEO_MS 100u
 
 static TaskHandle_t s_remote_cli_task;
 static int s_listen_fd = -1;
 static int s_client_fd = -1;
+static int s_pending_client_fd = -1;
 static volatile bool s_session_end;
 static volatile bool s_suspended_for_ota;
 static volatile bool s_remote_cli_reclaimed;
+static TickType_t s_last_rx_tick;
 static cli_t s_remote_cli;
+static uint32_t s_session_seq;
+static const char *s_end_reason;
+static bool s_mirror_broken;
 
-static void remote_cli_detach_session(void);
+static void remote_cli_detach_session(const char *reason);
 static void remote_cli_close_listener(void);
 static void remote_cli_enter_ota_suspend(void);
+static bool remote_cli_listen_readable(uint32_t timeout_ms);
+static void remote_cli_signal_cli_stop(void);
+static void remote_cli_wake_lost_recv(void);
+static void remote_cli_mirror_broke(const char *evt, ssize_t sent, size_t len);
+static void remote_cli_sock_send_lost(const char *evt, ssize_t sent, int detail,
+                                      const char *reason);
+
+/*
+ * MiniCLI _cli_getline() applies uxtb() to get() — returning -1 becomes 0xFF
+ * (telnet IAC) and spins forever without checking cb->state. Return '\n' so
+ * the current line ends and cli_task() can exit when state==0.
+ */
+static int remote_cli_get_session_end(void)
+{
+    remote_cli_signal_cli_stop();
+    return remote_cli_session_end_get_byte();
+}
 
 static void remote_cli_telnet_send_neg(uint8_t cmd, uint8_t opt)
 {
@@ -166,13 +203,56 @@ static void remote_cli_telnet_send_neg(uint8_t cmd, uint8_t opt)
     buf[2] = opt;
     sent = send(s_client_fd, buf, 3, 0);
     if (sent != 3) {
-        s_session_end = true;
+        remote_cli_sock_send_lost("telnet neg send fail", sent, 3, "telnet_neg_fail");
     }
 }
 
 static void remote_cli_detach_log_sink(void)
 {
+    s_mirror_broken = true;
     app_log_clear_sink();
+}
+
+/*
+ * Telnet mirror send failed. Clear the mirror before any app_log_* call —
+ * app_log_write_raw always invokes the mirror after UART, so logging while
+ * the sink is still set would recurse through remote_cli_log_sink.
+ */
+static void remote_cli_mirror_broke(const char *evt, ssize_t sent, size_t len)
+{
+    int err = errno;
+
+    if (s_mirror_broken) {
+        return;
+    }
+
+    s_mirror_broken = true;
+    s_end_reason = "log_sink_fail";
+    s_session_end = true;
+    remote_cli_signal_cli_stop();
+    app_log_clear_sink();
+    app_log_warn(RCLI_TAG, "%s sent=%d len=%u errno=%d seq=%lu",
+                 evt, (int)sent, (unsigned)len, err, (unsigned long)s_session_seq);
+    remote_cli_wake_lost_recv();
+}
+
+static void remote_cli_sock_send_lost(const char *evt, ssize_t sent, int detail,
+                                      const char *reason)
+{
+    int err = errno;
+
+    if (s_session_end) {
+        return;
+    }
+
+    s_end_reason = reason;
+    s_session_end = true;
+    remote_cli_signal_cli_stop();
+    app_log_clear_sink();
+    s_mirror_broken = true;
+    app_log_warn(RCLI_TAG, "%s sent=%d detail=%d errno=%d seq=%lu",
+                 evt, (int)sent, detail, err, (unsigned long)s_session_seq);
+    remote_cli_wake_lost_recv();
 }
 
 static void remote_cli_log_sink(const char *buf, size_t len, void *ctx)
@@ -182,51 +262,201 @@ static void remote_cli_log_sink(const char *buf, size_t len, void *ctx)
 
     (void)ctx;
 
+    if (s_mirror_broken) {
+        return;
+    }
+
     fd = s_client_fd;
     if (fd < 0 || buf == NULL || len == 0u) {
         return;
     }
 
-    sent = send(fd, buf, len, 0);
+    sent = send(fd, buf, len, MSG_DONTWAIT);
+    if (sent < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+        sent = send(fd, buf, len, 0);
+    }
     if (sent < 0 || (size_t)sent != len) {
-        s_session_end = true;
+        remote_cli_mirror_broke("log_sink fail", sent, len);
     }
 }
 
+static void remote_cli_signal_cli_stop(void)
+{
+    s_remote_cli.state = 0;
+}
+
+static void remote_cli_note_rx(void)
+{
+    s_last_rx_tick = xTaskGetTickCount();
+}
+
+/* True when no client bytes have arrived for the idle timeout. */
+static bool remote_cli_client_idle_expired(void)
+{
+#if REMOTE_CLI_IDLE_TIMEOUT_MS > 0u
+    return (xTaskGetTickCount() - s_last_rx_tick) >
+           pdMS_TO_TICKS(REMOTE_CLI_IDLE_TIMEOUT_MS);
+#else
+    (void)s_last_rx_tick;
+    return false;
+#endif
+}
+
+static void remote_cli_mark_session_lost(const char *reason)
+{
+    if (s_session_end) {
+        return;
+    }
+    if (reason != NULL) {
+        s_end_reason = reason;
+    }
+    s_session_end = true;
+    remote_cli_signal_cli_stop();
+}
+
+static void remote_cli_wake_lost_recv(void)
+{
+    int fd = s_client_fd;
+
+    if (fd >= 0) {
+        (void)shutdown(fd, SHUT_RDWR);
+    }
+}
+
+static void remote_cli_handle_peer_lost(const char *reason)
+{
+    remote_cli_mark_session_lost(reason);
+    remote_cli_wake_lost_recv();
+}
+
+/* New connect wins: accept now, stash fd, kick the current session. */
+static bool remote_cli_accept_replacement(void)
+{
+    struct sockaddr_in peer;
+    socklen_t peer_len = sizeof(peer);
+    int new_fd;
+
+    if (s_listen_fd < 0) {
+        return false;
+    }
+
+    new_fd = accept(s_listen_fd, (struct sockaddr *)&peer, &peer_len);
+    if (new_fd < 0) {
+        app_log_warn(RCLI_TAG, "listen spurious errno=%d seq=%lu listen=%d",
+                     errno, (unsigned long)s_session_seq, s_listen_fd);
+        return false;
+    }
+
+    if (s_pending_client_fd >= 0) {
+        app_log_warn(RCLI_TAG, "replace drop stale pending=%d seq=%lu",
+                     s_pending_client_fd, (unsigned long)s_session_seq);
+        (void)close(s_pending_client_fd);
+    }
+    s_pending_client_fd = new_fd;
+    app_log_debug(RCLI_TAG,
+                  "replace pending=%d old=%d peer=%s:%u seq=%lu",
+                  new_fd, s_client_fd, inet_ntoa(peer.sin_addr),
+                  (unsigned)ntohs(peer.sin_port), (unsigned long)s_session_seq);
+    remote_cli_handle_peer_lost("replace");
+    return true;
+}
+
+/*
+ * select(listen, client): when listen is readable, accept the newcomer and
+ * replace the session (see remote_cli_run_session).
+ */
 static int remote_cli_sock_get(void)
 {
     char c;
     int n;
+    int max_fd;
+    fd_set rfds;
+    struct timeval tv;
 
     for (;;) {
-        if (console_mux_force_local_pending() || s_session_end) {
-            return -1;
+        if (console_mux_force_local_pending()) {
+            s_end_reason = "force_local";
+            return remote_cli_get_session_end();
+        }
+        if (s_session_end) {
+            return remote_cli_get_session_end();
         }
 
         if (s_client_fd < 0) {
-            return -1;
+            s_end_reason = "no_client_fd";
+            return remote_cli_get_session_end();
+        }
+
+        FD_ZERO(&rfds);
+        FD_SET(s_client_fd, &rfds);
+        max_fd = s_client_fd;
+        if (s_listen_fd >= 0) {
+            FD_SET(s_listen_fd, &rfds);
+            if (s_listen_fd > max_fd) {
+                max_fd = s_listen_fd;
+            }
+        }
+
+        tv.tv_sec = (time_t)(REMOTE_CLI_SOCK_RCVTIMEO_MS / 1000u);
+        tv.tv_usec = (suseconds_t)((REMOTE_CLI_SOCK_RCVTIMEO_MS % 1000u) * 1000u);
+
+        n = select(max_fd + 1, &rfds, NULL, NULL, &tv);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            app_log_warn(RCLI_TAG, "select err errno=%d seq=%lu", errno,
+                         (unsigned long)s_session_seq);
+            remote_cli_handle_peer_lost("select_err");
+            return remote_cli_get_session_end();
+        }
+        if (n == 0) {
+            if (remote_cli_client_idle_expired()) {
+                s_end_reason = "idle";
+                remote_cli_mark_session_lost("idle");
+                return remote_cli_get_session_end();
+            }
+            continue;
+        }
+
+        if (s_listen_fd >= 0 && FD_ISSET(s_listen_fd, &rfds)) {
+            if (remote_cli_accept_replacement()) {
+                return remote_cli_get_session_end();
+            }
+            if (!FD_ISSET(s_client_fd, &rfds)) {
+                continue;
+            }
+        }
+
+        if (!FD_ISSET(s_client_fd, &rfds)) {
+            continue;
         }
 
         n = recv(s_client_fd, &c, 1, 0);
         if (n == 1) {
             int out = remote_cli_telnet_rx_byte((uint8_t)(unsigned char)c);
 
+            remote_cli_note_rx();
             if (out >= 0) {
                 return out;
             }
             continue;
         }
         if (n == 0) {
-            s_session_end = true;
-            return -1;
+            s_end_reason = "peer_fin";
+            remote_cli_mark_session_lost("peer_fin");
+            return remote_cli_get_session_end();
         }
-        if (n < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
-            vTaskDelay(1);
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            continue;
+        }
+        if (n < 0 && errno == EINTR) {
             continue;
         }
 
-        s_session_end = true;
-        return -1;
+        s_end_reason = "peer_err";
+        remote_cli_mark_session_lost("peer_err");
+        return remote_cli_get_session_end();
     }
 }
 
@@ -235,22 +465,27 @@ static int remote_cli_sock_put(int c)
     char ch = (char)c;
     ssize_t sent;
 
-    if (s_client_fd < 0) {
+    if (s_session_end || s_client_fd < 0) {
         return 0;
     }
 
-    sent = send(s_client_fd, &ch, 1, 0);
+    sent = send(s_client_fd, &ch, 1, MSG_DONTWAIT);
+    if (sent < 0 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+        sent = send(s_client_fd, &ch, 1, 0);
+    }
     if (sent != 1) {
-        s_session_end = true;
+        remote_cli_sock_send_lost("put fail", sent, 1, "put_fail");
         return 0;
     }
 
     return c;
 }
 
-static void remote_cli_detach_session(void)
+static void remote_cli_detach_session(const char *reason)
 {
     int fd;
+
+    (void)reason;
 
     remote_cli_detach_log_sink();
 
@@ -266,12 +501,29 @@ static void remote_cli_detach_session(void)
     }
 }
 
-static void remote_cli_end_session(bool print_local)
+static void remote_cli_end_session(bool print_local, bool replacing, const char *reason)
 {
-    remote_cli_detach_session();
-    s_session_end = false;
+    const char *end_reason = reason;
 
-    if (print_local) {
+    if (end_reason == NULL) {
+        end_reason = s_end_reason != NULL ? s_end_reason : "unknown";
+    }
+    if (replacing) {
+        end_reason = "replace";
+    } else if (print_local) {
+        end_reason = "force_local";
+    }
+
+    app_log_debug(RCLI_TAG, "session end seq=%lu reason=%s",
+                  (unsigned long)s_session_seq, end_reason);
+
+    remote_cli_detach_session(end_reason);
+    s_session_end = false;
+    s_end_reason = NULL;
+    s_mirror_broken = false;
+    app_cli_restore_local();
+
+    if (print_local && !replacing) {
         app_log_info("cli", "[console] local");
     }
 }
@@ -281,6 +533,8 @@ static bool remote_cli_begin_session(int client_fd)
     int flags;
 
     if (!console_mux_try_remote()) {
+        app_log_warn(RCLI_TAG, "begin_session fail mux busy fd=%d seq=%lu",
+                     client_fd, (unsigned long)(s_session_seq + 1u));
         return false;
     }
 
@@ -289,8 +543,12 @@ static bool remote_cli_begin_session(int client_fd)
         (void)fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
     }
 
+    s_session_seq++;
+    s_end_reason = NULL;
+    s_mirror_broken = false;
     s_client_fd = client_fd;
     s_session_end = false;
+    s_last_rx_tick = xTaskGetTickCount();
     remote_cli_telnet_reset();
 
     app_cli_session_init(&s_remote_cli, remote_cli_sock_get, remote_cli_sock_put);
@@ -298,22 +556,56 @@ static bool remote_cli_begin_session(int client_fd)
     return true;
 }
 
-static void remote_cli_run_session(void)
+static void remote_cli_run_session(int initial_fd)
 {
+    int next_fd = initial_fd;
     bool forced = false;
+    bool replacing;
 
-    while (s_client_fd >= 0 && console_mux_remote_active() && !s_session_end && !s_suspended_for_ota) {
-        if (console_mux_take_force_local()) {
-            forced = true;
-            break;
+    for (;;) {
+        if (s_suspended_for_ota) {
+            if (next_fd >= 0) {
+                (void)close(next_fd);
+            }
+            if (s_pending_client_fd >= 0) {
+                (void)close(s_pending_client_fd);
+                s_pending_client_fd = -1;
+            }
+            return;
         }
-        cli_task();
-        if (s_session_end) {
-            break;
+
+        if (!remote_cli_begin_session(next_fd)) {
+            app_log_warn(RCLI_TAG, "begin_session fail close fd=%d", next_fd);
+            (void)close(next_fd);
+            return;
+        }
+        next_fd = -1;
+
+        forced = false;
+        while (s_client_fd >= 0 && console_mux_remote_active() && !s_session_end &&
+               !s_suspended_for_ota) {
+            if (console_mux_take_force_local()) {
+                forced = true;
+                s_end_reason = "force_local";
+                break;
+            }
+            cli_task();
+            if (s_session_end) {
+                break;
+            }
+        }
+
+        next_fd = s_pending_client_fd;
+        s_pending_client_fd = -1;
+        replacing = (next_fd >= 0);
+        remote_cli_end_session(forced, replacing,
+                               forced ? "force_local" :
+                               (replacing ? "replace" : s_end_reason));
+
+        if (next_fd < 0) {
+            return;
         }
     }
-
-    remote_cli_end_session(forced);
 }
 
 static void remote_cli_close_listener(void)
@@ -326,8 +618,19 @@ static void remote_cli_close_listener(void)
 
 static void remote_cli_recover_stale_state(void)
 {
+    app_log_warn(RCLI_TAG, "recover stale listen=%d client=%d pending=%d seq=%lu mux=%d",
+                 s_listen_fd, s_client_fd, s_pending_client_fd,
+                 (unsigned long)s_session_seq, (int)console_mux_remote_active());
     s_session_end = true;
+    s_end_reason = "recover_stale";
+    remote_cli_signal_cli_stop();
     app_log_clear_sink();
+    app_cli_restore_local();
+
+    if (s_pending_client_fd >= 0) {
+        (void)close(s_pending_client_fd);
+        s_pending_client_fd = -1;
+    }
 
     if (console_mux_remote_active()) {
         console_mux_release_remote();
@@ -336,7 +639,7 @@ static void remote_cli_recover_stale_state(void)
 
 static void remote_cli_enter_ota_suspend(void)
 {
-    remote_cli_detach_session();
+    remote_cli_detach_session("ota_suspend");
     remote_cli_close_listener();
     s_remote_cli_reclaimed = true;
     s_remote_cli_task = NULL;
@@ -453,17 +756,11 @@ static void remote_cli_task(void *param)
                 continue;
             }
 
-            if (console_mux_remote_active()) {
-                (void)close(client_fd);
-                continue;
-            }
+            app_log_debug(RCLI_TAG, "session open seq=%lu fd=%d peer=%s:%u",
+                          (unsigned long)(s_session_seq + 1u), client_fd,
+                          inet_ntoa(peer.sin_addr), (unsigned)ntohs(peer.sin_port));
 
-            if (!remote_cli_begin_session(client_fd)) {
-                (void)close(client_fd);
-                continue;
-            }
-
-            remote_cli_run_session();
+            remote_cli_run_session(client_fd);
         }
     }
 }
@@ -545,7 +842,7 @@ void remote_cli_poll_override(void)
     }
 
     console_uart_consume_pending();
-    s_session_end = true;
+    remote_cli_mark_session_lost("force_local");
     app_log_clear_sink();
     console_mux_release_remote();
     app_log_info("cli", "[console] local");
@@ -557,14 +854,14 @@ void remote_cli_request_disconnect(void)
         return;
     }
 
-    s_session_end = true;
-    remote_cli_detach_session();
+    remote_cli_mark_session_lost("exit");
 }
 
 #else /* HOST_TEST */
 
 static bool s_session_active;
 static bool s_sink_attached;
+static bool s_host_reconnect_pending;
 static volatile bool s_suspended_for_ota;
 static volatile bool s_remote_cli_reclaimed;
 static char s_host_sink[512];
@@ -610,11 +907,17 @@ void remote_cli_test_reset(void)
     remote_cli_host_end_session(false);
     s_suspended_for_ota = false;
     s_remote_cli_reclaimed = false;
+    s_host_reconnect_pending = false;
     s_host_sink_len = 0;
     memset(s_host_sink, 0, sizeof(s_host_sink));
     s_host_tn_tx_len = 0;
     memset(s_host_tn_tx, 0, sizeof(s_host_tn_tx));
     remote_cli_telnet_reset();
+}
+
+int remote_cli_test_session_end_get_byte(void)
+{
+    return remote_cli_session_end_get_byte();
 }
 
 bool remote_cli_test_is_suspended_for_ota(void)
@@ -641,6 +944,28 @@ bool remote_cli_test_begin_session(void)
 void remote_cli_test_end_session(void)
 {
     remote_cli_host_end_session(false);
+}
+
+void remote_cli_test_peer_hangup(void)
+{
+    remote_cli_host_end_session(false);
+}
+
+void remote_cli_test_set_reconnect_pending(bool pending)
+{
+    s_host_reconnect_pending = pending;
+}
+
+void remote_cli_test_session_io_tick(void)
+{
+    if (!s_session_active) {
+        return;
+    }
+
+    if (s_host_reconnect_pending) {
+        remote_cli_host_end_session(false);
+        s_host_reconnect_pending = false;
+    }
 }
 
 bool remote_cli_test_service_session(void)

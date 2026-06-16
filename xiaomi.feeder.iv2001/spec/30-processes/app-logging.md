@@ -38,6 +38,7 @@ Fixed lowercase strings. Callers pass the tag string to each `app_log_*` call.
 | Tag | Owner |
 |-----|-------|
 | `cli` | MiniCLI handlers and `*_print_fail` helpers |
+| `rcli` | `remote_cli` bench trace (`debug`) and socket anomalies (`warn`) |
 | `wifi` | `wifi_adapter`, `wifi_sta` error paths |
 | `mqtt` | `mqtt_adapter`, `mqtt_client`, `app_mqtt_dispatch` (command ingress) |
 | `motor` | `motor_ctrl` jam / anti-jam diagnostics |

@@ -865,7 +865,7 @@ production images with remote CLI enabled. `[design]`
 | Protocol | Minimal telnet (RFC 854 subset): 8-bit transparent stream; strips IAC negotiation; replies `WONT`/`DONT` to client `DO`/`WILL`; no server-initiated options `[design]` |
 | Port | `[tune]` 2323 |
 | Availability | After STA has a routable IP (`EVT_WIFI_STA_READY`); listener not started during AP provisioning |
-| Sessions | Single client — a second connect while one session is active is accepted and immediately closed |
+| Sessions | Single CLI session — a new TCP connect **preempts** the active one (latest client wins) |
 | Command tree | Same as UART0 (see [Command tree](#command-tree)) |
 | Output format | Same unified line format as UART0 ([app-logging.md](app-logging.md)) |
 
@@ -887,6 +887,9 @@ UART when the listener is up. On remote connect there is no extra banner; the
 client sees the MiniCLI prompt when the session is ready.
 
 On remote disconnect the listener stays up; another client may connect.
+Ending a session (via `exit`, client hang-up, or UART override) tears down the
+TCP socket, releases the console mux, and returns MiniCLI to UART0 so the
+`remote_cli` task can accept again.
 
 ### Ending a remote session
 
@@ -903,7 +906,26 @@ On UART0 only (no active remote session), `exit` prints
 `not in remote session` and leaves the UART CLI unchanged.
 
 Client-side disconnect also works: **Ctrl+C** when using
-`tools/remote-console.sh`, or close the terminal. `[design]`
+`tools/remote-console.sh`, **telnet `quit`**, or closing the terminal. `[design]`
+
+**New connect preempts:** while a session is active, `sock_get` multiplexes the
+listen socket. When a second client completes TCP handshake, the device
+`accept()`s it immediately, closes the old session, and hands the new socket to
+MiniCLI without returning to an idle state. The old client may see its
+connection reset; the new client gets the `$` prompt. `[design]`
+
+Optional `[tune]` `REMOTE_CLI_IDLE_TIMEOUT_MS` (default `0` = disabled) ends
+sessions that receive no client bytes for the configured interval.
+
+On peer hangup, `sock_get` must not return `-1`: MiniCLI `_cli_getline()` masks
+the result with `uxtb()`, so `-1` becomes `0xFF` (telnet IAC) and the engine
+spins without checking `cb->state`. Session end returns a synthetic `\n` so
+`cli_task()` exits and `remote_cli_run_session` can detach and return to
+`accept()`. `[design]`
+
+Bench UART may log `rcli` at **`debug`** (`session open` / `session end`) and
+**`warn`** (mux busy, spurious listen readable, send failures). Routine
+connect/disconnect is quiet at `info`. `[design]`
 
 ### UART local override
 
