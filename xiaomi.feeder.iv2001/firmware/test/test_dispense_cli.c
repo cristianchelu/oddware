@@ -33,7 +33,7 @@ void test_dispense_cli_posts_start_without_blocking_motor_run(void)
     dispense_cli_test_reset_all();
     cli_test_reset();
     TEST_ASSERT_EQUAL(0u, dispense_cli_handle_default(0u, NULL));
-    assert_cli_body("dispense started");
+    assert_log_body("dispense", "started portions=1");
 
     TEST_ASSERT_EQUAL(0u, fake_motor_port_timed_fwd_calls());
     TEST_ASSERT_EQUAL(0u, fake_motor_port_burst_calls());
@@ -51,7 +51,7 @@ void test_dispense_cli_portions_posts_burst_target(void)
     dispense_cli_test_reset_all();
     cli_test_reset();
     TEST_ASSERT_EQUAL(0u, dispense_cli_handle_portions(1u, argv));
-    assert_cli_body("dispense started");
+    assert_log_body("dispense", "started portions=3");
     TEST_ASSERT_TRUE(app_step());
     TEST_ASSERT_EQUAL(1u, fake_motor_port_burst_calls());
     TEST_ASSERT_EQUAL(3u, fake_motor_port_last_pulse_target());
@@ -73,7 +73,7 @@ void test_dispense_cli_busy_when_motor_active(void)
     fake_motor_port_set_active(true);
     cli_test_reset();
     TEST_ASSERT_EQUAL(1u, dispense_cli_handle_default(0u, NULL));
-    assert_cli_body("dispense busy");
+    assert_log_body("dispense", "busy");
     TEST_ASSERT_EQUAL(0u, fake_motor_port_burst_calls());
 }
 

@@ -114,7 +114,7 @@ uart_ota_started() {
     if [ -z "$UART_LOG" ] || [ ! -f "$UART_LOG" ]; then
         return 1
     fi
-    strings "$UART_LOG" 2>/dev/null | grep -qE '\[ota\] (accepted|download started)'
+    strings "$UART_LOG" 2>/dev/null | grep -qE '\[mqtt\] cmd ota topic=|\[ota\] download started'
 }
 
 uart_reboot_phase() {

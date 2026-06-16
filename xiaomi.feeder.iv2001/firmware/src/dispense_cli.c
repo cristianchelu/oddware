@@ -50,11 +50,6 @@ static uint8_t dispense_cli_submit(uint8_t portions)
 {
     dispense_submit_result_t result;
 
-    if (s_state != DISPENSE_CLI_IDLE) {
-        dispense_cli_emit("dispense busy");
-        return 1u;
-    }
-
     result = dispense_submit_portions(portions);
     if (result == DISPENSE_SUBMIT_INVALID) {
         dispense_cli_emit("dispense usage: portions <1-15>");
@@ -62,12 +57,10 @@ static uint8_t dispense_cli_submit(uint8_t portions)
     }
 
     if (result != DISPENSE_SUBMIT_OK) {
-        dispense_cli_emit("dispense busy");
         return 1u;
     }
 
     s_state = DISPENSE_CLI_WAIT_JOB;
-    dispense_cli_emit("dispense started");
     return 0u;
 }
 

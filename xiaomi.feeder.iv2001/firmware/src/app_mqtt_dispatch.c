@@ -35,9 +35,19 @@ void app_mqtt_dispatch(const char *topic,
 
     switch (route) {
     case MQTT_ROUTE_CMD_OTA:
+        app_log_info("mqtt",
+                     "cmd %s topic=%s len=%u",
+                     mqtt_route_label(route),
+                     topic,
+                     (unsigned)len);
         ota_client_on_mqtt_message(topic, payload, len);
         break;
     case MQTT_ROUTE_CMD_DISPENSE:
+        app_log_info("mqtt",
+                     "cmd %s topic=%s len=%u",
+                     mqtt_route_label(route),
+                     topic,
+                     (unsigned)len);
         mqtt_dispense_cmd_handle(topic, payload, len, device_id);
         break;
     default:

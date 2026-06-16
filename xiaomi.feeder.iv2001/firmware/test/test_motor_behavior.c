@@ -161,7 +161,7 @@ void test_dispense_completes_when_index_pulse_seen_e2e(void)
 
     cli_test_reset();
     (void)dispense_cli_handle_default(0u, NULL);
-    assert_cli_body("dispense started");
+    assert_log_body("dispense", "started portions=1");
     TEST_ASSERT_TRUE(app_step());
     motor_ctrl_test_poll();
     TEST_ASSERT_TRUE(motor_ctrl_is_active());

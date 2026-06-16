@@ -53,10 +53,12 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions)
     app_event_t ev;
 
     if (portions < DISPENSE_PORTIONS_MIN || portions > DISPENSE_PORTIONS_MAX) {
+        app_log_info("dispense", "rejected result=%d", (int)DISPENSE_SUBMIT_INVALID);
         return DISPENSE_SUBMIT_INVALID;
     }
 
     if (dispense_is_active()) {
+        app_log_info("dispense", "busy");
         return DISPENSE_SUBMIT_BUSY;
     }
 
@@ -64,6 +66,7 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions)
         const motor_port_t *motor = motor_port_get();
 
         if (motor != NULL && motor->is_active != NULL && motor->is_active()) {
+            app_log_info("dispense", "busy");
             return DISPENSE_SUBMIT_BUSY;
         }
     }
@@ -73,10 +76,12 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions)
     ev.u.dispense_request.target = portions;
 
     if (!app_event_post(&ev)) {
+        app_log_info("dispense", "busy");
         return DISPENSE_SUBMIT_BUSY;
     }
 
     s_job_pending = true;
+    app_log_info("dispense", "started portions=%u", (unsigned)portions);
     return DISPENSE_SUBMIT_OK;
 }
 
@@ -91,14 +96,14 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     port_err_t err;
 
     if (req == NULL || !s_job_pending || s_job_active) {
-        app_log_info("cli", "dispense busy");
+        app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
         return;
     }
 
     if (req->kind != DISPENSE_KIND_PORTIONS) {
-        app_log_info("cli", "dispense busy");
+        app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
         return;
@@ -106,7 +111,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
 
     portions = (uint8_t)req->target;
     if (portions < DISPENSE_PORTIONS_MIN || portions > DISPENSE_PORTIONS_MAX) {
-        app_log_info("cli", "dispense busy");
+        app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
         return;
@@ -120,7 +125,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     if (err != PORT_OK) {
         s_job_active = false;
         display_dispense_indicator_idle();
-        app_log_info("cli", "dispense busy");
+        app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
     }
 }

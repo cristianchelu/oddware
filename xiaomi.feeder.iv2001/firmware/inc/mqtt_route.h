@@ -20,4 +20,6 @@ typedef enum {
 
 mqtt_route_kind_t mqtt_route_classify(const char *topic, const char *device_id);
 
+const char *mqtt_route_label(mqtt_route_kind_t route);
+
 #endif /* MQTT_ROUTE_H */

@@ -39,10 +39,10 @@ Fixed lowercase strings. Callers pass the tag string to each `app_log_*` call.
 |-----|-------|
 | `cli` | MiniCLI handlers and `*_print_fail` helpers |
 | `wifi` | `wifi_adapter`, `wifi_sta` error paths |
-| `mqtt` | `mqtt_adapter`, `mqtt_client` |
+| `mqtt` | `mqtt_adapter`, `mqtt_client`, `app_mqtt_dispatch` (command ingress) |
 | `motor` | `motor_ctrl` jam / anti-jam diagnostics |
 | `ota` | `ota_adapter`, `ota_client` |
-| `dispense` | `dispense` supervisor, `mqtt_dispense_cmd` |
+| `dispense` | `dispense` supervisor (source-agnostic lifecycle) |
 | `provision` | Captive portal and provisioning flow |
 | `app` | `app.c`, `app_task` lifecycle, button bring-up UART |
 | `hopper` | `hopper_input` level transitions |
@@ -128,6 +128,18 @@ SDK `PORT_SECURE` + DHCP semaphores. `EVT_WIFI_STA_CONNECTING` is posted from
 Per-message RX logging is **not** emitted on UART (see
 [uart-console.md](uart-console.md) § MQTT connect).
 
+Handled MQTT command ingress (tag `mqtt`, from `app_mqtt_dispatch` — one line
+per routed command before the handler runs; message body only):
+
+| Event | Line |
+|-------|------|
+| Dispense command | `cmd dispense topic=<topic> len=<n>` |
+| OTA command | `cmd ota topic=<topic> len=<n>` |
+
+Route names match `mqtt_route_label()` (`dispense`, `ota`, …). Unimplemented
+routes log at `debug` only (`app` tag stub line). Per-handler `cmd topic=…` /
+`accepted` ingress lines are **deprecated** — do not add new ones.
+
 ## Motor diagnostics (tag `motor`)
 
 Jam and anti-jam UART lines match [jam-detection.md](jam-detection.md) § UART
@@ -140,7 +152,7 @@ Bench OTA scripts under `tools/ota/` grep UART captures for tagged `ota` lines
 
 | Event | Line |
 |-------|------|
-| Command received | `accepted` |
+| Command received | `cmd ota topic=<topic> len=<n>` — tag `mqtt` (see above); legacy `[ota] accepted` removed |
 | Download armed | `download started` |
 | Per-chunk progress | `NN% (downloaded/total) heap=… min=…` |
 | Download finished | `download complete bytes=…` |
@@ -152,18 +164,19 @@ as boot-ready when UART is available.
 
 ## Dispense diagnostics (tag `dispense`)
 
-MQTT `cmd/dispense` handler lines (message body only):
+Source-agnostic dispense lifecycle lines from `dispense_submit_portions` and
+the supervisor (UART CLI, MQTT, and future triggers share the same messages;
+message body only):
 
 | Event | Line |
 |-------|------|
-| Command received | `remote dispense cmd topic=<topic> len=<n>` |
-| Accepted | `remote dispense accepted portions=<n>` |
-| Busy | `remote dispense busy` |
-| Rejected | `remote dispense rejected result=<code>` |
+| Job accepted | `started portions=<n>` |
+| Busy (job active, motor active, or event queue full) | `busy` |
+| Invalid portion count (ingress validation failed) | `rejected result=<code>` |
 
-Per-message RX logging in `mqtt_io` is still not emitted (see
-[uart-console.md](uart-console.md) § MQTT connect); only routed command
-handlers log at `info`.
+Completion / fault lines (`done`, `fault: stuck`) remain on tag `cli` from
+`dispense_cli` until a later refactor. MQTT ingress is logged once at tag
+`mqtt` (see above); `mqtt_dispense_cmd` does not log.
 
 ## API (application code)
 

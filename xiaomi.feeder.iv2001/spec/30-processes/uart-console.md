@@ -839,13 +839,14 @@ last hole (mechanical park). No separate `motor park` step.
 `dispense grams <G>` is reserved for future gram-targeted dispense; not
 implemented on UART yet.
 
-The CLI task prints the started line and returns to the prompt **before** motion
-ends. Completion or fault lines arrive later on separate UART lines.
+The CLI handler returns to the prompt **before** motion ends once the
+supervisor accepts the job (`[dispense] started portions=<n>`). Completion or
+fault lines arrive later on separate UART lines.
 
 | Outcome | UART response |
 |---------|---------------|
-| Accepted | `dispense started` |
-| Dispense job active, motor busy, or event queue full | `dispense busy` |
+| Accepted | `[dispense] started portions=<n>` (supervisor; `<n>` is the requested count) |
+| Dispense job active, motor busy, or event queue full | `[dispense] busy` |
 | Bad or missing `<N>` | `dispense usage: portions <1-15>` |
 | Job completed (Nth pulse) | `dispense done` |
 | Anti-jam exhausted | `dispense fault: stuck` |

@@ -125,14 +125,10 @@ void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t l
         return;
     }
 
-    app_log_info("ota", "cmd topic=%s len=%u", topic, (unsigned)len);
-
     if (mqtt_route_classify(topic, s_device_id) != MQTT_ROUTE_CMD_OTA) {
         app_log_debug("ota", "cmd ignored: not ota (device_id=%s)", s_device_id);
         return;
     }
-
-    app_log_info("ota", "accepted");
 
     if (len >= sizeof(payload_buf)) {
         ota_client_publish_status("error", 0, "invalid_url");

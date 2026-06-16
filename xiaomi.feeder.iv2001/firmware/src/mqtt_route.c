@@ -69,3 +69,29 @@ mqtt_route_kind_t mqtt_route_classify(const char *topic, const char *device_id)
 
     return MQTT_ROUTE_UNKNOWN;
 }
+
+const char *mqtt_route_label(mqtt_route_kind_t route)
+{
+    switch (route) {
+    case MQTT_ROUTE_CMD_DISPENSE:
+        return "dispense";
+    case MQTT_ROUTE_CMD_DISPENSE_CANCEL:
+        return "dispense_cancel";
+    case MQTT_ROUTE_CMD_SCHEDULE_SET:
+        return "schedule_set";
+    case MQTT_ROUTE_CMD_SCHEDULE_DELETE:
+        return "schedule_delete";
+    case MQTT_ROUTE_CMD_CALIBRATE:
+        return "calibrate";
+    case MQTT_ROUTE_CMD_DISPLAY:
+        return "display";
+    case MQTT_ROUTE_CMD_CONFIG:
+        return "config";
+    case MQTT_ROUTE_CMD_REBOOT:
+        return "reboot";
+    case MQTT_ROUTE_CMD_OTA:
+        return "ota";
+    default:
+        return "unknown";
+    }
+}
