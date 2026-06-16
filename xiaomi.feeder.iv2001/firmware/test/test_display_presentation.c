@@ -33,6 +33,22 @@ void test_display_presentation_set_digits_rejects_overflow(void)
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, display_presentation_set_digits(1000u));
 }
 
+void test_display_presentation_set_digits_underflow_single_dash(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_set_unit(DISPLAY_UNIT_GRAM));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_set_digits_underflow());
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[2]);
+    TEST_ASSERT_EQUAL_HEX8(0x10u, grids[3]);
+}
+
 void test_display_presentation_refresh_repowers_after_expander_reset(void)
 {
     presentation_test_setup();

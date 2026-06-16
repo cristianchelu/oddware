@@ -23,7 +23,7 @@ account required.
    credentials the pictograph switches to the slower connecting blink;
    on failure it returns to the setup blink when AP mode is restored.
    On success it saves the config, reboots into normal mode, and
-   publishes its online state to the broker.
+   publishes retained `online` on `petfeeder/<device_id>/connection`.
 5. On failure it remains in AP mode and shows the error so the user
    can retry.
 

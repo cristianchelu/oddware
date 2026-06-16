@@ -11,6 +11,13 @@
 
 #include "mqtt_port.h"
 
+typedef void (*mqtt_outbox_drained_fn)(const char *topic,
+                                       const void *payload,
+                                       size_t len,
+                                       void *ctx);
+
+void mqtt_outbox_set_drained_fn(mqtt_outbox_drained_fn fn, void *ctx);
+
 bool mqtt_outbox_enqueue(const char *topic,
                          const void *payload,
                          size_t len,

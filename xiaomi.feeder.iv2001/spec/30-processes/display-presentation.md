@@ -23,6 +23,7 @@ power policy, lock spinner, connectivity indicators.
 | `display_wifi_indicator.c` | Wi-Fi pictograph policy (connecting, AP, connected, off) |
 | `display_mqtt_indicator.c` | MQTT status lightbar policy (connecting, connected, error, off) |
 | `display_dispense_indicator.c` | Dispensing pictograph policy (active blink, idle off) |
+| `display_bowl_error_indicator.c` | Food-bowl pictograph policy (cal blink, bowl-missing steady) |
 | `display_anim_builtin.c` | Const frame tables for OTA and lock-busy animations |
 | MQTT `cmd/display` handler | Future mode/brightness commands |
 
@@ -65,6 +66,25 @@ Transitions:
 
 Portal STA test display steps: [provisioning-flow.md](provisioning-flow.md) §
 Provisioning STA test-connect.
+
+## Bowl error indicator
+
+`display_bowl_error_indicator.c` drives `DISPLAY_ICON_BOWL_ERROR`. The `app`
+task calls `display_bowl_error_indicator_sync()` from
+`app_weight_sync_display_scene()` on each weight sample tick (same path as
+digit updates). User-facing semantics:
+[display.md](../20-stories/display.md) § Food bowl error. Bowl presence
+threshold: [weighing.md](weighing.md) § Bowl presence.
+
+| Condition | Presentation | `[tune]` blink on/off |
+|-----------|--------------|----------------------|
+| Uncalibrated / idle cal | `display_bowl_error_indicator_sync(BOWL_ERROR_CAL_INCOMPLETE)` | 600 ms / 600 ms |
+| Zero done, span pending | `display_bowl_error_indicator_sync(BOWL_ERROR_CAL_SPAN_PENDING)` | 200 ms / 200 ms |
+| Calibrated, bowl OK or no sample | `display_bowl_error_indicator_sync(BOWL_ERROR_NONE)` | steady off |
+| Calibrated, bowl missing | `display_bowl_error_indicator_sync(BOWL_ERROR_BOWL_MISSING)` | steady on |
+
+Grid 4 bit `0x04` lights the pictograph. Blink cadences use the same
+`icon_blink` / `icon_blink_stop` pattern as the Wi-Fi indicator.
 
 ## Dispensing indicator
 
@@ -124,6 +144,8 @@ or pin masks.
 | Function | Behavior |
 |----------|----------|
 | `display_presentation_set_digits(value)` | 0–999; leading-zero suppression on hundreds and tens; marks digits active |
+| `display_presentation_set_digits_dash()` | All three digit grids show segment dash (`0x40` each) — uncalibrated `---` |
+| `display_presentation_set_digits_underflow()` | Grid 0 = dash (`0x40`); grids 1–2 blank — calibrated bowl-missing `-  g` |
 | `display_presentation_clear_digits()` | Blanks grids 0–2 until the next `set_digits` |
 | `display_presentation_set_unit(unit)` | `NONE`, `PERCENT`, or `GRAM` — lights unit pictograph on grid 3 |
 | `display_presentation_icon_set(icon, on)` | Toggle one pictograph by `display_icon_t` label |
@@ -192,6 +214,8 @@ Icon commands.
 | Blink on/off | 50–5000 ms each | — |
 | Wi-Fi connecting blink | 50–5000 ms each | 500 ms on / 500 ms off |
 | Wi-Fi AP provisioning blink | 50–5000 ms each | 150 ms on / 150 ms off |
+| Bowl error cal-incomplete blink | 50–5000 ms each | 600 ms on / 600 ms off |
+| Bowl error span-pending blink | 50–5000 ms each | 200 ms on / 200 ms off |
 | MQTT connecting blink (orange bar) | 50–5000 ms each | 1800 ms on / 200 ms off |
 | MQTT error pattern (orange bar) | 50–5000 ms per phase | off 150 ms, off 150 ms, on 600 ms (loop) |
 | Presentation tick | 50 ms | FreeRTOS soft timer → `EVT_DISPLAY_TICK` |
@@ -250,7 +274,7 @@ oval. Segment order per digit: A, B, C, D, E, F (`0x01`, `0x02`, `0x04`,
 
 | Mode | Content | When | Update rate |
 |------|---------|------|-------------|
-| **Weight** | Bowl grams when calibrated and sampled (e.g. `  42g`); uncalibrated → `---`; calibrated, no sample yet → blank digits + `g` | Default idle (hardcoded in `app` until `cmd/display` lands) | `[tune]` 500 ms (2 Hz) |
+| **Weight** | Bowl grams when calibrated and sampled (e.g. `  42g`); uncalibrated → `---g`; calibrated bowl missing → `-  g`; calibrated, no sample yet → blank digits + `g` | Default idle (hardcoded in `app` until `cmd/display` lands) | `[tune]` 500 ms (2 Hz) |
 | **Eaten today** | Cumulative grams consumed since midnight (e.g. `  85g`) | User-selected idle alternative | `[tune]` 500 ms (2 Hz) |
 | **Off** | All segments blank | Sleep or user preference | — |
 

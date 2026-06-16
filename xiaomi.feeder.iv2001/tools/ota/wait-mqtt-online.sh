@@ -68,15 +68,13 @@ cleanup() {
 trap cleanup EXIT INT TERM HUP
 
 read_bank() {
-    local state
-    state="$(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+    local status
+    status="$(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
         -u "$MQTT_USER" -P "$MQTT_PASS" \
-        -t "$STATE_TOPIC" -C 1 -W 3 2>/dev/null || true)"
-    case "$state" in
-        *'"bank": "B"'*|*'"bank":"B"'*) echo "B" ;;
-        *'"bank": "A"'*|*'"bank":"A"'*) echo "A" ;;
-        *'"online": true'*|*'"online":true'*) echo "?" ;;
-        *'"online": false'*|*'"online":false'*) echo "offline" ;;
+        -t "petfeeder/${DEVICE_ID}/ota/status" -C 1 -W 3 2>/dev/null || true)"
+    case "$status" in
+        *'"bank":"B"'*|*'"bank": "B"'*) echo "B" ;;
+        *'"bank":"A"'*|*'"bank": "A"'*) echo "A" ;;
         *) echo "?" ;;
     esac
 }

@@ -8,6 +8,7 @@
 #include "MQTTClient.h"
 
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
 
 #include "app_log.h"
@@ -18,11 +19,13 @@
 #include "mqtt_adapter.h"
 #include "mqtt_port.h"
 
-#define MQTT_CMD_TIMEOUT_MS 12000
-#define MQTT_TX_BUF_SIZE    512
-#define MQTT_RX_BUF_SIZE    512
+#define MQTT_CMD_TIMEOUT_MS     12000
+#define MQTT_MUTEX_WAIT_MS      12000
+#define MQTT_TX_BUF_SIZE        1024
+#define MQTT_RX_BUF_SIZE        512
 
 static Network s_network;
+static SemaphoreHandle_t s_mqtt_mutex;
 static Client s_client;
 static unsigned char s_tx_buf[MQTT_TX_BUF_SIZE];
 static unsigned char s_rx_buf[MQTT_RX_BUF_SIZE];
@@ -36,6 +39,48 @@ static char s_connect_client_id[64];
 static mqtt_message_cb_t s_on_message;
 static mqtt_connection_cb_t s_on_connection;
 static void *s_cb_ctx;
+
+static void mqtt_adapter_notify_connection(bool connected);
+
+static void mqtt_mutex_ensure(void)
+{
+    if (s_mqtt_mutex == NULL) {
+        s_mqtt_mutex = xSemaphoreCreateMutex();
+    }
+}
+
+static bool mqtt_mutex_take(void)
+{
+    mqtt_mutex_ensure();
+    if (s_mqtt_mutex == NULL) {
+        return false;
+    }
+
+    return xSemaphoreTake(s_mqtt_mutex, pdMS_TO_TICKS(MQTT_MUTEX_WAIT_MS)) == pdPASS;
+}
+
+static void mqtt_mutex_give(void)
+{
+    if (s_mqtt_mutex != NULL) {
+        (void)xSemaphoreGive(s_mqtt_mutex);
+    }
+}
+
+static void mqtt_adapter_yield_locked(int timeout_ms)
+{
+    int rc;
+
+    if (!s_session_up) {
+        return;
+    }
+
+    rc = MQTTYield(&s_client, timeout_ms);
+    (void)rc;
+    if (!s_client.isconnected && s_session_up) {
+        s_network.disconnect(&s_network);
+        mqtt_adapter_notify_connection(false);
+    }
+}
 
 static void mqtt_adapter_message_arrived(MessageData *md)
 {
@@ -94,11 +139,16 @@ static port_err_t mqtt_adapter_connect(const mqtt_connect_cfg_t *cfg)
         return PORT_OK;
     }
 
+    if (!mqtt_mutex_take()) {
+        return PORT_ERR_IO;
+    }
+
     NewNetwork(&s_network);
     snprintf(s_port_str, sizeof(s_port_str), "%u", (unsigned)cfg->port);
 
     rc = ConnectNetwork(&s_network, (char *)cfg->host, s_port_str);
     if (rc != 0) {
+        mqtt_mutex_give();
         return PORT_ERR_IO;
     }
     taskYIELD();
@@ -140,11 +190,13 @@ static port_err_t mqtt_adapter_connect(const mqtt_connect_cfg_t *cfg)
     rc = MQTTConnect(&s_client, &data);
     if (rc != 0) {
         s_network.disconnect(&s_network);
+        mqtt_mutex_give();
         return PORT_ERR_IO;
     }
     taskYIELD();
 
     mqtt_adapter_notify_connection(true);
+    mqtt_mutex_give();
     return PORT_OK;
 }
 
@@ -154,9 +206,14 @@ static port_err_t mqtt_adapter_disconnect(void)
         return PORT_OK;
     }
 
+    if (!mqtt_mutex_take()) {
+        return PORT_ERR_IO;
+    }
+
     MQTTDisconnect(&s_client);
     s_network.disconnect(&s_network);
     mqtt_adapter_notify_connection(false);
+    mqtt_mutex_give();
     return PORT_OK;
 }
 
@@ -173,6 +230,12 @@ static port_err_t mqtt_adapter_publish(const char *topic,
         return PORT_ERR_INVALID_ARG;
     }
 
+    if (!mqtt_mutex_take()) {
+        return PORT_ERR_IO;
+    }
+
+    mqtt_adapter_yield_locked(10);
+
     memset(&message, 0, sizeof(message));
     message.qos = qos;
     message.retained = retain ? 1 : 0;
@@ -181,8 +244,12 @@ static port_err_t mqtt_adapter_publish(const char *topic,
 
     rc = MQTTPublish(&s_client, topic, &message);
     if (rc != 0) {
-        APP_LOG_E("mqtt", "publish failed");
+        APP_LOG_E("mqtt", "publish failed topic=%s", topic);
+    } else {
+        mqtt_adapter_yield_locked(50);
     }
+
+    mqtt_mutex_give();
     return rc == 0 ? PORT_OK : PORT_ERR_IO;
 }
 
@@ -194,13 +261,21 @@ static port_err_t mqtt_adapter_subscribe(const char *topic, uint8_t qos)
         return PORT_ERR_INVALID_ARG;
     }
 
+    if (!mqtt_mutex_take()) {
+        return PORT_ERR_IO;
+    }
+
     strncpy(s_subscribe_topic, topic, sizeof(s_subscribe_topic) - 1);
     s_subscribe_topic[sizeof(s_subscribe_topic) - 1] = '\0';
 
     rc = MQTTSubscribe(&s_client, s_subscribe_topic, qos, mqtt_adapter_message_arrived);
     if (rc != 0) {
-        APP_LOG_E("mqtt", "subscribe failed");
+        APP_LOG_E("mqtt", "subscribe failed topic=%s", topic);
+    } else {
+        mqtt_adapter_yield_locked(50);
     }
+
+    mqtt_mutex_give();
     return rc == 0 ? PORT_OK : PORT_ERR_IO;
 }
 
@@ -305,17 +380,14 @@ bool mqtt_adapter_probe_broker(const provision_input_t *input,
 
 void mqtt_adapter_yield(int timeout_ms)
 {
-    int rc;
-
     if (!s_session_up) {
         return;
     }
 
-    rc = MQTTYield(&s_client, timeout_ms);
-    (void)rc;
-    /* MQTTYield returns FAILURE on idle read timeout — not a session drop. */
-    if (!s_client.isconnected && s_session_up) {
-        s_network.disconnect(&s_network);
-        mqtt_adapter_notify_connection(false);
+    if (!mqtt_mutex_take()) {
+        return;
     }
+
+    mqtt_adapter_yield_locked(timeout_ms);
+    mqtt_mutex_give();
 }

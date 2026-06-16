@@ -147,26 +147,35 @@ void test_connect_subscribes_and_publishes_online(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
     TEST_ASSERT_EQUAL_UINT(1, mqtt->subscribe_calls);
-    TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/cmd/#", mqtt->last_subscribe_topic);
-    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/connection", mqtt->prior_publish_topic);
-    TEST_ASSERT_EQUAL_STRING("online", mqtt->prior_publish_payload);
-    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->last_publish_topic);
-    TEST_ASSERT_EQUAL_STRING("{\"online\": true, \"bank\": \"A\"}", mqtt->last_publish_payload);
-    TEST_ASSERT_EQUAL_UINT(2, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/connection", mqtt->last_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("online", mqtt->last_publish_payload);
+    TEST_ASSERT_EQUAL_UINT(4, mqtt_outbox_pending());
     TEST_ASSERT_TRUE(mqtt->connected);
 
     mqtt_client_step();
-    TEST_ASSERT_EQUAL_UINT(3, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/ota/status", mqtt->last_publish_topic);
-    TEST_ASSERT_EQUAL_STRING("{\"state\": \"idle\", \"pct\": 0, \"error\": \"\"}",
+    TEST_ASSERT_EQUAL_STRING("{\"state\":\"idle\",\"pct\":0,\"error\":\"\",\"bank\":\"A\"}",
                              mqtt->last_publish_payload);
 
     fake_time_advance_ms(101u);
     mqtt_client_step();
-    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(3, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("homeassistant/button/petfeeder_ddeeff/dispense/config",
                              mqtt->last_publish_topic);
+
+    fake_time_advance_ms(101u);
+    mqtt_client_step();
+    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/binary_sensor/petfeeder_ddeeff/bowl_error/config",
+                             mqtt->last_publish_topic);
+
+    fake_time_advance_ms(101u);
+    mqtt_client_step();
+    TEST_ASSERT_EQUAL_UINT(5, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->last_publish_topic);
     TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 }
 
@@ -206,13 +215,17 @@ void test_connected_step_drains_enqueued_item(void)
     mqtt_client_step();
     app_step();
 
-    TEST_ASSERT_EQUAL_UINT(2, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(4, mqtt_outbox_pending());
+    mqtt_client_step();
+    fake_time_advance_ms(101u);
+    mqtt_client_step();
+    fake_time_advance_ms(101u);
     mqtt_client_step();
     fake_time_advance_ms(101u);
     mqtt_client_step();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(5, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 }
 

@@ -33,6 +33,7 @@ static struct {
     uint16_t digits;
     bool digits_valid;
     bool digits_dash;
+    bool digits_underflow;
     display_unit_t unit;
     uint32_t steady_icons;
     uint8_t brightness;
@@ -218,6 +219,7 @@ port_err_t display_presentation_set_digits(uint16_t value)
     s_pres.digits = value;
     s_pres.digits_valid = true;
     s_pres.digits_dash = false;
+    s_pres.digits_underflow = false;
     presentation_mark_scene_dirty();
     return PORT_OK;
 }
@@ -226,6 +228,17 @@ port_err_t display_presentation_set_digits_dash(void)
 {
     s_pres.digits_valid = true;
     s_pres.digits_dash = true;
+    s_pres.digits_underflow = false;
+    s_pres.digits = 0u;
+    presentation_mark_scene_dirty();
+    return PORT_OK;
+}
+
+port_err_t display_presentation_set_digits_underflow(void)
+{
+    s_pres.digits_valid = true;
+    s_pres.digits_dash = false;
+    s_pres.digits_underflow = true;
     s_pres.digits = 0u;
     presentation_mark_scene_dirty();
     return PORT_OK;
@@ -235,6 +248,7 @@ port_err_t display_presentation_clear_digits(void)
 {
     s_pres.digits_valid = false;
     s_pres.digits_dash = false;
+    s_pres.digits_underflow = false;
     s_pres.digits = 0u;
     presentation_mark_scene_dirty();
     return PORT_OK;
@@ -483,6 +497,20 @@ port_err_t display_presentation_refresh(void)
         grids[0] = 0x40u;
         grids[1] = 0x40u;
         grids[2] = 0x40u;
+    } else if (s_pres.digits_valid && s_pres.digits_underflow) {
+        uint32_t icons = presentation_effective_icon_mask();
+
+        grids[0] = 0x40u;
+        grids[1] = 0x00u;
+        grids[2] = 0x00u;
+        display_compose_grids(false,
+                              0u,
+                              s_pres.unit,
+                              icons,
+                              grids);
+        grids[0] = 0x40u;
+        grids[1] = 0x00u;
+        grids[2] = 0x00u;
     } else {
         uint32_t icons = presentation_effective_icon_mask();
         display_compose_grids(s_pres.digits_valid,

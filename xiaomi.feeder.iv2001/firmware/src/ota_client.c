@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "app_log.h"
+#include "boot_bank_target.h"
 
 #include "mqtt_outbox.h"
 #include "mqtt_port.h"
@@ -19,6 +20,13 @@
 static char s_device_id[32];
 static char s_status_topic[96];
 
+static char ota_client_active_bank_letter(void)
+{
+    boot_bank_t active = boot_bank_query_active();
+
+    return (active == BOOT_BANK_B) ? 'B' : 'A';
+}
+
 static void ota_client_publish_status(const char *state, uint8_t pct, const char *error)
 {
     char payload[128];
@@ -31,10 +39,11 @@ static void ota_client_publish_status(const char *state, uint8_t pct, const char
 
     written = snprintf(payload,
                        sizeof(payload),
-                       "{\"state\": \"%s\", \"pct\": %u, \"error\": \"%s\"}",
+                       "{\"state\":\"%s\",\"pct\":%u,\"error\":\"%s\",\"bank\":\"%c\"}",
                        state,
                        (unsigned)pct,
-                       error != NULL ? error : "");
+                       error != NULL ? error : "",
+                       ota_client_active_bank_letter());
     if (written <= 0 || (size_t)written >= sizeof(payload)) {
         return;
     }

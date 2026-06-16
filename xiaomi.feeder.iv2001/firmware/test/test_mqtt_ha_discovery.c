@@ -41,11 +41,26 @@ void test_mqtt_ha_format_dispense_button_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"model\":\"" MQTT_HA_MODEL "\""));
 }
 
+void test_mqtt_ha_format_bowl_error_config_json(void)
+{
+    char buf[512];
+    int written;
+
+    written = mqtt_ha_format_bowl_error_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Bowl error\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/state\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"value_template\":\"{{ value_json.bowl_error }}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_off\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"device_class\":\"problem\""));
+}
+
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
 {
     mqtt_outbox_reset();
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
-    TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(2, mqtt_outbox_pending());
 }
 
 void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
@@ -61,8 +76,8 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     drain_all_outbox();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
-    TEST_ASSERT_EQUAL_STRING("homeassistant/button/petfeeder_ddeeff/dispense/config",
+    TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/binary_sensor/petfeeder_ddeeff/bowl_error/config",
                              mqtt->last_publish_topic);
-    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"command_topic\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"payload_on\":true"));
 }

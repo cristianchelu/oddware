@@ -42,15 +42,14 @@ PY
 
 ota_common_read_bank() {
     local device_id="$1"
-    local state
+    local status
 
-    state="$(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+    status="$(mosquitto_sub -h "$MQTT_HOST" -p "$MQTT_PORT" \
         -u "$MQTT_USER" -P "$MQTT_PASS" \
-        -t "petfeeder/${device_id}/state" -C 1 -W 8 2>/dev/null || true)"
-    case "$state" in
-        *'"bank": "B"'*|*'"bank":"B"'*) echo "B" ;;
-        *'"bank": "A"'*|*'"bank":"A"'*) echo "A" ;;
-        *'"online": true'*|*'"online":true'*) echo "?" ;;
+        -t "petfeeder/${device_id}/ota/status" -C 1 -W 8 2>/dev/null || true)"
+    case "$status" in
+        *'"bank":"B"'*|*'"bank": "B"'*) echo "B" ;;
+        *'"bank":"A"'*|*'"bank": "A"'*) echo "A" ;;
         *) echo "?" ;;
     esac
 }
@@ -127,7 +126,7 @@ ota_common_stop_http() {
 
 ota_common_reset_ota_status() {
     local device_id="$1"
-    mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -u petfeeder -P petfeeder \
+    mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASS" \
         -t "petfeeder/${device_id}/ota/status" \
-        -m '{"state": "idle", "pct": 0, "error": ""}' -r -q 1 2>/dev/null || true
+        -m '{"state":"idle","pct":0,"error":"","bank":"A"}' -r -q 1 2>/dev/null || true
 }

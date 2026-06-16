@@ -12,7 +12,6 @@
 #include "task_def.h"
 
 #include "app_log.h"
-#include "boot_bank_target.h"
 #include "app_event.h"
 #include "app_event_port.h"
 #include "config_port.h"
@@ -23,11 +22,11 @@
 #include "mqtt_outbox.h"
 #include "mqtt_port.h"
 #include "mqtt_route.h"
+#include "mqtt_state.h"
 #include "mqtt_topics.h"
 #include "ota_client.h"
 #include "wifi_port.h"
 
-#define MQTT_OFFLINE_PAYLOAD       "{\"online\": false}"
 #define MQTT_CONNECTION_ONLINE     "online"
 #define MQTT_CONNECTION_OFFLINE    "offline"
 #define MQTT_CMD_WILDCARD          "cmd/#"
@@ -135,11 +134,6 @@ static bool mqtt_client_wifi_has_ip(void)
 static port_err_t mqtt_client_publish_online(const mqtt_port_t *mqtt)
 {
     char connection_topic[96];
-    char state_topic[96];
-    char state_payload[64];
-    boot_bank_t active;
-    int written;
-    port_err_t err;
 
     if (mqtt_topic_format(connection_topic,
                           sizeof(connection_topic),
@@ -148,36 +142,17 @@ static port_err_t mqtt_client_publish_online(const mqtt_port_t *mqtt)
             != PORT_OK) {
         return PORT_ERR_INVALID_ARG;
     }
-    if (mqtt_topic_format(state_topic, sizeof(state_topic), s_device_id, "state") != PORT_OK) {
-        return PORT_ERR_INVALID_ARG;
-    }
 
-    err = mqtt->publish(connection_topic,
-                        MQTT_CONNECTION_ONLINE,
-                        strlen(MQTT_CONNECTION_ONLINE),
-                        1,
-                        true);
-    if (err != PORT_OK) {
-        return err;
-    }
-
-    active = boot_bank_query_active();
-    written = snprintf(state_payload,
-                       sizeof(state_payload),
-                       "{\"online\": true, \"bank\": \"%c\"}",
-                       (active == BOOT_BANK_B) ? 'B' : 'A');
-    if (written <= 0 || (size_t)written >= sizeof(state_payload)) {
-        return PORT_ERR_IO;
-    }
-
-    return mqtt->publish(state_topic, state_payload, (size_t)written, 1, true);
+    return mqtt->publish(connection_topic,
+                         MQTT_CONNECTION_ONLINE,
+                         strlen(MQTT_CONNECTION_ONLINE),
+                         1,
+                         true);
 }
 
 static port_err_t mqtt_client_publish_offline(const mqtt_port_t *mqtt)
 {
     char connection_topic[96];
-    char state_topic[96];
-    port_err_t err;
 
     if (mqtt == NULL || !mqtt->is_connected()) {
         return PORT_ERR_INVALID_ARG;
@@ -190,22 +165,10 @@ static port_err_t mqtt_client_publish_offline(const mqtt_port_t *mqtt)
             != PORT_OK) {
         return PORT_ERR_INVALID_ARG;
     }
-    if (mqtt_topic_format(state_topic, sizeof(state_topic), s_device_id, "state") != PORT_OK) {
-        return PORT_ERR_INVALID_ARG;
-    }
 
-    err = mqtt->publish(connection_topic,
-                        MQTT_CONNECTION_OFFLINE,
-                        strlen(MQTT_CONNECTION_OFFLINE),
-                        1,
-                        true);
-    if (err != PORT_OK) {
-        return err;
-    }
-
-    return mqtt->publish(state_topic,
-                         MQTT_OFFLINE_PAYLOAD,
-                         strlen(MQTT_OFFLINE_PAYLOAD),
+    return mqtt->publish(connection_topic,
+                         MQTT_CONNECTION_OFFLINE,
+                         strlen(MQTT_CONNECTION_OFFLINE),
                          1,
                          true);
 }
@@ -346,8 +309,11 @@ static port_err_t mqtt_client_do_connect(void)
         return PORT_ERR_IO;
     }
 
+    mqtt_adapter_yield(200);
+
     mqtt_backoff_on_success(&s_backoff);
     ota_client_set_device_id(s_device_id);
+    mqtt_state_set_device_id(s_device_id);
 
     {
         app_event_t ev;
@@ -422,6 +388,7 @@ static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
     }
 
     mqtt_outbox_reset();
+    mqtt_state_on_outbox_reset();
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
@@ -457,6 +424,7 @@ uint32_t mqtt_client_step(void)
     }
 
     if (!s_connect_pending && !s_connect_worker_running && mqtt->is_connected()) {
+        mqtt_adapter_yield(50);
         (void)mqtt_outbox_drain_one(mqtt);
         mqtt_adapter_yield(250);
         delay_ms = 250;
@@ -478,6 +446,7 @@ uint32_t mqtt_client_step(void)
     if (!s_connect_worker_running && mqtt->is_connected()) {
         s_connect_pending = false;
         s_connect_busy = false;
+        mqtt_adapter_yield(50);
         (void)mqtt_outbox_drain_one(mqtt);
         mqtt_adapter_yield(250);
         delay_ms = 250;
@@ -561,6 +530,7 @@ void mqtt_client_test_reset(void)
     s_device_id[0] = '\0';
     mqtt_backoff_init(&s_backoff);
     mqtt_outbox_reset();
+    mqtt_state_test_reset();
 }
 
 void mqtt_client_test_bootstrap(void)

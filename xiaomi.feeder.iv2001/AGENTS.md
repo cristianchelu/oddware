@@ -276,7 +276,7 @@ source tools/build-env.sh && ./tools/build-firmware.sh
 ./tools/ota/mqtt-ota.sh --device-id <ID> --skip-build   # only if no firmware/ edits since last build
 ```
 
-`mqtt-ota.sh` reads the active bank from `petfeeder/<ID>/state`, serves
+`mqtt-ota.sh` reads the active bank from `petfeeder/<ID>/ota/status`, serves
 `petfeeder_a.bin` or `petfeeder_b.bin` from `firmware/flash/` over a local
 Range HTTP server, publishes `petfeeder/<ID>/cmd/ota`, and waits for the bank
 field to flip. Logs land in `tools/ota/logs/<run-id>/` (HTTP + UART).
@@ -284,7 +284,7 @@ field to flip. Logs land in `tools/ota/logs/<run-id>/` (HTTP + UART).
 ### Success criteria
 
 - Script exits 0; hop meta shows `result=OK`.
-- `petfeeder/<ID>/state` reports the opposite bank (`A` ↔ `B`).
+- `petfeeder/<ID>/ota/status` reports the active bank (`A` ↔ `B` after hop).
 - On failure: inspect `tools/ota/logs/<run-id>/hop-*-uart.log` for `[ota]` /
   `[mqtt]` lines and `http.log` for stalled Range GETs.
 

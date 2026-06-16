@@ -28,6 +28,14 @@ static unsigned s_head;
 static unsigned s_count;
 static TickType_t s_last_drain_ticks;
 static bool s_drained_once;
+static mqtt_outbox_drained_fn s_drained_fn;
+static void *s_drained_ctx;
+
+void mqtt_outbox_set_drained_fn(mqtt_outbox_drained_fn fn, void *ctx)
+{
+    s_drained_fn = fn;
+    s_drained_ctx = ctx;
+}
 
 void mqtt_outbox_reset(void)
 {
@@ -106,6 +114,10 @@ bool mqtt_outbox_drain_one(const mqtt_port_t *mqtt)
                       slot->qos,
                       slot->retain) != PORT_OK) {
         return false;
+    }
+
+    if (s_drained_fn != NULL) {
+        s_drained_fn(slot->topic, slot->payload, slot->payload_len, s_drained_ctx);
     }
 
     s_last_drain_ticks = now;

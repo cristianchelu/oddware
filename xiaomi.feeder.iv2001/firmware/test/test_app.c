@@ -29,6 +29,8 @@
 #include "display_child_lock_indicator.h"
 #include "display_wifi_indicator.h"
 #include "display_mqtt_indicator.h"
+#include "app_log.h"
+#include "weigh_product.h"
 
 extern void fake_app_event_q_reset(void);
 extern size_t fake_app_event_q_depth(void);
@@ -902,4 +904,107 @@ void test_app_weight_updates_during_mqtt_connecting(void)
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x6Du, grids[1]);
     TEST_ASSERT_EQUAL_HEX8(0x6Du, grids[2]);
+}
+
+static void app_weight_boot_to_idle(void)
+{
+    post_event(EVT_APP_BOOT);
+    app_step();
+    post_timer_tick();
+    app_step();
+    post_timer_tick();
+    app_step();
+}
+
+void test_app_uncalibrated_shows_dash_and_bowl_icon_blink(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_UNCALIBRATED);
+    fake_display_port_reset();
+    display_presentation_reset();
+
+    app_weight_boot_to_idle();
+    post_display_tick(500u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[2]);
+    TEST_ASSERT_EQUAL_HEX8(0x04u, grids[4]);
+
+    post_display_tick(1100u);
+    app_step();
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}
+
+void test_app_span_pending_faster_bowl_blink(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_CAPTURING_SPAN);
+    fake_display_port_reset();
+    display_presentation_reset();
+
+    app_weight_boot_to_idle();
+    post_display_tick(0u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x04u, grids[4]);
+
+    post_display_tick(200u);
+    app_step();
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}
+
+void test_app_calibrated_small_negative_clamps_zero_icon_off(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    fake_weight_port_set_read_grams(-1);
+    fake_display_port_reset();
+    display_presentation_reset();
+
+    app_weight_boot_to_idle();
+    post_display_tick(500u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+    TEST_ASSERT_EQUAL_HEX8(0x3Fu, grids[2]);
+}
+
+void test_app_calibrated_bowl_missing_shows_underflow_and_icon(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    app_test_reset();
+    app_log_test_reset();
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    fake_weight_port_set_read_grams(-100);
+    fake_display_port_reset();
+    display_presentation_reset();
+
+    app_weight_boot_to_idle();
+    post_display_tick(500u);
+    app_step();
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[2]);
+    TEST_ASSERT_EQUAL_HEX8(0x04u, grids[4]);
+    TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "bowl missing"));
 }

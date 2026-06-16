@@ -24,10 +24,10 @@ Replacement firmware is under active development. User goals live in
 ### Connectivity
 
 - [x] Wi-Fi STA (stored credentials, connect lifecycle)
-- [x] MQTT broker session (LWT, online/state, reconnect backoff)
+- [x] MQTT broker session (LWT on `connection`, device condition on `state`, reconnect backoff)
 - [x] MQTT OTA command (`cmd/ota`)
 - [ ] TLS
-- [x] Home Assistant / MQTT integration [partial] (Dispense button today; retained state topics + full entity set remain)
+- [x] Home Assistant / MQTT integration [partial] (Dispense button, Bowl error sensor; remaining entities in spec)
 
 ### Provisioning
 

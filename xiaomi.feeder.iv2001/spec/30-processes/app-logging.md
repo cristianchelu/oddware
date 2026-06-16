@@ -195,6 +195,16 @@ Completion / fault lines (`done`, `fault: stuck`) remain on tag `cli` from
 | Child lock toggled off | `info` | `child_lock off` |
 | Physical gesture blocked while locked | `info` | `child_lock blocked` |
 
+## Bowl presence (tag `app`)
+
+| Event | Level | Line |
+|-------|-------|------|
+| Bowl removed (calibrated, below missing threshold) | `info` | `bowl missing` |
+| Bowl restored after missing | `info` | `bowl present` |
+
+Logged on edge change only (not on every weight sample). Threshold and
+evaluation: [weighing.md](weighing.md) § Bowl presence.
+
 ## API (application code)
 
 ```c

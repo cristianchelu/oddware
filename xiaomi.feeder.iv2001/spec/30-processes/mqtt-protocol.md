@@ -13,7 +13,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | Topic | Payload | QoS |
 |-------|---------|-----|
 | `.../connection` | `online` or `offline` (plain text) | 1 |
-| `.../state` | `{"online": true, "bank": "A"}` or `{"online": true, "bank": "B"}` | 1 |
+| `.../state` | `{"bowl_error": false}` — device condition (faults / health); see [Device condition](#device-condition) | 1 |
 | `.../weight` | `{"bowl_g": 42, "eaten_today_g": 85}` | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
 | `.../power` | `{"source": "mains", "battery_pct": 100}` | 1 |
@@ -23,7 +23,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | `{...full config object...}` | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
-| `.../ota/status` | `{"state": "idle", "pct": 0, "error": ""}` — see [OTA status](#ota-status) | 1 |
+| `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
 
 ## Command topics (subscribed by device, not retained)
 
@@ -50,7 +50,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 
 Set at CONNECT time. Broker publishes will on unclean disconnect. On
 graceful disconnect the firmware publishes `offline` on `.../connection`
-and `{"online": false}` on `.../state` before `DISCONNECT`.
+before `DISCONNECT`. `.../state` is not used for presence.
 
 ## Home Assistant discovery
 
@@ -82,8 +82,9 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 
 ### Home Assistant validation slice
 
-The firmware publishes one HA entity today — a **Dispense** button — to
-prove autodiscovery on a real broker before the rest of the table lands.
+The firmware publishes HA entities incrementally before the full table lands.
+
+**Dispense button** (shipped):
 
 | Field | Value |
 |-------|-------|
@@ -97,13 +98,27 @@ prove autodiscovery on a real broker before the rest of the table lands.
 | `device.manufacturer` | `Xiaomi` |
 | `device.model` | `Smart Pet Food Feeder 2` |
 
+**Bowl error** binary sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/binary_sensor/petfeeder_<device_id>/bowl_error/config` |
+| `state_topic` | `petfeeder/<device_id>/state` |
+| `value_template` | `{{ value_json.bowl_error }}` |
+| `payload_on` / `payload_off` | JSON booleans `true` / `false` (not default `ON`/`OFF`) |
+| `device_class` | `problem` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+
+Bench payloads: `tools/mqtt/payloads/ha-bowl_error.json`.
+
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
 dispense lands). UART logs use tag `dispense` — see
 [app-logging.md](app-logging.md) § Dispense diagnostics. Entity availability
 follows retained `.../connection`
-(`online` / `offline`); `.../state` carries bank and JSON online for
-automations.
+(`online` / `offline`).
 
 Discovery refresh every 300 s is deferred; the outbox path supports it when
 the full table ships. Stale discovery topics from prior firmware builds are
@@ -131,7 +146,7 @@ Bench and runtime behavior (UART details in
 | Boot | `mqtt_io` task starts; if `mqtt/host` is stored, connect when Wi-Fi STA has DHCP (no `mqtt connect` needed). Otherwise remain idle until armed |
 | `mqtt connect` (or provisioning success) | Arm client; connect when Wi-Fi STA has DHCP |
 | `mqtt disconnect` | Disarm for this boot; no reconnect until `mqtt connect` or reboot |
-| Successful CONNECT | Subscribe `petfeeder/<device_id>/cmd/#`; publish retained `online` on `.../connection` and `{"online": true, "bank": "A"|"B"}` on `.../state` (`bank` is the active A/B partition); install LWT per table above |
+| Successful CONNECT | Subscribe `cmd/#`; publish retained `online` on `.../connection`; LWT installed; `EVT_MQTT_CONNECTED` enqueues retained `.../state`, `.../ota/status`, and HA discovery (drained by `mqtt_io`) |
 | Connected idle | `mqtt_io` drains [mqtt_outbox](#publish-path) then `MQTTYield`; inbound commands are heap-copied to `app_event_q` and routed on `app` (see [Inbound commands](#inbound-commands)) |
 | Session loss while armed | Exponential backoff reconnect (see below) |
 
@@ -156,7 +171,8 @@ readings keep the last good sample on `PORT_ERR_BUSY`.
 | Step | Task | Behavior |
 |------|------|----------|
 | Arm + session sync | `mqtt_io` or `app` producer | `mqtt_client_request_connect()` sets pending flags and posts connecting phase |
-| Handshake | `mqtt_cn` worker | `ConnectNetwork`, `MQTTConnect`, subscribe `cmd/#`, publish retained `connection` + `state`; `taskYIELD()` after major blocking calls |
+| Handshake | `mqtt_cn` worker | `ConnectNetwork`, `MQTTConnect`, subscribe `cmd/#`, publish retained `connection`=`online`; `mqtt_adapter_yield` before worker exit |
+| Post-connect enqueue | `app` on `EVT_MQTT_CONNECTED` | Enqueue retained `.../state`, `.../ota/status`, HA discovery — no `mqtt_port->publish` from `app` |
 | Poll | `mqtt_io` | `[tune]` 50 ms step delay while worker runs; on completion apply backoff or post `EVT_MQTT_CONNECTED` |
 | Disarm | `mqtt_client_stop()` | Clears worker state; disconnect if session was up |
 
@@ -180,15 +196,17 @@ Summary:
 Subscription is a single wildcard `.../cmd/#` covering the nine command topics
 below — not `#`, not other devices' namespaces.
 
-**Implemented now:** connect/LWT/online state, subscribe, reconnect backoff,
+**Implemented now:** connect/LWT/`connection` presence, subscribe, reconnect backoff,
 command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
 A/B bank swap, post-boot rollback timer), [mqtt_outbox](#publish-path)
-(post-connect publish queue), HA validation-slice Dispense button discovery,
-`cmd/dispense` → one portion.
+(post-connect publish queue), device condition (`bowl_error` on `.../state`),
+`bank` on every `ota/status`, HA validation-slice **Dispense** button and **Bowl
+error** binary_sensor discovery, `cmd/dispense` → one portion.
 
-**Not implemented yet:** remaining HA entities, 300 s discovery refresh,
-other retained state topics, non-dispense command handlers, per-topic
-last-value-wins coalescing on the outbox.
+**Not implemented yet:** remaining telemetry topics (`weight`, `hopper`, `power`,
+dispense, schedule, config, display), additional HA entities from the full table,
+300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
+coalescing on the outbox.
 
 ### Publish path
 
@@ -197,8 +215,8 @@ Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
 
 | Phase | Who may call `mqtt_port->publish()` |
 |-------|-------------------------------------|
-| `mqtt_cn` handshake | Connect worker only (subscribe, retained online `state`, LWT already set at CONNECT) |
-| Connected session | **`mqtt_io` only**, one item per step via outbox drain |
+| `mqtt_cn` handshake | Connect worker only (retained `connection`=`online`; subscribe; LWT set at CONNECT) |
+| Connected session | **`mqtt_io` only** — `mqtt_adapter_yield` before each outbox drain; one item per step |
 | `app` task | **Enqueue only** — copy topic and payload into the outbox |
 
 | Parameter | Value |
@@ -239,6 +257,28 @@ The outbox drain interval spaces connect-time bursts (e.g. ten HA entities
 ≈ 1 s). Per-topic last-value-wins coalescing for high-rate state publishers
 is deferred until those topics ship.
 
+## Device condition
+
+Topic `.../state` (retained, QoS 1) reports operational health — not presence
+(`.../connection`) and not OTA slot metadata (`ota/status.bank`).
+
+| Field | Type | When `true` |
+|-------|------|-------------|
+| `bowl_error` | bool | Weigh cal incomplete, span pending, or calibrated bowl missing (see [weighing.md](weighing.md) § Bowl presence) |
+
+Publish on edge change and as a snapshot after MQTT connect. Not on every
+weight sample tick.
+
+Example payloads:
+
+```json
+{"bowl_error": false}
+{"bowl_error": true}
+```
+
+Bench templates: `tools/mqtt/payloads/state-ok.json`,
+`state-bowl-error.json`.
+
 ## OTA status
 
 Topic `.../ota/status` (retained, QoS 1). Published on OTA progress and after
@@ -251,6 +291,7 @@ the OTA handler.
 | `state` | `idle`, `downloading`, `applying`, `error` |
 | `pct` | 0–100 download progress |
 | `error` | Empty string on success paths; when `state` is `error`, one of: |
+| `bank` | Active application partition: `"A"` or `"B"` — included on every publish |
 
 | `error` value | When |
 |---------------|------|

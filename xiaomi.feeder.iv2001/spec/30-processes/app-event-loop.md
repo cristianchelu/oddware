@@ -62,6 +62,7 @@ handshake runs.
 | Session phase → lightbar scene | `app` on `EVT_MQTT_SESSION` | Indicator helpers update scene only — no `display_presentation_refresh()` |
 | TM1637 physical refresh | `app` on `EVT_DISPLAY_TICK` (timer or local heartbeat) | `try_show_grids`; skip frame on `PORT_ERR_BUSY`, retry next tick |
 | Idle bowl grams | `app` on same `EVT_DISPLAY_TICK` turn | `try_read_grams` at `[tune]` 500 ms; `PORT_ERR_BUSY` keeps last sample; I/O errors clear it |
+| Bowl error pictograph + weight digits | `app` on same `EVT_DISPLAY_TICK` turn | `app_weight_sync_display_scene()` — `bowl_error_eval` → `display_bowl_error_indicator_sync` + digit mode (`---`, `-  `, or clamped grams) |
 | Weight boot settle | `app` on `EVT_TIMER_TICK` | `boot_begin` / `boot_poll` — no multi-second `vTaskDelay` in `app` |
 
 **Regression constraints:** synchronous `mqtt->connect()` on `mqtt_io` or `app`
@@ -128,17 +129,19 @@ Non-blocking state across `EVT_TIMER_TICK` (`[tune]` 500 ms / 2 Hz):
    connect); I/O errors clear it. `[tune]` starting value for bench characterization.
 
 Default display mode is **weight** (hardcoded in `app` — no NVDM `display/mode`,
-no `cmd/display` in this phase). Digit grids: uncalibrated → `---`; calibrated
-with a sample → grams; calibrated but no sample yet (or read I/O fault) → blank
-digits with `GRAM` unit — not `---`.
+no `cmd/display` in this phase). Digit grids: uncalibrated → `---g`; calibrated
+bowl missing → `-  g`; calibrated with a sample in range → grams; calibrated but
+no sample yet (or read I/O fault) → blank digits with `GRAM` unit — not `---`.
+Bowl-error pictograph policy: [display-presentation.md](display-presentation.md)
+§ Bowl error indicator.
 
 ## Intentional direct-wired exceptions
 
 | Path | Reason |
 |------|--------|
 | UART `display` / `weigh` CLI | User-initiated bench commands, not lifecycle policy |
-| `mqtt_client_do_connect()` subscribe + online publish | MQTT I/O stays in `mqtt_io` until full split |
-| OTA download progress → MQTT publish | Progress callback in `ota_dl` |
+| `mqtt_cn` connect worker | Subscribe + retained `connection` publish only; post-connect topics use [mqtt_outbox](mqtt-protocol.md#publish-path) |
+| OTA download progress → MQTT publish | Progress callback enqueues `ota/status`; `mqtt_io` drains |
 
 ## Verification
 

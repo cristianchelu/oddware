@@ -129,6 +129,13 @@ Bank-A boots after B→A hop reach `STA ready` in ~1 s. Cold boots when bank A
 is active connect in ~2 s. Any bank-B boot is the slow path (~42 s on bench);
 acceptable for monthly OTA events. `[probe]`
 
+### Active bank on MQTT
+
+Every `.../ota/status` JSON includes `"bank": "A"` or `"B"` — the application
+partition the bootloader will run. Bench OTA scripts (`tools/ota/`) read the
+active bank from retained `ota/status`, not from `.../state`. See
+[mqtt-protocol.md](mqtt-protocol.md) § OTA status.
+
 ## Rollback
 
 On boot after OTA:

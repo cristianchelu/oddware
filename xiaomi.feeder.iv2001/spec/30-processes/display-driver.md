@@ -126,8 +126,9 @@ patterns:
 
 | Pattern | Bytes 0–2 | Usage |
 |---------|-----------|-------|
-| `0x40` on all three digit grids | Segment dash |
-| `0x79`, `0x3F`, `0x06` | Static percent glyph |
+| `0x40` on all three digit grids | Segment dash | Uncalibrated `---g` |
+| `0x40` on grid 0 only; grids 1–2 `0x00` | Single left dash | Calibrated bowl missing `-  g` |
+| `0x79`, `0x3F`, `0x06` | Static percent glyph | Percent unit on grid 3 |
 | Multi-frame digit animation | Bytes 0–2 vary per frame | Busy / lock spinner |
 
 ## Rail power primitives

@@ -8,6 +8,7 @@
 #include "mqtt_dispense_cmd.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
+#include "mqtt_state.h"
 #include "ota_client.h"
 
 void app_mqtt_on_connected(void)
@@ -15,6 +16,7 @@ void app_mqtt_on_connected(void)
     const char *device_id = mqtt_client_device_id();
 
     ota_client_on_mqtt_connected();
+    mqtt_state_on_mqtt_connected();
     if (device_id != NULL && device_id[0] != '\0') {
         mqtt_ha_discovery_schedule(device_id);
     }

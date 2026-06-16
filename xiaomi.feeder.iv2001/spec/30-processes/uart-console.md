@@ -329,7 +329,7 @@ the CLI task).
 | Precondition | Behavior |
 |--------------|----------|
 | `mqtt/host` not stored | Reject without connecting |
-| Host stored | Queue connect; LWT on `.../state`; publish `{"online": true}` on success |
+| Host stored | Queue connect; LWT on `.../connection`; publish `online` on `.../connection` on success |
 
 | Outcome | UART response |
 |---------|---------------|

@@ -87,6 +87,27 @@ to true grams (see **Weigh driver boundary** above).
 
 Factory reset erases the `calib` namespace.
 
+## Bowl presence
+
+After span calibration, `food_g` from `read_grams` is bowl-subtracted (empty
+installed bowl = 0 g). When the physical bowl is removed, `food_g` drops well
+below zero.
+
+| Parameter | Value |
+|-----------|-------|
+| Bowl mass reference | 350 g (`[product]`) |
+| Missing threshold | `[tune]` 25 % of bowl mass → **87 g** below zero (`(350 × 25) / 100`) |
+
+| `food_g` (calibrated, valid sample) | Interpretation |
+|-------------------------------------|----------------|
+| `≥ −threshold` | Bowl present; small negative drift clamps to `0g` on the panel |
+| `< −threshold` | Bowl missing — steady bowl-error pictograph and `-  g` digits |
+
+Display feedback: [display-presentation.md](display-presentation.md) § Bowl
+error indicator. MQTT `bowl_error` in `.../state`:
+[mqtt-protocol.md](mqtt-protocol.md) § Device condition. UART edge lines (`bowl missing` / `bowl present`): [app-logging.md](app-logging.md)
+§ Bowl presence (tag `app`).
+
 ## Sampling modes
 
 | Mode | Interval | Active when |

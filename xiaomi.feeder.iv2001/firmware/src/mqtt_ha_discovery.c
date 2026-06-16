@@ -96,11 +96,68 @@ int mqtt_ha_format_dispense_button_config(char *buf,
     return written;
 }
 
+int mqtt_ha_format_bowl_error_config(char *buf, size_t len, const char *device_id)
+{
+    char state_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(state_topic, sizeof(state_topic), device_id, "state") != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Bowl error\","
+                       "\"unique_id\":\"petfeeder_%s_bowl_error\","
+                       "\"state_topic\":\"%s\","
+                       "\"value_template\":\"{{ value_json.bowl_error }}\","
+                       "\"payload_on\":true,"
+                       "\"payload_off\":false,"
+                       "\"device_class\":\"problem\","
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       state_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
         .object_id = "dispense",
         .format_config = mqtt_ha_format_dispense_button_config,
+    },
+    {
+        .component = "binary_sensor",
+        .object_id = "bowl_error",
+        .format_config = mqtt_ha_format_bowl_error_config,
     },
 };
 

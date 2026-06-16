@@ -7,10 +7,10 @@ cloud dependency and no phone-home telemetry.
 
 ## Design principles
 
-- **Home Assistant auto-discovery** — entities appear automatically. Today
-  the firmware publishes a **Dispense** button only; the full entity table
-  lands in a later release (see [mqtt-protocol.md](../30-processes/mqtt-protocol.md)
-  § Home Assistant validation slice).
+- **Home Assistant auto-discovery** — entities appear automatically. Shipped
+  today: **Dispense** button and **Bowl error** binary sensor; the full entity
+  table is in [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity
+  table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
 - **Neutral namespace** — topic paths use `petfeeder/<device_id>/...`
@@ -21,15 +21,19 @@ cloud dependency and no phone-home telemetry.
 
 ## Online / offline presence
 
-- The device uses an MQTT Last Will and Testament (LWT) to report
-  online/offline status. If the device disconnects unexpectedly the
-  broker publishes the offline message automatically.
+- Presence is on `petfeeder/<device_id>/connection` — plain-text `online` or
+  `offline` (retained, QoS 1). Device condition and OTA metadata use other
+  topics (`.../state`, `.../ota/status`).
+- The device uses an MQTT Last Will and Testament (LWT) on `.../connection`.
+  If the device disconnects unexpectedly the broker publishes `offline`
+  automatically.
 
 ## State topics (device → user)
 
 The feeder publishes the following retained state topics:
 
 - **Weight** — bowl grams, eaten-today grams.
+- **Device condition** — faults and health (`bowl_error`, extensible).
 - **Hopper** — fill level (normal / low).
 - **Power** — source (mains / battery), battery percentage.
 - **Dispense status** — idle or active, last result, last grams.

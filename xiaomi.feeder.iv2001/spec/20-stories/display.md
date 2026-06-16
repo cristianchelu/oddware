@@ -60,6 +60,19 @@ Wi-Fi and MQTT indicators are independent — both may be active at once.
   gesture is blocked by child lock (see [controls.md](controls.md) § Child
   lock). MQTT and other status pictographs stay as they were during feedback.
 
+### Food bowl error
+
+The food-bowl pictograph (bottom row, right) signals weigh calibration
+progress and bowl presence while **weight** mode is active.
+
+- **Slow blink** while the scale is not yet calibrated (digits show `---g`).
+- **Faster blink** after zero capture when span calibration is still pending
+  (digits still show `---g`).
+- **Off** when fully calibrated and the bowl reads within the normal range
+  (or no valid sample yet).
+- **Steady on** when calibrated but the bowl appears removed — digits show
+  `-  g` (single left dash), distinct from uncalibrated `---g`.
+
 ## Brightness
 
 - Configurable via MQTT: 4 levels (1 = dimmest, 4 = brightest).

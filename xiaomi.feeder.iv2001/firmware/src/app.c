@@ -10,13 +10,16 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
+#include "bowl_error.h"
 #include "button_gesture.h"
 #include "button_input.h"
 #include "button_port.h"
 #include "config_port.h"
 #include "display_mqtt_indicator.h"
 #include "display_child_lock_indicator.h"
+#include "display_bowl_error_indicator.h"
 #include "display_presentation.h"
+#include "mqtt_state.h"
 #include "display_wifi_indicator.h"
 #include "mqtt_client.h"
 
@@ -36,6 +39,7 @@
 #include "power_source_port.h"
 #include "motor_cli.h"
 #include "motor_port.h"
+#include "weigh_product.h"
 #include "weight_port.h"
 
 #define APP_WEIGHT_SAMPLE_MS  500u
@@ -56,6 +60,29 @@ static int32_t s_bowl_g;
 static bool s_bowl_valid;
 static uint32_t s_weight_last_sample_ms;
 static bool s_weight_resample_after_dispense;
+static bool s_bowl_missing_known;
+static bool s_bowl_missing;
+
+static void app_weight_log_bowl_presence(bowl_error_kind_t bowl_err)
+{
+    bool missing = (bowl_err == BOWL_ERROR_BOWL_MISSING);
+
+    if (!s_bowl_missing_known) {
+        s_bowl_missing_known = true;
+        s_bowl_missing = missing;
+        if (missing) {
+            app_log_info("app", "bowl missing");
+        }
+        return;
+    }
+
+    if (missing == s_bowl_missing) {
+        return;
+    }
+
+    s_bowl_missing = missing;
+    app_log_info("app", missing ? "bowl missing" : "bowl present");
+}
 
 static void app_mqtt_session_apply(mqtt_session_phase_t phase)
 {
@@ -79,6 +106,7 @@ static void app_weight_sync_display_scene(void)
 {
     const weight_port_t *wp = weight_port_get();
     weight_cal_status_t cal;
+    bowl_error_kind_t bowl_err;
 
     if (s_display_mode != APP_DISPLAY_MODE_WEIGHT) {
         return;
@@ -87,21 +115,30 @@ static void app_weight_sync_display_scene(void)
     cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
                                                      : WEIGHT_CAL_UNCALIBRATED;
 
+    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
+    app_weight_log_bowl_presence(bowl_err);
+    display_bowl_error_indicator_sync(bowl_err);
+    mqtt_state_sync(bowl_error_is_active(bowl_err));
+
     (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
 
     if (cal != WEIGHT_CAL_SUCCESS) {
         (void)display_presentation_set_digits_dash();
     } else if (s_bowl_valid) {
-        uint16_t shown;
-
-        if (s_bowl_g < 0) {
-            shown = 0u;
-        } else if (s_bowl_g > 999) {
-            shown = 999u;
+        if (s_bowl_g < -(int32_t)WEIGH_BOWL_MISSING_THRESHOLD_G) {
+            (void)display_presentation_set_digits_underflow();
         } else {
-            shown = (uint16_t)s_bowl_g;
+            uint16_t shown;
+
+            if (s_bowl_g < 0) {
+                shown = 0u;
+            } else if (s_bowl_g > 999) {
+                shown = 999u;
+            } else {
+                shown = (uint16_t)s_bowl_g;
+            }
+            (void)display_presentation_set_digits(shown);
         }
-        (void)display_presentation_set_digits(shown);
     } else {
         (void)display_presentation_clear_digits();
     }
@@ -429,6 +466,7 @@ void app_dispatch(const app_event_t *ev)
 
     case EVT_MQTT_CONNECTED:
         app_mqtt_on_connected();
+        app_weight_sync_display_scene();
         break;
 
     case EVT_MQTT_MESSAGE:
@@ -573,6 +611,8 @@ void app_test_reset(void)
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
     s_weight_resample_after_dispense = false;
+    s_bowl_missing_known = false;
+    s_bowl_missing = false;
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
     power_source_input_init(power_source_port_get());
