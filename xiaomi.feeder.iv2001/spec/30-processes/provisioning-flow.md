@@ -22,12 +22,9 @@ Device enters Wi-Fi AP mode on:
 | Parameter | Value |
 |-----------|-------|
 | SSID | `PetFeeder-XXXX` (XXXX = last 4 hex chars of MAC) |
-| Security | WPA2 with device-unique PSK (preferred) `[design]` |
-| Fallback | Open AP if PSK derivation not implemented |
+| Security | Open (no password) `[design]` |
 | IP address | 192.168.4.1 (standard AP gateway) |
 | DHCP | Device runs DHCP server, assigns 192.168.4.x to clients |
-
-PSK derivation: hash of serial number or MAC, printed on device label. `[design]`
 
 ## Captive portal
 
@@ -166,7 +163,8 @@ On form submit:
 - MQTT credentials stored in NVDM flash — **not encrypted** at rest.
   No hardware secure element on MT7682. Acceptable for home-network
   threat model. `[design]`
-- AP mode WPA2 with device-unique PSK preferred over open AP.
+- Setup AP is open; provisioning is brief and local-only (physical
+  proximity is the access control). `[design]`
 - No cloud callback, no phone-home, no telemetry.
 - Captive portal serves HTTP only (no TLS on AP interface — self-signed
   cert UX is worse than plain HTTP on a local AP). `[design]`

@@ -41,7 +41,7 @@ account required.
 
 ## Security
 
-- AP mode can use WPA2 with a device-unique PSK printed on the label.
+- Setup AP is open (no password).
 - MQTT credentials are stored in flash (unencrypted — acceptable for a
   home-network threat model).
 - No cloud callback, no phone-home, no telemetry.

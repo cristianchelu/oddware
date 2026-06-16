@@ -6,6 +6,79 @@ Open-source replacement firmware for the **Xiaomi Smart Pet Food Feeder 2**
 Local-only MQTT control for Home Assistant, Homey, or any MQTT broker. No
 cloud, no MIoT, no phone-home.
 
+## Firmware status
+
+Replacement firmware is under active development. User goals live in
+[`spec/20-stories/`](spec/20-stories/); detailed behavior in
+[`spec/30-processes/`](spec/30-processes/).
+
+### Build & recovery
+
+- [x] IV2001 board build (MT7682, A/B partitions, custom bootloader)
+- [x] Host unit tests (`make test-host`)
+- [x] UART flash tooling (Linux)
+- [x] MQTT OTA bench loop ([`tools/ota/`](tools/ota/))
+- [x] UART development console (MiniCLI)
+- [x] Remote telnet console (bench; optional `REMOTE_CLI_ENABLE`)
+
+### Connectivity
+
+- [x] Wi-Fi STA (stored credentials, connect lifecycle)
+- [x] MQTT broker session (LWT, online/state, reconnect backoff)
+- [x] MQTT OTA command (`cmd/ota`)
+- [ ] TLS
+- [x] Home Assistant / MQTT integration [partial] (Dispense button today; retained state topics + full entity set remain)
+
+### Provisioning
+
+- [x] Captive portal on first boot (home Wi-Fi + MQTT via `PetFeeder-XXXX` AP)
+- [x] Factory reset via UART CLI
+- [ ] Re-provisioning via pin-hole reset (short press)
+- [ ] Factory reset via pin-hole reset (long press)
+
+### Feeding
+
+- [x] Open-loop portion dispense (UART, MQTT, HA button)
+- [x] Motor index tracking and jam / anti-jam
+- [ ] Weight-based dispense (5–150 g target, bowl feedback)
+- [ ] Dispense progress and outcome reporting over MQTT
+
+### Sensing & display
+
+- [x] Bowl weight on panel (default display mode)
+- [x] Weight scale calibration (CLI: `weigh cal zero` / `span`)
+- [x] Hopper level sensing (UART)
+- [x] Status pictographs (Wi-Fi, MQTT, dispense)
+- [ ] Bowl missing detection (Food Bowl Error)
+- [ ] Alternate display modes (eaten today, off) from product paths
+
+### Controls
+
+- [x] Physical button input and gesture detection
+- [ ] Manual dispense button
+- [ ] Child lock
+
+### Power & battery
+
+Goals are split across [`monitoring.md`](spec/20-stories/monitoring.md) (battery
+reporting, conservation) and [`controls.md`](spec/20-stories/controls.md)
+(sleep); mechanism in
+[`power-state-machine.md`](spec/30-processes/power-state-machine.md) and
+[`battery-monitoring.md`](spec/30-processes/battery-monitoring.md).
+
+- [x] Mains vs battery source detection (UART)
+- [ ] Power state machine (Normal / Battery / Sleep)
+- [ ] Battery voltage and percentage
+- [ ] Low-battery warning and conservation (display / Wi-Fi off; keep dispense)
+- [ ] Wi-Fi on battery (`on` / `off` / `scheduled_only`)
+- [ ] Sleep / wake (rear power button)
+
+### Scheduling
+
+- [ ] NTP time sync
+- [ ] Schedule slots (MQTT CRUD, timed dispense)
+- [ ] Next-feed reporting
+
 ## Quick start
 
 From this directory:
