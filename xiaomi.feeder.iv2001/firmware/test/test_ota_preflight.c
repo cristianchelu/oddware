@@ -60,6 +60,8 @@ void test_preflight_suspend_mqtt_blocks_connect(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
     TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+
+    ota_preflight_resume_idle_tasks();
 }
 
 void test_preflight_suspend_remote_cli_ends_session(void)

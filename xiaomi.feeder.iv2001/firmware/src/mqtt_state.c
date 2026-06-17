@@ -113,6 +113,10 @@ void mqtt_state_sync(bool bowl_error)
         return;
     }
 
+    if (s_publish_pending) {
+        return;
+    }
+
     (void)mqtt_state_publish(bowl_error);
 }
 

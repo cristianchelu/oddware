@@ -75,6 +75,7 @@ void test_mqtt_ha_format_bowl_weight_config_json(void)
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
 {
     mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
     TEST_ASSERT_EQUAL_UINT(3, mqtt_outbox_pending());
 }
@@ -86,6 +87,7 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     fake_time_reset();
     fake_mqtt_port_reset();
     mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
     fake_mqtt_port_get()->connect(NULL);
 
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);

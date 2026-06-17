@@ -123,6 +123,7 @@ static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
 
     bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
     display_bowl_error_indicator_sync(bowl_err);
+
     mqtt_state_sync(bowl_error_is_active(bowl_err));
 
     grams_st = bowl_grams_present(cal, s_bowl_valid, s_bowl_g, &present_g);

@@ -24,9 +24,15 @@ static void drain_all_outbox(void)
     }
 }
 
-void test_mqtt_outbox_enqueue_empty_payload(void)
+static void outbox_test_reset(void)
 {
     mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
+}
+
+void test_mqtt_outbox_enqueue_empty_payload(void)
+{
+    outbox_test_reset();
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC, "", 0u, 1, true));
     TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
 }
@@ -37,7 +43,7 @@ void test_mqtt_outbox_drain_publishes_empty_payload(void)
 
     fake_time_reset();
     fake_mqtt_port_reset();
-    mqtt_outbox_reset();
+    outbox_test_reset();
     fake_mqtt_port_get()->connect(NULL);
 
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC, "", 0u, 1, true));
@@ -50,7 +56,7 @@ void test_mqtt_outbox_drain_publishes_empty_payload(void)
 
 void test_mqtt_outbox_enqueue_copies_payload(void)
 {
-    mqtt_outbox_reset();
+    outbox_test_reset();
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC,
                                          TEST_PAYLOAD,
                                          strlen(TEST_PAYLOAD),
@@ -65,7 +71,7 @@ void test_mqtt_outbox_drain_publishes_via_fake_port(void)
 
     fake_time_reset();
     fake_mqtt_port_reset();
-    mqtt_outbox_reset();
+    outbox_test_reset();
     fake_mqtt_port_get()->connect(NULL);
 
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC,
@@ -89,7 +95,7 @@ void test_mqtt_outbox_rate_interval_respected(void)
 
     fake_time_reset();
     fake_mqtt_port_reset();
-    mqtt_outbox_reset();
+    outbox_test_reset();
     fake_mqtt_port_get()->connect(NULL);
 
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC,
@@ -123,7 +129,7 @@ void test_mqtt_outbox_full_ring_drops(void)
     char topic[32];
     unsigned i;
 
-    mqtt_outbox_reset();
+    outbox_test_reset();
 
     for (i = 0; i < 16u; i++) {
         snprintf(topic, sizeof(topic), "petfeeder/ddeeff/t%u", i);
@@ -134,15 +140,28 @@ void test_mqtt_outbox_full_ring_drops(void)
     TEST_ASSERT_EQUAL_UINT(16, mqtt_outbox_pending());
 }
 
+void test_mqtt_outbox_not_accepting_drops_silently(void)
+{
+    outbox_test_reset();
+    mqtt_outbox_set_accepting(false);
+
+    TEST_ASSERT_FALSE(mqtt_outbox_enqueue(TEST_TOPIC, "x", 1, 0, false));
+    TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
+
+    mqtt_outbox_set_accepting(true);
+    TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC, "x", 1, 0, false));
+    TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
+}
+
 void test_mqtt_outbox_reset_clears(void)
 {
-    mqtt_outbox_reset();
+    outbox_test_reset();
     TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC,
                                          TEST_PAYLOAD,
                                          strlen(TEST_PAYLOAD),
                                          1,
                                          true));
-    mqtt_outbox_reset();
+    outbox_test_reset();
     TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 
     fake_time_reset();

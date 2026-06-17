@@ -533,6 +533,7 @@ void mqtt_client_test_reset(void)
     s_device_id[0] = '\0';
     mqtt_backoff_init(&s_backoff);
     mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
     mqtt_state_test_reset();
     mqtt_bowl_weight_test_reset();
 }
@@ -643,6 +644,7 @@ const char *mqtt_client_device_id(void)
 
 void mqtt_client_suspend_for_ota(void)
 {
+    mqtt_outbox_set_accepting(false);
     s_suspended = true;
     s_connect_armed = false;
     s_connect_pending = false;
@@ -656,6 +658,7 @@ void mqtt_client_suspend_for_ota(void)
 void mqtt_client_resume_after_ota(void)
 {
     s_suspended = false;
+    mqtt_outbox_set_accepting(true);
 
     if (mqtt_cred_is_stored(config_port_get()) && mqtt_client_wifi_is_ready()) {
         s_connect_armed = true;

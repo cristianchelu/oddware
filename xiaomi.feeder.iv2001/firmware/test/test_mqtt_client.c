@@ -373,6 +373,31 @@ void test_suspend_for_ota_blocks_pending_connect(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->connect_calls);
     TEST_ASSERT_FALSE(mqtt_client_connect_in_progress());
+
+    mqtt_client_resume_after_ota();
+}
+
+void test_suspend_for_ota_pauses_outbox_enqueue(void)
+{
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
+    seed_broker_config();
+    mqtt_client_test_bootstrap();
+    setup_wifi_up();
+
+    TEST_ASSERT_TRUE(mqtt_client_request_connect());
+    mqtt_client_step();
+    mqtt_client_suspend_for_ota();
+    mqtt_client_step();
+
+    TEST_ASSERT_FALSE(mqtt_outbox_is_accepting());
+    TEST_ASSERT_FALSE(mqtt_outbox_enqueue("petfeeder/ddeeff/state", "{}", 2, 1, true));
+    TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
+
+    mqtt_client_resume_after_ota();
+    TEST_ASSERT_TRUE(mqtt_outbox_is_accepting());
 }
 
 void test_connect_logs_connecting_and_connected_milestones(void)
@@ -438,4 +463,6 @@ void test_suspend_for_ota_disconnects_without_reconnect(void)
     TEST_ASSERT_EQUAL_UINT(1, mqtt->connect_calls);
     TEST_ASSERT_EQUAL_UINT(1, mqtt->disconnect_calls);
     TEST_ASSERT_FALSE(mqtt->connected);
+
+    mqtt_client_resume_after_ota();
 }

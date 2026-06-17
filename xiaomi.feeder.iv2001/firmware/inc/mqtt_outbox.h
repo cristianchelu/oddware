@@ -18,6 +18,11 @@ typedef void (*mqtt_outbox_drained_fn)(const char *topic,
 
 void mqtt_outbox_set_drained_fn(mqtt_outbox_drained_fn fn, void *ctx);
 
+/* When false, mqtt_outbox_enqueue drops silently (no log, no slot). */
+void mqtt_outbox_set_accepting(bool accepting);
+
+bool mqtt_outbox_is_accepting(void);
+
 bool mqtt_outbox_enqueue(const char *topic,
                          const void *payload,
                          size_t len,

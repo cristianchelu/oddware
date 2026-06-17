@@ -30,11 +30,22 @@ static TickType_t s_last_drain_ticks;
 static bool s_drained_once;
 static mqtt_outbox_drained_fn s_drained_fn;
 static void *s_drained_ctx;
+static bool s_accepting = true;
 
 void mqtt_outbox_set_drained_fn(mqtt_outbox_drained_fn fn, void *ctx)
 {
     s_drained_fn = fn;
     s_drained_ctx = ctx;
+}
+
+void mqtt_outbox_set_accepting(bool accepting)
+{
+    s_accepting = accepting;
+}
+
+bool mqtt_outbox_is_accepting(void)
+{
+    return s_accepting;
 }
 
 void mqtt_outbox_reset(void)
@@ -70,6 +81,9 @@ bool mqtt_outbox_enqueue(const char *topic,
         return false;
     }
     if (strlen(topic) >= MQTT_OUTBOX_MAX_TOPIC) {
+        return false;
+    }
+    if (!s_accepting) {
         return false;
     }
     if (s_count >= MQTT_OUTBOX_DEPTH) {

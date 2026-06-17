@@ -243,6 +243,8 @@ Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
 | Min interval between successful drains | `[tune]` 100 ms |
 
 When the ring is full, new enqueues are dropped and a debug log is emitted.
+While MQTT is suspended for OTA (`mqtt_client_suspend_for_ota`), the outbox
+stops accepting enqueues — callers get a silent drop with pending count 0.
 `mqtt_outbox` is cleared on disconnect. OTA status, HA discovery, and future
 state publishers share this path.
 

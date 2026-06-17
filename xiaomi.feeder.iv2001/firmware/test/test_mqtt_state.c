@@ -122,3 +122,13 @@ void test_mqtt_state_on_mqtt_connected_skips_when_unknown(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(0, mqtt->publish_calls);
 }
+
+void test_mqtt_state_sync_does_not_spam_while_publish_pending(void)
+{
+    setup_mqtt_state();
+    mqtt_state_sync(false);
+    TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
+
+    mqtt_state_sync(false);
+    TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
+}
