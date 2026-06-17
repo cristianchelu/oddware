@@ -12,6 +12,7 @@
 #include "mqtt_port.h"
 #include "mqtt_route.h"
 #include "mqtt_topics.h"
+#include "display_ota_indicator.h"
 #include "ota_client.h"
 #include "ota_port.h"
 #include "ota_rollback.h"
@@ -72,6 +73,8 @@ static void ota_client_on_progress(const ota_progress_t *progress, void *ctx)
     }
 
     switch (progress->status) {
+    case OTA_STATUS_PREPARING:
+    case OTA_STATUS_CONNECTING:
     case OTA_STATUS_DOWNLOADING:
         state = "downloading";
         break;
@@ -91,6 +94,7 @@ static void ota_client_on_progress(const ota_progress_t *progress, void *ctx)
     }
 
     ota_client_publish_status(state, progress->pct, error);
+    display_ota_indicator_on_progress(progress);
 }
 
 void ota_client_start(void)
@@ -171,6 +175,7 @@ void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t l
     }
 
     app_log_info("ota", "download started");
+    display_ota_indicator_start();
 }
 
 void ota_client_on_mqtt_connected(void)

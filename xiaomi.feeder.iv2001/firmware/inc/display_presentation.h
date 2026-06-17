@@ -35,6 +35,12 @@ typedef enum {
     DISPLAY_BUILTIN_ANIM_COUNT
 } display_builtin_anim_t;
 
+typedef enum {
+    DISPLAY_OTA_PHASE_CONNECTING,
+    DISPLAY_OTA_PHASE_DOWNLOADING,
+    DISPLAY_OTA_PHASE_VERIFYING,
+} display_ota_phase_t;
+
 void display_presentation_reset(void);
 void display_presentation_note_expander_reset(void);
 
@@ -61,6 +67,10 @@ port_err_t display_presentation_play_animation(const display_animation_t *anim,
                                                bool loop);
 port_err_t display_presentation_play_builtin(display_builtin_anim_t id, bool loop);
 port_err_t display_presentation_stop_animation(void);
+
+port_err_t display_presentation_ota_show(display_ota_phase_t phase, uint8_t pct);
+port_err_t display_presentation_ota_stop(void);
+bool display_presentation_ota_active(void);
 
 port_err_t display_presentation_power_on(void);
 port_err_t display_presentation_power_off(void);

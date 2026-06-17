@@ -60,6 +60,22 @@ reboot: resume suspended tasks in reverse order (MQTT, `wifi_sta`, `app_cli`,
 
 HTTPS: supported if `mqtt/tls` is enabled and mbedTLS RAM budget permits.
 
+### Internal progress phases
+
+The OTA port reports finer-grained `ota_status_t` values than MQTT exposes.
+`PREPARING` and `CONNECTING` are internal only — `ota_client` still publishes
+`"state": "downloading", "pct": 0` for both. Panel feedback during these
+phases: [display-presentation.md](display-presentation.md) § OTA indicator.
+
+| Internal status | When reported |
+|-----------------|---------------|
+| `PREPARING` | Download worker task starts (MQTT suspend already done in `start`) |
+| `CONNECTING` | After pre-download settle, immediately before HTTP Range download |
+| `DOWNLOADING` | First HTTP body bytes; `pct` 0–100 during transfer |
+| `VERIFYING` | Download complete; SHA-512 / flash verify |
+| `APPLYING` | Bank swap pending; reboot follows |
+| `ERROR` | Any failure before reboot |
+
 ## Verification
 
 After full download:

@@ -138,13 +138,13 @@ void test_display_presentation_animation_ota_advances_frames(void)
     TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
 
     fake_display_port_last_grids(grids);
-    TEST_ASSERT_EQUAL_HEX8(0x01u, grids[0]);
-    TEST_ASSERT_EQUAL_HEX8(0x04u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x41u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[1]);
 
     (void)display_presentation_tick(150u);
     fake_display_port_last_grids(grids);
-    TEST_ASSERT_EQUAL_HEX8(0x02u, grids[0]);
-    TEST_ASSERT_EQUAL_HEX8(0x08u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x41u, grids[1]);
 }
 
 void test_display_presentation_stop_animation_restores_scene(void)
@@ -221,4 +221,71 @@ void test_display_presentation_icon_pattern_advances_phases(void)
     (void)display_presentation_tick(400u);
     fake_display_port_last_grids(grids);
     TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}
+
+void test_display_presentation_ota_download_bar(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      display_presentation_ota_show(DISPLAY_OTA_PHASE_DOWNLOADING, 45u));
+    TEST_ASSERT_TRUE(display_presentation_ota_active());
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x01u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x01u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x07u, grids[2]);
+}
+
+void test_display_presentation_ota_connecting_g_blink(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      display_presentation_ota_show(DISPLAY_OTA_PHASE_CONNECTING, 0u));
+    TEST_ASSERT_EQUAL(300u, display_presentation_tick(0u));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+
+    (void)display_presentation_tick(300u);
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[0]);
+}
+
+void test_display_presentation_ota_suppresses_non_wifi_icons(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_icon_set(DISPLAY_ICON_WIFI, true));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_icon_set(DISPLAY_ICON_GRAM, true));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_icon_set(DISPLAY_ICON_BAR_GREEN, true));
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      display_presentation_ota_show(DISPLAY_OTA_PHASE_DOWNLOADING, 0u));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x02u, grids[3]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}
+
+void test_display_presentation_ota_stop_restores_scene(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    presentation_test_setup();
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_set_digits(42u));
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      display_presentation_ota_show(DISPLAY_OTA_PHASE_DOWNLOADING, 50u));
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_ota_stop());
+    TEST_ASSERT_FALSE(display_presentation_ota_active());
+    TEST_ASSERT_EQUAL(PORT_OK, display_presentation_refresh());
+
+    fake_display_port_last_grids(grids);
+    TEST_ASSERT_EQUAL_HEX8(0x5Bu, grids[2]);
 }

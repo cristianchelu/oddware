@@ -31,6 +31,8 @@ typedef enum {
 
 #define DISPLAY_GLYPH_ICON_MASK(icon) (1u << (unsigned)(icon))
 
+#define DISPLAY_GLYPH_OTA_PATH_LEN  10u
+
 void display_compose_grids(bool show_digits,
                            uint16_t value,
                            display_unit_t unit,
@@ -38,5 +40,10 @@ void display_compose_grids(bool show_digits,
                            uint8_t out[TM1637_GRID_COUNT]);
 
 uint8_t display_glyph_digit_segment(uint8_t digit);
+
+void display_glyph_ota_bar(uint8_t filled_segments, bool g_on,
+                           uint8_t out[TM1637_GRID_COUNT]);
+
+uint8_t display_glyph_ota_filled_from_pct(uint8_t pct);
 
 #endif /* DISPLAY_GLYPH_H */

@@ -104,7 +104,7 @@ adaptation.
 | Function | Signature | Behavior |
 |----------|-----------|----------|
 | `start` | `(url, expected_sha512, has_expected_sha512) -> err` | Begin OTA download to inactive bank; spawns `ota_dl` task. `expected_sha512` is 64 bytes; when `has_expected_sha512` is false, verify uses the hash computed from the downloaded image |
-| `get_status` | `() -> ota_status_t` | Current OTA state: `idle`, `downloading`, `verifying`, `applying`, `error` |
+| `get_status` | `() -> ota_status_t` | Current OTA state: `idle`, `preparing`, `connecting`, `downloading`, `verifying`, `applying`, `error` |
 | `abort` | `() -> err` | Cancel in-progress download |
 | `set_progress_cb` | `(cb, ctx) -> void` | Register callback invoked on status/progress updates (`ota_progress_t`: `status`, `pct`, `error`) |
 

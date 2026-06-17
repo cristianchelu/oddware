@@ -408,10 +408,11 @@ static void ota_adapter_task(void *param)
 
     s_abort_requested = false;
     app_log_info("ota", "task start url=%s sha512=%s", job.url, job.has_expected_sha512 ? "yes" : "no");
-    s_status = OTA_STATUS_DOWNLOADING;
+    ota_adapter_report(OTA_STATUS_PREPARING, 0, "");
 
     vTaskDelay(pdMS_TO_TICKS(3000));
     app_log_info("ota", "mqtt down, http start");
+    ota_adapter_report(OTA_STATUS_CONNECTING, 0, "");
 
     err = ota_adapter_http_download(job.url, &downloaded, s_image_hash);
     if (err != PORT_OK) {
@@ -476,8 +477,6 @@ static port_err_t ota_adapter_start(const char *url,
     if (has_expected_sha512 && expected_sha512 != NULL) {
         memcpy(job->expected_sha512, expected_sha512, FLASH_BANK_SHA512_LEN);
     }
-
-    s_status = OTA_STATUS_DOWNLOADING;
 
     ota_preflight_suspend_idle_tasks();
 

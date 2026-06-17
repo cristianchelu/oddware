@@ -6,8 +6,12 @@
 #include <string.h>
 
 #include "display_anim_builtin.h"
+#include "display_glyph.h"
 #include "display_presentation.h"
 #include "display_port.h"
+
+#define DISPLAY_OTA_CONNECTING_BLINK_MS  300u
+#define DISPLAY_OTA_VERIFYING_BLINK_MS   200u
 
 typedef struct {
     bool active;
@@ -47,6 +51,12 @@ static struct {
     uint8_t anim_frame;
     uint32_t anim_next_ms;
     bool anim_running;
+
+    bool ota_active;
+    display_ota_phase_t ota_phase;
+    uint8_t ota_pct;
+    bool ota_blink_on;
+    uint32_t ota_blink_until_ms;
 
     uint32_t last_now_ms;
     bool scene_dirty;
@@ -157,10 +167,18 @@ static uint32_t presentation_effective_icon_mask(void)
 {
     uint32_t mask = s_pres.steady_icons;
 
+    if (s_pres.ota_active) {
+        mask &= DISPLAY_GLYPH_ICON_MASK(DISPLAY_ICON_WIFI);
+    }
+
     for (size_t i = 0u; i < DISPLAY_PRESENTATION_MAX_BLINKS; i++) {
         const display_blink_slot_t *slot = &s_pres.blinks[i];
 
         if (!slot->active || presentation_icon_has_pattern(slot->icon)) {
+            continue;
+        }
+
+        if (s_pres.ota_active && slot->icon != DISPLAY_ICON_WIFI) {
             continue;
         }
 
@@ -175,6 +193,10 @@ static uint32_t presentation_effective_icon_mask(void)
         const display_pattern_slot_t *slot = &s_pres.patterns[i];
 
         if (!slot->active) {
+            continue;
+        }
+
+        if (s_pres.ota_active && slot->icon != DISPLAY_ICON_WIFI) {
             continue;
         }
 
@@ -438,6 +460,80 @@ port_err_t display_presentation_stop_animation(void)
     return PORT_OK;
 }
 
+static uint16_t presentation_ota_blink_ms(display_ota_phase_t phase)
+{
+    switch (phase) {
+    case DISPLAY_OTA_PHASE_CONNECTING:
+        return DISPLAY_OTA_CONNECTING_BLINK_MS;
+    case DISPLAY_OTA_PHASE_VERIFYING:
+        return DISPLAY_OTA_VERIFYING_BLINK_MS;
+    default:
+        return 0u;
+    }
+}
+
+static void presentation_compose_ota_grids(uint8_t grids[TM1637_GRID_COUNT])
+{
+    uint32_t icons = presentation_effective_icon_mask();
+    uint8_t icon_grids[TM1637_GRID_COUNT];
+
+    switch (s_pres.ota_phase) {
+    case DISPLAY_OTA_PHASE_CONNECTING:
+        display_glyph_ota_bar(0u, s_pres.ota_blink_on, grids);
+        break;
+    case DISPLAY_OTA_PHASE_DOWNLOADING: {
+        uint8_t filled = display_glyph_ota_filled_from_pct(s_pres.ota_pct);
+
+        display_glyph_ota_bar(filled, false, grids);
+        break;
+    }
+    case DISPLAY_OTA_PHASE_VERIFYING:
+        display_glyph_ota_bar(DISPLAY_GLYPH_OTA_PATH_LEN, s_pres.ota_blink_on, grids);
+        break;
+    default:
+        grids[0] = 0x00u;
+        grids[1] = 0x00u;
+        grids[2] = 0x00u;
+        grids[3] = 0x00u;
+        grids[4] = 0x00u;
+        break;
+    }
+
+    display_compose_grids(false, 0u, DISPLAY_UNIT_NONE, icons, icon_grids);
+    grids[3] = icon_grids[3];
+    grids[4] = icon_grids[4];
+}
+
+port_err_t display_presentation_ota_show(display_ota_phase_t phase, uint8_t pct)
+{
+    uint16_t blink_ms = presentation_ota_blink_ms(phase);
+
+    s_pres.ota_active = true;
+    s_pres.ota_phase = phase;
+    s_pres.ota_pct = pct;
+    s_pres.ota_blink_on = true;
+    if (blink_ms > 0u) {
+        s_pres.ota_blink_until_ms = s_pres.last_now_ms + blink_ms;
+    } else {
+        s_pres.ota_blink_until_ms = DISPLAY_PRESENTATION_TICK_IDLE;
+    }
+    presentation_mark_scene_dirty();
+    return PORT_OK;
+}
+
+port_err_t display_presentation_ota_stop(void)
+{
+    s_pres.ota_active = false;
+    s_pres.ota_blink_until_ms = DISPLAY_PRESENTATION_TICK_IDLE;
+    presentation_mark_scene_dirty();
+    return PORT_OK;
+}
+
+bool display_presentation_ota_active(void)
+{
+    return s_pres.ota_active;
+}
+
 port_err_t display_presentation_power_on(void)
 {
     return presentation_ensure_power();
@@ -481,7 +577,9 @@ port_err_t display_presentation_refresh(void)
         }
     }
 
-    if (s_pres.anim_running && s_pres.anim != NULL) {
+    if (s_pres.ota_active) {
+        presentation_compose_ota_grids(grids);
+    } else if (s_pres.anim_running && s_pres.anim != NULL) {
         memcpy(grids, s_pres.anim->frames[s_pres.anim_frame], sizeof(grids));
     } else if (s_pres.digits_valid && s_pres.digits_dash) {
         uint32_t icons = presentation_effective_icon_mask();
@@ -538,6 +636,24 @@ uint32_t display_presentation_tick(uint32_t now_ms)
 
     s_pres.last_now_ms = now_ms;
 
+    if (s_pres.ota_active) {
+        uint16_t blink_ms = presentation_ota_blink_ms(s_pres.ota_phase);
+
+        if (blink_ms > 0u) {
+            if (now_ms >= s_pres.ota_blink_until_ms) {
+                s_pres.ota_blink_on = !s_pres.ota_blink_on;
+                s_pres.ota_blink_until_ms = now_ms + blink_ms;
+                needs_refresh = true;
+            }
+
+            if (s_pres.ota_blink_until_ms > now_ms) {
+                uint32_t remain = s_pres.ota_blink_until_ms - now_ms;
+
+                next_wake = presentation_min_wake(next_wake, remain);
+            }
+        }
+    }
+
     if (s_pres.anim_running && s_pres.anim != NULL) {
         if (now_ms >= s_pres.anim_next_ms) {
             s_pres.anim_frame++;
@@ -565,7 +681,8 @@ uint32_t display_presentation_tick(uint32_t now_ms)
         display_blink_slot_t *slot = &s_pres.blinks[i];
         bool was_on;
 
-        if (!slot->active || s_pres.anim_running) {
+        if (!slot->active || s_pres.anim_running ||
+            (s_pres.ota_active && slot->icon != DISPLAY_ICON_WIFI)) {
             continue;
         }
 
@@ -589,7 +706,8 @@ uint32_t display_presentation_tick(uint32_t now_ms)
         display_pattern_slot_t *slot = &s_pres.patterns[i];
         bool was_visible;
 
-        if (!slot->active || s_pres.anim_running) {
+        if (!slot->active || s_pres.anim_running ||
+            (s_pres.ota_active && slot->icon != DISPLAY_ICON_WIFI)) {
             continue;
         }
 

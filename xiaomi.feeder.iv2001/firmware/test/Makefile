@@ -68,6 +68,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_dispense_indicator.c \
              ../src/display_child_lock_indicator.c \
              ../src/display_mqtt_indicator.c \
+             ../src/display_ota_indicator.c \
              ../src/display_anim_builtin.c \
              ../src/display_boot.c \
              ../src/display_cli.c \

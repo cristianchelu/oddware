@@ -98,3 +98,43 @@ void test_display_compose_grids_combined_scene(void)
     TEST_ASSERT_EQUAL_HEX8(0x16u, grids[3]); /* wifi + dispensing + gram */
     TEST_ASSERT_EQUAL_HEX8(0x02u, grids[4]);
 }
+
+void test_display_glyph_ota_bar_g_only(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    display_glyph_ota_bar(0u, true, grids);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[0]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[1]);
+    TEST_ASSERT_EQUAL_HEX8(0x40u, grids[2]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[3]);
+    TEST_ASSERT_EQUAL_HEX8(0x00u, grids[4]);
+}
+
+void test_display_glyph_ota_bar_five_segments(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    display_glyph_ota_bar(5u, true, grids);
+    TEST_ASSERT_EQUAL_HEX8(0x41u, grids[0]); /* A + G */
+    TEST_ASSERT_EQUAL_HEX8(0x41u, grids[1]); /* A + G */
+    TEST_ASSERT_EQUAL_HEX8(0x47u, grids[2]); /* A+B+C + G */
+}
+
+void test_display_glyph_ota_bar_full_perimeter(void)
+{
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    display_glyph_ota_bar(10u, true, grids);
+    TEST_ASSERT_EQUAL_HEX8(0x79u, grids[0]); /* A+D+E+F + G */
+    TEST_ASSERT_EQUAL_HEX8(0x49u, grids[1]); /* A+D + G */
+    TEST_ASSERT_EQUAL_HEX8(0x4Fu, grids[2]); /* A+B+C+D + G */
+}
+
+void test_display_glyph_ota_filled_from_pct_ceil(void)
+{
+    TEST_ASSERT_EQUAL_UINT8(0u, display_glyph_ota_filled_from_pct(0u));
+    TEST_ASSERT_EQUAL_UINT8(1u, display_glyph_ota_filled_from_pct(1u));
+    TEST_ASSERT_EQUAL_UINT8(5u, display_glyph_ota_filled_from_pct(45u));
+    TEST_ASSERT_EQUAL_UINT8(10u, display_glyph_ota_filled_from_pct(100u));
+}

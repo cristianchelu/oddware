@@ -95,3 +95,66 @@ void display_compose_grids(bool show_digits,
     out[3] = grid3;
     out[4] = grid4;
 }
+
+typedef struct {
+    uint8_t grid;
+    uint8_t mask;
+} display_glyph_ota_path_step_t;
+
+static const display_glyph_ota_path_step_t s_ota_path[] = {
+    { 0u, 0x01u }, /* Hundreds A */
+    { 1u, 0x01u }, /* Tens A */
+    { 2u, 0x01u }, /* Singles A */
+    { 2u, 0x02u }, /* Singles B */
+    { 2u, 0x04u }, /* Singles C */
+    { 2u, 0x08u }, /* Singles D */
+    { 1u, 0x08u }, /* Tens D */
+    { 0u, 0x08u }, /* Hundreds D */
+    { 0u, 0x10u }, /* Hundreds E */
+    { 0u, 0x20u }, /* Hundreds F */
+};
+
+uint8_t display_glyph_ota_filled_from_pct(uint8_t pct)
+{
+    uint16_t filled;
+
+    if (pct == 0u) {
+        return 0u;
+    }
+
+    filled = (uint16_t)(pct + 9u) / 10u;
+    if (filled > DISPLAY_GLYPH_OTA_PATH_LEN) {
+        filled = DISPLAY_GLYPH_OTA_PATH_LEN;
+    }
+    return (uint8_t)filled;
+}
+
+void display_glyph_ota_bar(uint8_t filled_segments, bool g_on,
+                           uint8_t out[TM1637_GRID_COUNT])
+{
+    uint8_t i;
+
+    if (out == NULL) {
+        return;
+    }
+
+    out[0] = 0x00u;
+    out[1] = 0x00u;
+    out[2] = 0x00u;
+    out[3] = 0x00u;
+    out[4] = 0x00u;
+
+    if (filled_segments > DISPLAY_GLYPH_OTA_PATH_LEN) {
+        filled_segments = DISPLAY_GLYPH_OTA_PATH_LEN;
+    }
+
+    for (i = 0u; i < filled_segments; i++) {
+        out[s_ota_path[i].grid] |= s_ota_path[i].mask;
+    }
+
+    if (g_on) {
+        out[0] |= 0x40u;
+        out[1] |= 0x40u;
+        out[2] |= 0x40u;
+    }
+}

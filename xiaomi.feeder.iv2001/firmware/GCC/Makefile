@@ -168,6 +168,7 @@ APP_FILES      += $(APP_PATH_SRC)/bowl_grams_present.c
 APP_FILES      += $(APP_PATH_SRC)/display_dispense_indicator.c
 APP_FILES      += $(APP_PATH_SRC)/display_child_lock_indicator.c
 APP_FILES      += $(APP_PATH_SRC)/display_mqtt_indicator.c
+APP_FILES      += $(APP_PATH_SRC)/display_ota_indicator.c
 APP_FILES      += $(APP_PATH_SRC)/display_anim_builtin.c
 APP_FILES      += $(APP_PATH_SRC)/display_boot.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c

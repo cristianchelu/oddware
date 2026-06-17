@@ -40,6 +40,11 @@ The feeder publishes update status via MQTT:
 | `applying` | Activating the verified image in the inactive bank and rebooting. |
 | `error` | Something went wrong (error detail included). |
 
+During an update the 7-segment panel shows OTA progress (connect blink,
+download perimeter bar, verify) without UART — see
+[display-presentation.md](../30-processes/display-presentation.md) § OTA
+indicator.
+
 ## UART recovery
 
 If all else fails (e.g. both firmware slots corrupted), the device can

@@ -22,6 +22,7 @@ power policy, lock spinner, connectivity indicators.
 | `display_presentation.c` | Scene state, blink, animation, periodic refresh |
 | `display_wifi_indicator.c` | Wi-Fi pictograph policy (connecting, AP, connected, off) |
 | `display_mqtt_indicator.c` | MQTT status lightbar policy (connecting, connected, error, off) |
+| `display_ota_indicator.c` | OTA digit progress policy (connect blink, download bar, verify) |
 | `display_dispense_indicator.c` | Dispensing pictograph policy (active blink, idle off) |
 | `display_bowl_error_indicator.c` | Food-bowl pictograph policy (cal blink, bowl-missing steady) |
 | `display_anim_builtin.c` | Const frame tables for OTA and lock-busy animations |
@@ -134,6 +135,56 @@ Transitions (derived in `mqtt_client.c`, applied in `app` on `EVT_MQTT_SESSION`)
 
 Session lifecycle: [mqtt-protocol.md](mqtt-protocol.md) § Session display.
 
+## OTA indicator
+
+`display_ota_indicator.c` drives digit grids 0–2 during an OTA session via
+`display_presentation_ota_show` / `display_presentation_ota_stop`. The `app`
+task does not poll OTA display state — `ota_client.c` calls the indicator on
+MQTT command accept and on each `ota_progress_t` callback. User-facing
+context: [updates.md](../20-stories/updates.md) § Panel progress. OTA
+lifecycle: [ota-flow.md](ota-flow.md).
+
+While OTA override is active, **all pictographs except Wi-Fi are forced off**
+(bowl error, dispensing, gram/percent unit, child lock, MQTT bars, etc.).
+Wi-Fi remains under `display_wifi_indicator_*` so link loss is still visible.
+
+| Phase | When | Digit grids 0–2 | `[tune]` blink |
+|-------|------|-----------------|----------------|
+| **Connecting** | MQTT `cmd/ota` accepted → first HTTP body byte | G segment only (`0x40`), all three digits | 300 ms on / 300 ms off |
+| **Downloading** | HTTP body streaming, `pct` 0–100 | Outer perimeter fills cumulatively; **no G** | — |
+| **Verifying** | SHA-512 / flash verify after download | All ten outer segments lit + G | G 200 ms on / 200 ms off |
+| **Applying** | Bank swap → reboot | OTA override cleared; normal composed scene until reboot | — |
+| **Idle** | OTA error or post-boot MQTT idle | Override cleared; normal composed scene restored | — |
+
+**Perimeter path** (ten steps, one per 10 % of download):
+
+```text
+Hundreds A → Tens A → Singles A → Singles B → Singles C → Singles D
+  → Tens D → Hundreds D → Hundreds E → Hundreds F
+```
+
+Segment map (gfedcba): `A=0x01`, `B=0x02`, `C=0x04`, `D=0x08`, `E=0x10`,
+`F=0x20`, `G=0x40`.
+
+Cumulative fill at download `pct`: `filled = min(10, (pct + 9) / 10)` when
+`pct > 0`, else `0` (one segment per 10 %, ceiling). `display_glyph_ota_bar(filled, g_on, out)` ORs path
+segments into grids 0–2; grids 3–4 are always `0x00` in the helper (icons
+composed separately on refresh).
+
+Automatic OTA uses the **OTA presentation override** above. UART
+`display anim ota` exercises the built-in chase animation (below), not live
+download progress.
+
+### Effect priority (updated)
+
+1. **OTA override active** — OTA digit composition + Wi-Fi icon only; other
+   icons suppressed; icon blinks paused for suppressed icons.
+2. **Animation active** — raw frame bytes replace the composed scene; blinks
+   paused.
+3. **No OTA or animation** — compose digits + unit + steady icons, then apply
+   blink masks.
+4. **Bench `display fill`** — bypasses presentation; does not alter scene state.
+
 ## Logical API (`display_presentation.h`)
 
 Business code and UART CLI use `display_presentation_*` — never raw grid bytes
@@ -172,6 +223,8 @@ Icon-only updates (`icon_set`, `icon_blink`) do not change digit state.
 | `display_presentation_play_builtin(id, loop)` | Play built-in frame table (`ota`, `lock`) |
 | `display_presentation_play_animation(anim, loop)` | Play caller-supplied frame table |
 | `display_presentation_stop_animation()` | Restore composed steady scene |
+| `display_presentation_ota_show(phase, pct)` | Enter OTA override (phase + download `pct` for bar fill) |
+| `display_presentation_ota_stop()` | Clear OTA override; restore composed scene |
 
 Up to `[tune]` **4** icons may blink concurrently.
 
@@ -198,15 +251,6 @@ Up to `[tune]` **4** icons may blink concurrently.
 steady` vs `display icon wifi on` — see [uart-console.md](uart-console.md) §
 Icon commands.
 
-### Effect priority
-
-1. **Animation active** — raw frame bytes replace the composed scene; blinks
-   paused.
-2. **No animation** — compose digits + unit + steady icons, then apply blink
-   masks (icons in off-phase cleared from effective mask).
-3. **Bench `display fill`** — bypasses presentation; does not alter scene
-   state.
-
 ### Timing `[tune]`
 
 | Parameter | Range | Default |
@@ -219,6 +263,8 @@ Icon commands.
 | MQTT connecting blink (orange bar) | 50–5000 ms each | 1800 ms on / 200 ms off |
 | MQTT error pattern (orange bar) | 50–5000 ms per phase | off 150 ms, off 150 ms, on 600 ms (loop) |
 | Presentation tick | 50 ms | FreeRTOS soft timer → `EVT_DISPLAY_TICK` |
+| OTA connecting G blink | 50–5000 ms each | 300 ms on / 300 ms off |
+| OTA verifying G blink | 50–5000 ms each | 200 ms on / 200 ms off |
 | OTA animation frame period | 150 ms | — |
 | Lock-busy animation frame period | 125 ms | — |
 
@@ -256,19 +302,23 @@ inside frame data.
 
 ### OTA loading (`DISPLAY_ANIM_OTA`)
 
-Six frames, `[tune]` 150 ms each. One outer segment lit per digit, phases
-offset so the lit segment appears to chase clockwise around the three-digit
-oval. Segment order per digit: A, B, C, D, E, F (`0x01`, `0x02`, `0x04`,
-`0x08`, `0x10`, `0x20`). Grids 3–4 are `0x00` in every frame.
+Ten frames, `[tune]` 150 ms each. One outer perimeter segment lit per frame
+(follows the OTA download path in § OTA indicator), with segment **G steady
+on** all three digit grids (`0x40` OR'd into each grid byte). Grids 3–4 are
+`0x00` in every frame. Bench-only — automatic OTA uses the live OTA override.
 
-| Frame | Grid 0 | Grid 1 | Grid 2 |
-|-------|--------|--------|--------|
-| 0 | `0x01` | `0x04` | `0x10` |
-| 1 | `0x02` | `0x08` | `0x20` |
-| 2 | `0x04` | `0x10` | `0x01` |
-| 3 | `0x08` | `0x20` | `0x02` |
-| 4 | `0x10` | `0x01` | `0x04` |
-| 5 | `0x20` | `0x02` | `0x08` |
+| Frame | Segment | Grid 0 | Grid 1 | Grid 2 |
+|-------|---------|--------|--------|--------|
+| 0 | Hundreds A | `0x41` | `0x40` | `0x40` |
+| 1 | Tens A | `0x40` | `0x41` | `0x40` |
+| 2 | Singles A | `0x40` | `0x40` | `0x41` |
+| 3 | Singles B | `0x40` | `0x40` | `0x42` |
+| 4 | Singles C | `0x40` | `0x40` | `0x44` |
+| 5 | Singles D | `0x40` | `0x40` | `0x48` |
+| 6 | Tens D | `0x40` | `0x48` | `0x40` |
+| 7 | Hundreds D | `0x48` | `0x40` | `0x40` |
+| 8 | Hundreds E | `0x50` | `0x40` | `0x40` |
+| 9 | Hundreds F | `0x60` | `0x40` | `0x40` |
 
 ## Display modes
 
