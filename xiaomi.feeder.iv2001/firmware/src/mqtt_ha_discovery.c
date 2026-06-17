@@ -148,6 +148,72 @@ int mqtt_ha_format_bowl_error_config(char *buf, size_t len, const char *device_i
     return written;
 }
 
+int mqtt_ha_format_bowl_weight_config(char *buf, size_t len, const char *device_id)
+{
+    char bowl_weight_topic[96];
+    char state_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(bowl_weight_topic,
+                          sizeof(bowl_weight_topic),
+                          device_id,
+                          "bowl_weight")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(state_topic, sizeof(state_topic), device_id, "state") != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Bowl weight\","
+                       "\"unique_id\":\"petfeeder_%s_bowl_weight\","
+                       "\"state_topic\":\"%s\","
+                       "\"unit_of_measurement\":\"g\","
+                       "\"device_class\":\"weight\","
+                       "\"state_class\":\"measurement\","
+                       "\"availability\":["
+                       "{\"topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\"},"
+                       "{\"topic\":\"%s\","
+                       "\"value_template\":\"{{ value_json.bowl_error == false }}\","
+                       "\"payload_available\":\"true\","
+                       "\"payload_not_available\":\"false\"}"
+                       "],"
+                       "%s}",
+                       device_id,
+                       bowl_weight_topic,
+                       connection_topic,
+                       state_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -159,13 +225,18 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .object_id = "bowl_error",
         .format_config = mqtt_ha_format_bowl_error_config,
     },
+    {
+        .component = "sensor",
+        .object_id = "bowl_weight",
+        .format_config = mqtt_ha_format_bowl_weight_config,
+    },
 };
 
 static bool mqtt_ha_enqueue_entity(const mqtt_ha_entity_t *entity,
                                    const char *device_id)
 {
     char topic[128];
-    char payload[512];
+    char payload[768];
     int written;
 
     if (entity == NULL || device_id == NULL || device_id[0] == '\0') {

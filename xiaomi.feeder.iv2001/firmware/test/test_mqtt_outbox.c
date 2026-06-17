@@ -24,6 +24,30 @@ static void drain_all_outbox(void)
     }
 }
 
+void test_mqtt_outbox_enqueue_empty_payload(void)
+{
+    mqtt_outbox_reset();
+    TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC, "", 0u, 1, true));
+    TEST_ASSERT_EQUAL_UINT(1, mqtt_outbox_pending());
+}
+
+void test_mqtt_outbox_drain_publishes_empty_payload(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_time_reset();
+    fake_mqtt_port_reset();
+    mqtt_outbox_reset();
+    fake_mqtt_port_get()->connect(NULL);
+
+    TEST_ASSERT_TRUE(mqtt_outbox_enqueue(TEST_TOPIC, "", 0u, 1, true));
+    TEST_ASSERT_TRUE(mqtt_outbox_drain_one(fake_mqtt_port_get()));
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("", mqtt->last_publish_payload);
+}
+
 void test_mqtt_outbox_enqueue_copies_payload(void)
 {
     mqtt_outbox_reset();

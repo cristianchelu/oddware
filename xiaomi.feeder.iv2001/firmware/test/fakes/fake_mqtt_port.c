@@ -91,6 +91,8 @@ static port_err_t fake_mqtt_publish(const char *topic,
         }
         memcpy(s_state.last_publish_payload, payload, copy_len);
         s_state.last_publish_payload[copy_len] = '\0';
+    } else {
+        s_state.last_publish_payload[0] = '\0';
     }
 
     return PORT_OK;

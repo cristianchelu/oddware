@@ -10,6 +10,7 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
+#include "bowl_grams_present.h"
 #include "bowl_error.h"
 #include "button_gesture.h"
 #include "button_input.h"
@@ -20,6 +21,7 @@
 #include "display_bowl_error_indicator.h"
 #include "display_presentation.h"
 #include "mqtt_state.h"
+#include "mqtt_bowl_weight.h"
 #include "display_wifi_indicator.h"
 #include "mqtt_client.h"
 
@@ -102,11 +104,15 @@ static void app_mqtt_session_apply(mqtt_session_phase_t phase)
     }
 }
 
-static void app_weight_sync_display_scene(void)
+static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
 {
     const weight_port_t *wp = weight_port_get();
     weight_cal_status_t cal;
     bowl_error_kind_t bowl_err;
+    bowl_grams_status_t grams_st;
+    int32_t present_g;
+    uint16_t shown;
+    bowl_display_digits_t digits;
 
     if (s_display_mode != APP_DISPLAY_MODE_WEIGHT) {
         return;
@@ -116,31 +122,32 @@ static void app_weight_sync_display_scene(void)
                                                      : WEIGHT_CAL_UNCALIBRATED;
 
     bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
-    app_weight_log_bowl_presence(bowl_err);
     display_bowl_error_indicator_sync(bowl_err);
     mqtt_state_sync(bowl_error_is_active(bowl_err));
 
+    grams_st = bowl_grams_present(cal, s_bowl_valid, s_bowl_g, &present_g);
+    mqtt_bowl_weight_sync(grams_st, present_g, force_mqtt_bowl_weight);
+    app_weight_log_bowl_presence(bowl_err);
+
     (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
 
-    if (cal != WEIGHT_CAL_SUCCESS) {
+    digits = bowl_grams_display_digits(cal, s_bowl_valid, s_bowl_g, &shown);
+    switch (digits) {
+    case BOWL_DISPLAY_DASH:
         (void)display_presentation_set_digits_dash();
-    } else if (s_bowl_valid) {
-        if (s_bowl_g < -(int32_t)WEIGH_BOWL_MISSING_THRESHOLD_G) {
-            (void)display_presentation_set_digits_underflow();
-        } else {
-            uint16_t shown;
-
-            if (s_bowl_g < 0) {
-                shown = 0u;
-            } else if (s_bowl_g > 999) {
-                shown = 999u;
-            } else {
-                shown = (uint16_t)s_bowl_g;
-            }
-            (void)display_presentation_set_digits(shown);
-        }
-    } else {
+        break;
+    case BOWL_DISPLAY_UNDERFLOW:
+        (void)display_presentation_set_digits_underflow();
+        break;
+    case BOWL_DISPLAY_BLANK:
         (void)display_presentation_clear_digits();
+        break;
+    case BOWL_DISPLAY_GRAMS:
+        (void)display_presentation_set_digits(shown);
+        break;
+    default:
+        (void)display_presentation_clear_digits();
+        break;
     }
 }
 
@@ -181,13 +188,13 @@ static void app_weight_sample(bool idle_try)
 static void app_weight_boot_first_sample(void)
 {
     app_weight_sample(false);
-    app_weight_sync_display_scene();
+    app_weight_sync_display_scene(false);
 }
 
 static void app_weight_idle_tick(void)
 {
     app_weight_sample(true);
-    app_weight_sync_display_scene();
+    app_weight_sync_display_scene(false);
 }
 
 void app_weight_notify_dispense_complete(void)
@@ -207,7 +214,7 @@ static void app_weight_resample_after_dispense_if_needed(void)
 
     s_weight_resample_after_dispense = false;
     app_weight_sample(false);
-    app_weight_sync_display_scene();
+    app_weight_sync_display_scene(true);
 }
 
 static void app_weight_idle_on_display_tick(uint32_t now_ms)
@@ -466,7 +473,6 @@ void app_dispatch(const app_event_t *ev)
 
     case EVT_MQTT_CONNECTED:
         app_mqtt_on_connected();
-        app_weight_sync_display_scene();
         break;
 
     case EVT_MQTT_MESSAGE:
@@ -486,7 +492,7 @@ void app_dispatch(const app_event_t *ev)
         (void)display_presentation_tick(ev->u.display_tick.now_ms);
         if (display_child_lock_indicator_poll(ev->u.display_tick.now_ms)) {
             app_child_lock_sync_display(feed_config_child_lock_is_active());
-            app_weight_sync_display_scene();
+            app_weight_sync_display_scene(false);
             (void)display_presentation_refresh();
         }
         hopper_input_poll(ev->u.display_tick.now_ms);
@@ -620,6 +626,12 @@ void app_test_reset(void)
     dispense_test_reset();
     dispense_cli_test_reset();
     app_event_port_init();
+}
+
+void app_test_reset_bowl_presence_log(void)
+{
+    s_bowl_missing_known = false;
+    s_bowl_missing = false;
 }
 
 bool app_step(void)

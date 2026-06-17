@@ -205,6 +205,17 @@ Completion / fault lines (`done`, `fault: stuck`) remain on tag `cli` from
 Logged on edge change only (not on every weight sample). Threshold and
 evaluation: [weighing.md](weighing.md) § Bowl presence.
 
+## Bowl weight MQTT (tag `app`)
+
+| Event | Level | Line |
+|-------|-------|------|
+| Retained publish with known grams | `info` | `bowl g <N>` |
+| Retained publish when unknown | `info` | `bowl g unknown` |
+
+Logged when a publish is enqueued to `.../bowl_weight` (not on suppressed
+samples inside the 2 g / 2 s coalesce window). See
+[mqtt-protocol.md](mqtt-protocol.md) § Bowl weight.
+
 ## API (application code)
 
 ```c

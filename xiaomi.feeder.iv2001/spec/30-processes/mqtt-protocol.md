@@ -14,7 +14,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 |-------|---------|-----|
 | `.../connection` | `online` or `offline` (plain text) | 1 |
 | `.../state` | `{"bowl_error": false}` — device condition (faults / health); see [Device condition](#device-condition) | 1 |
-| `.../weight` | `{"bowl_g": 42, "eaten_today_g": 85}` | 1 |
+| `.../bowl_weight` | `42` — plain integer grams; empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
 | `.../power` | `{"source": "mains", "battery_pct": 100}` | 1 |
 | `.../dispense/status` | `{"state": "idle", "last_result": "success", "last_g": 30}` | 1 |
@@ -113,6 +113,21 @@ The firmware publishes HA entities incrementally before the full table lands.
 
 Bench payloads: `tools/mqtt/payloads/ha-bowl_error.json`.
 
+**Bowl weight** sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/sensor/petfeeder_<device_id>/bowl_weight/config` |
+| `state_topic` | `petfeeder/<device_id>/bowl_weight` |
+| `unit_of_measurement` | `g` |
+| `device_class` | `weight` |
+| `state_class` | `measurement` |
+| `availability` | Dual — `.../connection` (`online` / `offline`) **and** `.../state` (`value_template`: `{{ value_json.bowl_error == false }}`, `payload_available`: `true`, `payload_not_available`: `false`) |
+
+No `value_template` on the sensor — the topic payload is the gram reading directly.
+
+Bench payloads: `tools/mqtt/payloads/ha-bowl_weight.json`, `bowl_weight-42`, `bowl_weight-empty`.
+
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
 dispense lands). UART logs use tag `dispense` — see
@@ -200,10 +215,12 @@ below — not `#`, not other devices' namespaces.
 command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
 A/B bank swap, post-boot rollback timer), [mqtt_outbox](#publish-path)
 (post-connect publish queue), device condition (`bowl_error` on `.../state`),
-`bank` on every `ota/status`, HA validation-slice **Dispense** button and **Bowl
-error** binary_sensor discovery, `cmd/dispense` → one portion.
+`bank` on every `ota/status`, HA validation-slice **Dispense** button, **Bowl
+error** binary_sensor, and **Bowl weight** sensor discovery, `cmd/dispense` → one portion.
 
-**Not implemented yet:** remaining telemetry topics (`weight`, `hopper`, `power`,
+**Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice).
+
+**Not implemented yet:** remaining telemetry topics (`hopper`, `power`, `eaten_today`,
 dispense, schedule, config, display), additional HA entities from the full table,
 300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
 coalescing on the outbox.
@@ -222,7 +239,7 @@ Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
 | Parameter | Value |
 |-----------|-------|
 | Ring depth | `[tune]` 16 slots |
-| Max payload per slot | `[tune]` 512 B (matches TX buffer) |
+| Max payload per slot | `[tune]` 768 B (HA discovery with dual availability) |
 | Min interval between successful drains | `[tune]` 100 ms |
 
 When the ring is full, new enqueues are dropped and a debug log is emitted.
@@ -278,6 +295,40 @@ Example payloads:
 
 Bench templates: `tools/mqtt/payloads/state-ok.json`,
 `state-bowl-error.json`.
+
+## Bowl weight
+
+Topic `.../bowl_weight` (retained, QoS 1) reports food grams in the bowl now.
+Plain integer string — not JSON. Separate from `.../state` (health) and from
+future `.../eaten_today` (cumulative consumption counter).
+
+| Payload | Meaning |
+|---------|---------|
+| `42` | Calibrated, bowl present, valid sample — 42 g food |
+| `0` | Empty bowl or small negative drift clamped to zero |
+| `""` (empty) | Unknown — uncalibrated, bowl missing, no valid sample, or implausible reading |
+
+Presentation rules match panel **weight** mode ([display-presentation.md](display-presentation.md)
+§ Display modes) except MQTT publishes the **full** calibrated range (no 999 g
+display cap). See [weighing.md](weighing.md) § Bowl presence and data model.
+
+Publish triggers (not on every `[tune]` 500 ms weight sample):
+
+| Trigger | Publish |
+|---------|---------|
+| MQTT connect | Retained snapshot (`N` or `""`) |
+| Post-dispense resample | Force snapshot |
+| Known grams change by ≥ `[tune]` 2 g | Yes |
+| Known ↔ unknown transition | Yes |
+| Stable within 2 g deadband | No |
+
+Rate cap: at most **1 publish per `[tune]` 2 s** on this topic; coalesce rapid
+changes to the latest value within the window. Post-dispense force bypasses the
+coalesce delay.
+
+Home Assistant marks the entity unavailable when `bowl_error` is `true` on
+`.../state` (dual `availability` in discovery) so a stale retained gram value is
+not shown as a live reading while the bowl is missing or cal is incomplete.
 
 ## OTA status
 

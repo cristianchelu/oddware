@@ -63,6 +63,7 @@ handshake runs.
 | TM1637 physical refresh | `app` on `EVT_DISPLAY_TICK` (timer or local heartbeat) | `try_show_grids`; skip frame on `PORT_ERR_BUSY`, retry next tick |
 | Idle bowl grams | `app` on same `EVT_DISPLAY_TICK` turn | `try_read_grams` at `[tune]` 500 ms; `PORT_ERR_BUSY` keeps last sample; I/O errors clear it |
 | Bowl error pictograph + weight digits | `app` on same `EVT_DISPLAY_TICK` turn | `app_weight_sync_display_scene()` — `bowl_error_eval` → `display_bowl_error_indicator_sync` + digit mode (`---`, `-  `, or clamped grams) |
+| MQTT bowl weight | `app` on same weight sync turn | `mqtt_bowl_weight_sync()` — change-driven publish to `.../bowl_weight`; not on every 500 ms sample |
 | Weight boot settle | `app` on `EVT_TIMER_TICK` | `boot_begin` / `boot_poll` — no multi-second `vTaskDelay` in `app` |
 
 **Regression constraints:** synchronous `mqtt->connect()` on `mqtt_io` or `app`

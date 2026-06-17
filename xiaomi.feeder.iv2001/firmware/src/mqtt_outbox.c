@@ -11,7 +11,7 @@
 #include "mqtt_outbox.h"
 
 #define MQTT_OUTBOX_DEPTH          16u
-#define MQTT_OUTBOX_MAX_PAYLOAD    512u
+#define MQTT_OUTBOX_MAX_PAYLOAD    768u
 #define MQTT_OUTBOX_MAX_TOPIC      128u
 #define MQTT_OUTBOX_MIN_DRAIN_MS   100u
 
@@ -60,10 +60,13 @@ bool mqtt_outbox_enqueue(const char *topic,
     unsigned tail;
     mqtt_outbox_slot_t *slot;
 
-    if (topic == NULL || payload == NULL || topic[0] == '\0') {
+    if (topic == NULL || topic[0] == '\0') {
         return false;
     }
-    if (len == 0 || len >= MQTT_OUTBOX_MAX_PAYLOAD) {
+    if (payload == NULL && len != 0u) {
+        return false;
+    }
+    if (len >= MQTT_OUTBOX_MAX_PAYLOAD) {
         return false;
     }
     if (strlen(topic) >= MQTT_OUTBOX_MAX_TOPIC) {
@@ -77,7 +80,9 @@ bool mqtt_outbox_enqueue(const char *topic,
     tail = (s_head + s_count) % MQTT_OUTBOX_DEPTH;
     slot = &s_slots[tail];
     strncpy(slot->topic, topic, sizeof(slot->topic) - 1);
-    memcpy(slot->payload, payload, len);
+    if (len > 0u) {
+        memcpy(slot->payload, payload, len);
+    }
     slot->payload_len = len;
     slot->qos = qos;
     slot->retain = retain;

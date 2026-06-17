@@ -73,4 +73,4 @@ The dispense supervisor owns session state; the weigh driver does not (see
 |-------|-------|-------|
 | `last_dispense_actual` | Dispense supervisor | Final `grams_delivered` after all batches |
 | `eaten_today` | Monitoring | Updated from dispense history + bowl snapshots (not weigh driver) |
-| Published to | — | `.../weight` and `.../dispense/status` |
+| Published to | — | `.../bowl_weight` and `.../dispense/status` |

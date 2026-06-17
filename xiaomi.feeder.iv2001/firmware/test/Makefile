@@ -36,6 +36,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_outbox.c \
              ../src/mqtt_ha_discovery.c \
              ../src/mqtt_state.c \
+             ../src/mqtt_bowl_weight.c \
              ../src/mqtt_dispense_cmd.c \
              ../src/app.c \
              ../src/app_mqtt_dispatch.c \
@@ -63,6 +64,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_wifi_indicator.c \
              ../src/display_bowl_error_indicator.c \
              ../src/bowl_error.c \
+             ../src/bowl_grams_present.c \
              ../src/display_dispense_indicator.c \
              ../src/display_child_lock_indicator.c \
              ../src/display_mqtt_indicator.c \

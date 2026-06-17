@@ -72,6 +72,31 @@ mqtt_bench_ha_bowl_error_payload() {
         | mqtt_bench_substitute_device_id
 }
 
+mqtt_bench_ha_bowl_weight_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-bowl_weight.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_bowl_weight() {
+    local mode="$1"
+    local payload
+
+    case "$mode" in
+        42)
+            payload="$(mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/bowl_weight-42")"
+            ;;
+        empty)
+            payload="$(mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/bowl_weight-empty")"
+            ;;
+        *)
+            echo "error: bowl_weight expects 42|empty" >&2
+            return 1
+            ;;
+    esac
+
+    mqtt_bench_pub "$(mqtt_bench_topic bowl_weight)" "$payload" --retain
+}
+
 mqtt_bench_session_online() {
     mqtt_bench_pub "$(mqtt_bench_topic connection)" "online" --retain
 }
@@ -126,6 +151,10 @@ mqtt_bench_ha_discovery() {
             topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config"
             payload="$(mqtt_bench_ha_bowl_error_payload)"
             ;;
+        bowl_weight)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
+            payload="$(mqtt_bench_ha_bowl_weight_payload)"
+            ;;
         dispense)
             topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
             payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
@@ -167,6 +196,10 @@ mqtt_bench_clean() {
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
                 -t "homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config" \
                 -n -r -q 1 2>/dev/null || true
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \

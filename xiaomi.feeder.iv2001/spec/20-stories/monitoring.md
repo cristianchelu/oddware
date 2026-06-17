@@ -11,6 +11,11 @@ device is doing and whether it needs attention.
 - The provided stainless bowl weighs 350 g; the weigh driver subtracts this
   so an empty installed bowl reads 0 g (`weight_port.read_grams`).
 - This is an **absolute** reading — not a relative zero from a prior tare.
+- Over MQTT the user sees bowl grams on `petfeeder/<device_id>/bowl_weight`
+  (plain integer, retained). Home Assistant discovers a **Bowl weight** sensor
+  (`device_class`: weight, unit g). Updates are change-driven — not every
+  local display refresh — see [mqtt-protocol.md](../30-processes/mqtt-protocol.md)
+  § Bowl weight.
 
 ## Eaten-today tracking
 

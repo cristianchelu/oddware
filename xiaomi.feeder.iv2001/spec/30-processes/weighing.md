@@ -148,8 +148,12 @@ time:
 | `eaten_today` | int | grams | Monitoring | Cumulative consumption since midnight; uses bowl snapshots + dispense history |
 | `last_dispense_actual` | int | grams | Dispense supervisor | `bowl_after − bowl_before` for the completed cycle |
 
-MQTT `.../weight` publishes `bowl_g` (from `read_grams`) and `eaten_today_g`
-(from monitoring). See [weight-compensation.md](weight-compensation.md) and
+MQTT `.../bowl_weight` publishes presented food grams (plain integer string) from
+the same rules as the panel weight digits, without the 999 g display cap — see
+[mqtt-protocol.md](mqtt-protocol.md) § Bowl weight. Future `.../eaten_today`
+(when monitoring lands) is a separate plain topic, not bundled with bowl weight.
+
+See [weight-compensation.md](weight-compensation.md) and
 [dispense-cycle.md](dispense-cycle.md) for how supervisors snapshot reads.
 
 ## Error handling

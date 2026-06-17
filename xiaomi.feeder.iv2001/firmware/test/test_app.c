@@ -23,6 +23,7 @@
 #include "motor_port_provider_host.h"
 #include "mqtt_client.h"
 #include "mqtt_client_test.h"
+#include "mqtt_bowl_weight.h"
 #include "mqtt_cred.h"
 #include "ota_client.h"
 #include "display_presentation.h"
@@ -991,6 +992,7 @@ void test_app_calibrated_bowl_missing_shows_underflow_and_icon(void)
 
     app_test_reset();
     app_log_test_reset();
+    mqtt_bowl_weight_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
     fake_weight_port_set_read_grams(-100);
@@ -998,6 +1000,8 @@ void test_app_calibrated_bowl_missing_shows_underflow_and_icon(void)
     display_presentation_reset();
 
     app_weight_boot_to_idle();
+    app_log_test_reset();
+    app_test_reset_bowl_presence_log();
     post_display_tick(500u);
     app_step();
 

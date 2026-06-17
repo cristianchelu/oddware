@@ -22,6 +22,7 @@
 #include "mqtt_outbox.h"
 #include "mqtt_port.h"
 #include "mqtt_route.h"
+#include "mqtt_bowl_weight.h"
 #include "mqtt_state.h"
 #include "mqtt_topics.h"
 #include "ota_client.h"
@@ -314,6 +315,7 @@ static port_err_t mqtt_client_do_connect(void)
     mqtt_backoff_on_success(&s_backoff);
     ota_client_set_device_id(s_device_id);
     mqtt_state_set_device_id(s_device_id);
+    mqtt_bowl_weight_set_device_id(s_device_id);
 
     {
         app_event_t ev;
@@ -389,6 +391,7 @@ static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
 
     mqtt_outbox_reset();
     mqtt_state_on_outbox_reset();
+    mqtt_bowl_weight_on_outbox_reset();
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
@@ -531,6 +534,7 @@ void mqtt_client_test_reset(void)
     mqtt_backoff_init(&s_backoff);
     mqtt_outbox_reset();
     mqtt_state_test_reset();
+    mqtt_bowl_weight_test_reset();
 }
 
 void mqtt_client_test_bootstrap(void)

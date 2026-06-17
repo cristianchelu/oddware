@@ -175,7 +175,8 @@ void test_connect_subscribes_and_publishes_online(void)
     fake_time_advance_ms(101u);
     mqtt_client_step();
     TEST_ASSERT_EQUAL_UINT(5, mqtt->publish_calls);
-    TEST_ASSERT_EQUAL_STRING("petfeeder/ddeeff/state", mqtt->last_publish_topic);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/sensor/petfeeder_ddeeff/bowl_weight/config",
+                             mqtt->last_publish_topic);
     TEST_ASSERT_EQUAL_UINT(0, mqtt_outbox_pending());
 }
 
@@ -216,6 +217,8 @@ void test_connected_step_drains_enqueued_item(void)
     app_step();
 
     TEST_ASSERT_EQUAL_UINT(4, mqtt_outbox_pending());
+    mqtt_client_step();
+    fake_time_advance_ms(101u);
     mqtt_client_step();
     fake_time_advance_ms(101u);
     mqtt_client_step();

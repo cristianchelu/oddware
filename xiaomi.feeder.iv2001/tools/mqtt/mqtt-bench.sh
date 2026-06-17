@@ -21,8 +21,9 @@ Commands:
   session online|offline
   ota idle <A|B>
   state bowl_error on|off
-  ha discovery <dispense|bowl_error>
-  verify ha <dispense|bowl_error>   # print topic + JSON (no publish)
+  bowl_weight 42|empty
+  ha discovery <dispense|bowl_error|bowl_weight>
+  verify ha <dispense|bowl_error|bowl_weight>   # print topic + JSON (no publish)
   clean [--slice state|ota|ha|connection|all]
 
 Environment:
@@ -99,6 +100,11 @@ case "$cmd" in
         mqtt_bench_state_bowl_error "$mode"
         ;;
 
+    bowl_weight)
+        mode="${1:?42|empty required}"
+        mqtt_bench_bowl_weight "$mode"
+        ;;
+
     ha)
         sub="${1:?discovery required}"
         entity="${2:?entity required}"
@@ -120,6 +126,10 @@ case "$cmd" in
             bowl_error)
                 topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config"
                 payload="$(mqtt_bench_ha_bowl_error_payload)"
+                ;;
+            bowl_weight)
+                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
+                payload="$(mqtt_bench_ha_bowl_weight_payload)"
                 ;;
             dispense)
                 topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"

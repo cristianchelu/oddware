@@ -9,6 +9,7 @@
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
 #include "mqtt_state.h"
+#include "mqtt_bowl_weight.h"
 #include "ota_client.h"
 
 void app_mqtt_on_connected(void)
@@ -17,6 +18,7 @@ void app_mqtt_on_connected(void)
 
     ota_client_on_mqtt_connected();
     mqtt_state_on_mqtt_connected();
+    mqtt_bowl_weight_on_mqtt_connected();
     if (device_id != NULL && device_id[0] != '\0') {
         mqtt_ha_discovery_schedule(device_id);
     }

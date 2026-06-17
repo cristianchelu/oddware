@@ -15,7 +15,8 @@ cloud dependency and no phone-home telemetry.
   platform (Homey, Node-RED, etc.).
 - **Neutral namespace** — topic paths use `petfeeder/<device_id>/...`
   with no vendor-specific prefixes.
-- **JSON payloads** — simple, flat JSON; no binary encoding.
+- **Simple payloads** — flat JSON for multi-field topics; plain strings for
+  scalars (`connection`, `bowl_weight`). No binary encoding.
 - **Retained state** — state topics are retained so new subscribers get
   the latest values immediately.
 
@@ -32,7 +33,8 @@ cloud dependency and no phone-home telemetry.
 
 The feeder publishes the following retained state topics:
 
-- **Weight** — bowl grams, eaten-today grams.
+- **Bowl weight** — food grams in the bowl now (plain integer on `.../bowl_weight`).
+- **Eaten today** — cumulative consumption since midnight (future `.../eaten_today`).
 - **Device condition** — faults and health (`bowl_error`, extensible).
 - **Hopper** — fill level (normal / low).
 - **Power** — source (mains / battery), battery percentage.
