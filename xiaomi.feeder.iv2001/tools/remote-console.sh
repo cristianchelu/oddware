@@ -17,6 +17,8 @@ if [ $# -lt 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     echo ""
     echo "Disconnect: type exit at the MiniCLI prompt, or press Ctrl+C."
     echo "Avoid typing on UART0 while connected (preempts telnet)."
+    echo ""
+    echo "At the \$ prompt: ? lists commands; <group> ? lists subcommands."
     exit 0
 fi
 

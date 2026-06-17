@@ -75,6 +75,47 @@ config factory-reset
 Command matching is case-sensitive. Extra arguments after the required
 parameters are ignored by `wifi set` handlers.
 
+## Discovering commands
+
+MiniCLI includes built-in online help. There is no separate `help` command —
+type **`?`** at the prompt or after any partial command path.
+
+| Input | Result |
+|-------|--------|
+| `?` | Top-level commands with their summary line from the command table |
+| `<group>` alone (e.g. `wifi`) | `incomplete command, more options:` followed by that group's subcommands |
+| `<group> ?` (e.g. `wifi ?`) | Subcommands for `<group>` without entering an incomplete line |
+| `<group> <sub> ?` | Subcommands at the next level, when the tree has further nesting |
+
+Each listed line is `command - summary`, where the summary comes from the
+`help` field on that command-table entry. Summaries are hints, not full
+syntax — see the sections below and the [command tree](#command-tree) for
+complete forms.
+
+Example at the root prompt:
+
+```
+$ ?
+bank     - bank show|switch
+wifi     - wifi show|set|connect
+mqtt     - mqtt show|set|connect
+display  - display test|fill|off
+...
+```
+
+Example after choosing a group:
+
+```
+$ wifi ?
+show       - show stored credentials
+set        - set ssid|pass
+connect    - connect using NVDM
+disconnect - tear down STA session
+```
+
+The same discovery rules apply on UART0 and on the [remote telnet
+console](#remote-telnet-console).
+
 ## Wi-Fi credential rules
 
 Canonical validation for `wifi/ssid` and `wifi/pass` NVDM keys (see

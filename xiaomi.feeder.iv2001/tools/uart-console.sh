@@ -15,6 +15,8 @@ usage() {
     echo "Usage: $0 [-l] /dev/ttyDEVICE [baud]"
     echo "  -l, --log          Write to tools/ota/logs/uart-console-<UTC>.log"
     echo "  UART_CONSOLE_SECS=N  capture for N seconds (default 30 in non-tty stdin)"
+    echo ""
+    echo "At the \$ prompt: ? lists commands; <group> ? lists subcommands."
     exit "${1:-0}"
 }
 
