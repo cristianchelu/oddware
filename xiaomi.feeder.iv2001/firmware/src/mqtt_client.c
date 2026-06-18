@@ -23,11 +23,15 @@
 #include "mqtt_port.h"
 #include "mqtt_route.h"
 #include "mqtt_bowl_weight.h"
+#include "mqtt_battery.h"
+#include "mqtt_battery_voltage.h"
 #include "mqtt_dispense_event.h"
+#include "mqtt_mains.h"
 #include "mqtt_state.h"
 #include "mqtt_topics.h"
 #include "ota_client.h"
 #include "wifi_port.h"
+#include "battery_monitor.h"
 
 #define MQTT_CONNECTION_ONLINE     "online"
 #define MQTT_CONNECTION_OFFLINE    "offline"
@@ -317,6 +321,9 @@ static port_err_t mqtt_client_do_connect(void)
     ota_client_set_device_id(s_device_id);
     mqtt_state_set_device_id(s_device_id);
     mqtt_bowl_weight_set_device_id(s_device_id);
+    mqtt_battery_set_device_id(s_device_id);
+    mqtt_battery_voltage_set_device_id(s_device_id);
+    mqtt_mains_set_device_id(s_device_id);
     mqtt_dispense_event_set_device_id(s_device_id);
 
     {
@@ -394,6 +401,9 @@ static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
     mqtt_outbox_reset();
     mqtt_state_on_outbox_reset();
     mqtt_bowl_weight_on_outbox_reset();
+    mqtt_battery_on_outbox_reset();
+    mqtt_battery_voltage_on_outbox_reset();
+    mqtt_mains_on_outbox_reset();
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
@@ -538,6 +548,10 @@ void mqtt_client_test_reset(void)
     mqtt_outbox_set_accepting(true);
     mqtt_state_test_reset();
     mqtt_bowl_weight_test_reset();
+    mqtt_battery_test_reset();
+    mqtt_battery_voltage_test_reset();
+    mqtt_mains_test_reset();
+    battery_monitor_test_reset();
 }
 
 void mqtt_client_test_bootstrap(void)

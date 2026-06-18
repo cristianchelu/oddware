@@ -22,6 +22,18 @@ int mqtt_ha_format_bowl_weight_config(char *buf,
                                       size_t len,
                                       const char *device_id);
 
+int mqtt_ha_format_battery_config(char *buf,
+                                  size_t len,
+                                  const char *device_id);
+
+int mqtt_ha_format_battery_voltage_config(char *buf,
+                                          size_t len,
+                                          const char *device_id);
+
+int mqtt_ha_format_mains_config(char *buf,
+                                size_t len,
+                                const char *device_id);
+
 int mqtt_ha_format_dispense_completed_config(char *buf,
                                              size_t len,
                                              const char *device_id);

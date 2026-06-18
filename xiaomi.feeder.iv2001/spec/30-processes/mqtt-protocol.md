@@ -16,7 +16,9 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../state` | `{"bowl_error": false}` — device condition (faults / health); see [Device condition](#device-condition) | 1 |
 | `.../bowl_weight` | `42` — plain integer grams; empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
-| `.../power` | `{"source": "mains", "battery_pct": 100}` | 1 |
+| `.../battery` | `75` — plain integer 0–100; `unknown` when absent; see [Battery](#battery) | 1 |
+| `.../battery_voltage` | `5200` — plain integer pack mV; see [Battery pack voltage](#battery-pack-voltage) | 1 |
+| `.../mains` | `ON` or `OFF` — barrel connected; see [Mains](#mains) | 1 |
 | `.../schedule/list` | `[{"hour":8,"min":0,"days":127,"g":30,"enabled":true}, ...]` | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | `{...full config object...}` | 1 |
@@ -82,7 +84,7 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 | sensor | eaten_today | `weight` | Unit: g |
 | sensor | battery | `battery` | Unit: % |
 | sensor | hopper_level | `enum` | Options: normal, low |
-| binary_sensor | power_mains | `power` | On/off |
+| binary_sensor | mains | `power` | Mains connected — `ON`/`OFF` on `.../mains` |
 | button | dispense | — | Triggers default portion |
 | event | dispense_completed | — | Fires on each dispense job completion |
 | number | dispense_custom | — | Range: 5–150 g |
@@ -153,6 +155,49 @@ Bench payloads: `tools/mqtt/payloads/ha-bowl_weight.json`, `bowl_weight-42`, `bo
 Event payloads use HA MQTT event JSON on `state_topic` (non-retained). See
 [Dispense event](#dispense-event). No post-connect snapshot — events are
 ephemeral.
+
+**Battery** sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/sensor/petfeeder_<device_id>/battery/config` |
+| `name` | `Battery` |
+| `state_topic` | `petfeeder/<device_id>/battery` |
+| `unit_of_measurement` | `%` |
+| `device_class` | `battery` |
+| `state_class` | `measurement` |
+| `availability` | Dual — `.../connection` (`online` / `offline`) **and** `.../battery` (`value_template`: `{{ 'true' if value != 'unknown' else 'false' }}`, `payload_available`: `true`, `payload_not_available`: `false`) |
+
+No `value_template` on the sensor — payload is plain integer percentage, or `unknown` when unavailable.
+
+**Battery pack voltage** sensor (validation slice, diagnostic):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/sensor/petfeeder_<device_id>/battery_voltage/config` |
+| `name` | `Battery pack voltage` |
+| `state_topic` | `petfeeder/<device_id>/battery_voltage` |
+| `unit_of_measurement` | `mV` |
+| `device_class` | `voltage` |
+| `state_class` | `measurement` |
+| `enabled_by_default` | `false` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+
+**Mains connected** binary sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/binary_sensor/petfeeder_<device_id>/mains/config` |
+| `name` | `Mains connected` |
+| `state_topic` | `petfeeder/<device_id>/mains` |
+| `payload_on` | `ON` |
+| `payload_off` | `OFF` |
+| `device_class` | `power` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
 
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
@@ -242,12 +287,14 @@ command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
 A/B bank swap, slot-health confirm), [mqtt_outbox](#publish-path)
 (post-connect publish queue), device condition (`bowl_error` on `.../state`),
 `bank` on every `ota/status`, HA validation-slice **Dispense** button, **Bowl
-error** binary_sensor, **Bowl weight** sensor, and **Dispense completed** event
-discovery, `cmd/dispense` → one portion, `.../dispense/event` on job completion.
+error** binary_sensor, **Bowl weight** sensor, **Battery** sensor, **Mains
+connected** binary_sensor, and **Dispense completed** event discovery,
+`cmd/dispense` → one portion, `.../dispense/event` on job completion,
+`.../battery` and `.../mains` telemetry publishers.
 
 **Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice).
 
-**Not implemented yet:** remaining telemetry topics (`hopper`, `power`, `eaten_today`,
+**Not implemented yet:** remaining telemetry topics (`hopper`, `eaten_today`,
 schedule, config, display), additional HA entities from the full table,
 300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
 coalescing on the outbox.
@@ -358,6 +405,90 @@ coalesce delay.
 Home Assistant marks the entity unavailable when `bowl_error` is `true` on
 `.../state` (dual `availability` in discovery) so a stale retained gram value is
 not shown as a live reading while the bowl is missing or cal is incomplete.
+
+## Battery
+
+Topic `.../battery` (retained, QoS 1) reports pack state of charge as a plain
+integer percentage 0–100. Separate from `.../mains` (power source) and
+`.../battery_voltage` (diagnostic raw mV).
+
+| Payload | Meaning |
+|---------|---------|
+| `75` | 75 % remaining (from ADC + discharge curve) |
+| `0` | Depleted but present pack (~≤ 4.0 V) |
+| `unknown` | Unknown — pack ADC reading exactly 0 mV (no cells / open circuit) |
+
+Use the literal `unknown` (not an empty payload): Mosquitto and most brokers
+delete retained messages on zero-length publish, so HA would keep showing the
+last numeric state.
+
+Home Assistant marks the entity unavailable when the payload is `unknown`
+(dual `availability` in discovery). The battery-topic availability entry must
+use a template that renders the strings `true` or `false` — for example
+`{{ 'true' if value != 'unknown' else 'false' }}` — because HA compares the
+template result to `payload_available` / `payload_not_available` as strings.
+A bare boolean expression such as `{{ value != 'unknown' }}` renders `True` or
+`False` and does not match `"false"`, leaving the entity available with a
+stale percentage.
+
+Samples before MQTT topics are configured (timer tick before first connect) are
+ignored so a pre-connect reading cannot be snapshotted as the connect retain.
+On connect, ADC is force-sampled before the battery connect snapshot.
+
+Publish triggers:
+
+| Trigger | Publish |
+|---------|---------|
+| MQTT connect | Retained snapshot of last known state |
+| Mains/battery transition | Force resample + publish |
+| Known ↔ unknown transition | Yes |
+| Percentage change ≥ `[tune]` 1 pt (when known) | Yes |
+| Periodic ADC sample (no change) | No |
+
+Sample interval from debounced power source ([battery-monitoring.md](battery-monitoring.md)):
+`[tune]` 60 s on battery, `[tune]` 300 s on mains. ADC read skipped on
+`PORT_ERR_BUSY` (motor running / WFCI contended).
+
+When `read_battery_mv()` returns exactly **0 mV**, publish `unknown` on this
+topic (not `"0"`). Values `> 0 mV` map through the discharge curve including 0 %.
+
+Chemistry enum and knot tables: [battery-monitoring.md](battery-monitoring.md)
+§ Chemistry and discharge curves.
+
+## Battery pack voltage
+
+Topic `.../battery_voltage` (retained, QoS 1) reports raw scaled pack voltage
+in millivolts. Diagnostic / integrator topic — always publishes the ADC result
+(including `0`).
+
+| Payload | Meaning |
+|---------|---------|
+| `5200` | 5.2 V pack |
+
+Publish triggers (same sample tick as [Battery](#battery)):
+
+| Trigger | Publish |
+|---------|---------|
+| MQTT connect | Retained snapshot |
+| Mains/battery transition | Force resample + publish |
+| Change ≥ `[tune]` 10 mV | Yes |
+| Periodic ADC sample (no change) | No |
+
+Home Assistant discovers **Battery pack voltage** with `enabled_by_default`:
+`false` — hidden until enabled in the UI.
+
+## Mains
+
+Topic `.../mains` (retained, QoS 1) reports whether the barrel adapter is
+present (debounced P1.1 sense).
+
+| Payload | Meaning |
+|---------|---------|
+| `ON` | Running on mains (barrel connected) |
+| `OFF` | Running on battery |
+
+Publish on debounced edge change and as a snapshot after MQTT connect. Not
+tied to battery sample interval.
 
 ## Dispense event
 

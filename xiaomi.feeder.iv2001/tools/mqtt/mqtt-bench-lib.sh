@@ -77,6 +77,21 @@ mqtt_bench_ha_bowl_weight_payload() {
         | mqtt_bench_substitute_device_id
 }
 
+mqtt_bench_ha_battery_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-battery.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_battery_voltage_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-battery_voltage.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_mains_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-mains.json" \
+        | mqtt_bench_substitute_device_id
+}
+
 mqtt_bench_bowl_weight() {
     local mode="$1"
     local payload
@@ -95,6 +110,53 @@ mqtt_bench_bowl_weight() {
     esac
 
     mqtt_bench_pub "$(mqtt_bench_topic bowl_weight)" "$payload" --retain
+}
+
+mqtt_bench_battery() {
+    local mode="$1"
+    local payload
+
+    case "$mode" in
+        75)
+            payload="$(mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/battery-75")"
+            ;;
+        unknown)
+            payload="$(mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/battery-unknown")"
+            ;;
+        *)
+            echo "error: battery expects 75|unknown" >&2
+            return 1
+            ;;
+    esac
+
+    mqtt_bench_pub "$(mqtt_bench_topic battery)" "$payload" --retain
+}
+
+mqtt_bench_battery_voltage() {
+    local mv="$1"
+
+    case "$mv" in
+        ''|*[!0-9]*)
+            echo "error: battery_voltage expects plain integer mV" >&2
+            return 1
+            ;;
+    esac
+
+    mqtt_bench_pub "$(mqtt_bench_topic battery_voltage)" "$mv" --retain
+}
+
+mqtt_bench_mains() {
+    local mode="$1"
+
+    case "$mode" in
+        ON|OFF) ;;
+        *)
+            echo "error: mains expects ON|OFF" >&2
+            return 1
+            ;;
+    esac
+
+    mqtt_bench_pub "$(mqtt_bench_topic mains)" "$mode" --retain
 }
 
 mqtt_bench_session_online() {
@@ -155,6 +217,18 @@ mqtt_bench_ha_discovery() {
             topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
             payload="$(mqtt_bench_ha_bowl_weight_payload)"
             ;;
+        battery)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config"
+            payload="$(mqtt_bench_ha_battery_payload)"
+            ;;
+        battery_voltage)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config"
+            payload="$(mqtt_bench_ha_battery_voltage_payload)"
+            ;;
+        mains)
+            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config"
+            payload="$(mqtt_bench_ha_mains_payload)"
+            ;;
         dispense)
             topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
             payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
@@ -203,8 +277,34 @@ mqtt_bench_clean() {
                 -n -r -q 1 2>/dev/null || true
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
                 -t "homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config" \
                 -n -r -q 1 2>/dev/null || true
+            ;;
+    esac
+
+    case "$slice" in
+        power|all)
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "$(mqtt_bench_topic battery)" -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "$(mqtt_bench_topic battery_voltage)" -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "$(mqtt_bench_topic mains)" -n -r -q 1 2>/dev/null || true
             ;;
     esac
 

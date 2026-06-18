@@ -9,7 +9,8 @@ cloud dependency and no phone-home telemetry.
 
 - **Home Assistant auto-discovery** — entities appear automatically. Shipped
   today: **Dispense** button, **Bowl error** binary sensor, **Bowl weight**
-  sensor, and **Dispense completed** event; the full entity table is in
+  sensor, **Battery** sensor, **Mains connected** binary sensor, and
+  **Dispense completed** event; the full entity table is in
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
@@ -37,7 +38,8 @@ The feeder publishes the following retained state topics:
 - **Eaten today** — cumulative consumption since midnight (future `.../eaten_today`).
 - **Device condition** — faults and health (`bowl_error`, extensible).
 - **Hopper** — fill level (normal / low).
-- **Power** — source (mains / battery), battery percentage.
+- **Mains** — barrel connected (`ON` / `OFF` on `.../mains`).
+- **Battery** — pack percentage 0–100 on `.../battery`.
 - **Dispense completed** — fire-and-forget event with grams and outcome per job.
 - **Schedule list** — all configured slots.
 - **Next scheduled feed** — time and gram amount.

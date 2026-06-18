@@ -50,21 +50,29 @@ Default `[design]` **11000** (multiplier 11.0, nominal ~11:1 divider).
 Per-device trim in NVDM `power/batt_scale_x1000` — see [uart-console.md](uart-console.md)
 `adc cal`. Motor-load reads report mA via 1 Ω shunt (`[probe]`); no scale factor.
 
-## Discharge curve mapping
+## Chemistry and discharge curves
 
-Map measured voltage to percentage using AA alkaline discharge curve
-(4× AA in series, nominal 6.0 V fresh → ~4.0 V depleted):
+Pack voltage (mV) maps to percentage via `battery_pct_from_mv(pack_mv, chem)`.
+Chemistry is selected by `battery_chemistry_t` enum; future chemistries add a
+new enum value and knot table. Runtime selection via NVDM `power/batt_chemistry`
+(uint8, absent → `0` / `BATTERY_CHEM_AA_ALK_4S`) is reserved — not loaded yet.
 
-| Voltage (approx) | Percentage | Source |
-|-------------------|------------|--------|
-| ≥ 6.0 V | 100 % | `[design]` |
-| 5.6 V | 75 % | `[design]` |
-| 5.2 V | 50 % | `[design]` |
-| 4.8 V | 25 % | `[design]` |
-| 4.4 V | 10 % | `[design]` |
-| ≤ 4.0 V | 0 % | `[design]` |
+| Enum | Chemistry | Pack |
+|------|-----------|------|
+| `BATTERY_CHEM_AA_ALK_4S` (0) | AA alkaline primary cell | 4× series |
 
-Interpolate linearly between points. Curve should be refined with bench
+**Default curve `BATTERY_CHEM_AA_ALK_4S`** (nominal 6.0 V fresh → ~4.0 V depleted):
+
+| Pack mV | % | Source |
+|---------|---|--------|
+| ≥ 6000 | 100 | `[design]` |
+| 5600 | 75 | `[design]` |
+| 5200 | 50 | `[design]` |
+| 4800 | 25 | `[design]` |
+| 4400 | 10 | `[design]` |
+| ≤ 4000 | 0 | `[design]` |
+
+Interpolate linearly between knots; clamp below/above range. Refine with bench
 measurements. `[tune]`
 
 ## Sample interval
@@ -81,12 +89,17 @@ Power source from debounced `power_source_input` ([power-state-machine.md](power
 
 | Condition | Action | Source |
 |-----------|--------|--------|
-| `battery_pct < [tune] 10 %` | Publish low-battery warning via MQTT `.../power` | `[design]` |
+| `battery_pct < [tune] 10 %` | Publish low-battery warning via MQTT `.../battery` | `[design]` |
 | `battery_pct < [tune] 5 %` | Disable non-critical functions (display off, Wi-Fi off); keep scheduled dispense + motor safety | `[design]` |
 
 ## Output
 
-Published to MQTT `.../power`:
-```json
-{"source": "mains|battery", "battery_pct": <0-100>}
-```
+| Topic | Payload | When |
+|-------|---------|------|
+| `.../battery` | Plain integer `0`–`100`, or `unknown` when pack ADC is 0 mV | After ADC sample when % changes ≥ 1 pt, known ↔ unknown transition, connect snapshot, or forced resample |
+| `.../battery_voltage` | Plain integer pack mV (including `0`) | Same sample tick as `.../battery` |
+| `.../mains` | `ON` / `OFF` | Immediately on debounced mains connect/loss; connect snapshot |
+
+`unknown` on `.../battery` means no pack / 0 mV — not depleted 0 %. Do not use
+an empty MQTT payload: brokers drop zero-length retains. See
+[mqtt-protocol.md](mqtt-protocol.md) § Battery.

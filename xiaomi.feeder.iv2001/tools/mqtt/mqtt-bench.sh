@@ -22,9 +22,12 @@ Commands:
   ota idle <A|B>
   state bowl_error on|off
   bowl_weight 42|empty
-  ha discovery <dispense|bowl_error|bowl_weight>
-  verify ha <dispense|bowl_error|bowl_weight>   # print topic + JSON (no publish)
-  clean [--slice state|ota|ha|connection|all]
+  battery 75|unknown
+  battery_voltage <mV>
+  mains ON|OFF
+  ha discovery <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains>
+  verify ha <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains>   # print topic + JSON (no publish)
+  clean [--slice state|ota|ha|connection|power|all]
 
 Environment:
   DEVICE_ID   MQTT device id (default: ddeeff)
@@ -105,6 +108,21 @@ case "$cmd" in
         mqtt_bench_bowl_weight "$mode"
         ;;
 
+    battery)
+        mode="${1:?75|unknown required}"
+        mqtt_bench_battery "$mode"
+        ;;
+
+    battery_voltage)
+        mv="${1:?mV required}"
+        mqtt_bench_battery_voltage "$mv"
+        ;;
+
+    mains)
+        mode="${1:?ON|OFF required}"
+        mqtt_bench_mains "$mode"
+        ;;
+
     ha)
         sub="${1:?discovery required}"
         entity="${2:?entity required}"
@@ -130,6 +148,18 @@ case "$cmd" in
             bowl_weight)
                 topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
                 payload="$(mqtt_bench_ha_bowl_weight_payload)"
+                ;;
+            battery)
+                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config"
+                payload="$(mqtt_bench_ha_battery_payload)"
+                ;;
+            battery_voltage)
+                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config"
+                payload="$(mqtt_bench_ha_battery_voltage_payload)"
+                ;;
+            mains)
+                topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config"
+                payload="$(mqtt_bench_ha_mains_payload)"
                 ;;
             dispense)
                 topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"

@@ -45,11 +45,24 @@ device is doing and whether it needs attention.
 ## Power source
 
 - Reports whether the feeder is running on **mains** or **battery**.
-- Changes are reported immediately when the power source switches.
+- Over MQTT the user sees mains presence on `petfeeder/<device_id>/mains`
+  (`ON` when barrel connected, `OFF` on battery). Home Assistant discovers a
+  **Mains connected** binary sensor (`device_class`: power).
+- Changes are reported immediately when the debounced power source switches.
 
 ## Battery level
 
-- Reports battery percentage (0–100 %).
-- Publishes a low-battery warning when the level is critically low.
+- Reports battery percentage (0–100 %) on `petfeeder/<device_id>/battery`
+  (plain integer, retained). Payload `unknown` when pack ADC reads exactly 0 mV
+  (no cells) — Home Assistant shows the sensor unavailable.
+- Optional diagnostic raw pack voltage on `petfeeder/<device_id>/battery_voltage`
+  (plain integer mV, retained). Home Assistant discovers **Battery pack voltage**
+  (`device_class`: voltage, unit mV, disabled by default).
+- Pack voltage is sampled on `[tune]` **60 s** while on battery and
+  `[tune]` **300 s** while on mains — see
+  [battery-monitoring.md](../30-processes/battery-monitoring.md).
+- MQTT publishes when percentage changes by at least 1 point, on known ↔ unknown
+  transition, on connect snapshot, and after a mains/battery transition resample.
+- Publishes a low-battery warning when the level is critically low (future).
 - At very low battery the feeder disables non-critical functions
-  (display, Wi-Fi) and preserves power for scheduled feeding.
+  (display, Wi-Fi) and preserves power for scheduled feeding (future).

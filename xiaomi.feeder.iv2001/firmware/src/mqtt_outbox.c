@@ -96,6 +96,8 @@ bool mqtt_outbox_enqueue(const char *topic,
     strncpy(slot->topic, topic, sizeof(slot->topic) - 1);
     if (len > 0u) {
         memcpy(slot->payload, payload, len);
+    } else {
+        slot->payload[0] = '\0';
     }
     slot->payload_len = len;
     slot->qos = qos;
@@ -128,7 +130,7 @@ bool mqtt_outbox_drain_one(const mqtt_port_t *mqtt)
 
     slot = &s_slots[s_head];
     if (mqtt->publish(slot->topic,
-                      slot->payload,
+                      slot->payload_len > 0u ? slot->payload : NULL,
                       slot->payload_len,
                       slot->qos,
                       slot->retain) != PORT_OK) {

@@ -214,6 +214,176 @@ int mqtt_ha_format_bowl_weight_config(char *buf, size_t len, const char *device_
     return written;
 }
 
+int mqtt_ha_format_battery_config(char *buf, size_t len, const char *device_id)
+{
+    char battery_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(battery_topic,
+                          sizeof(battery_topic),
+                          device_id,
+                          "battery")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Battery\","
+                       "\"unique_id\":\"petfeeder_%s_battery\","
+                       "\"state_topic\":\"%s\","
+                       "\"unit_of_measurement\":\"%%\","
+                       "\"device_class\":\"battery\","
+                       "\"state_class\":\"measurement\","
+                       "\"availability\":["
+                       "{\"topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\"},"
+                       "{\"topic\":\"%s\","
+                       "\"value_template\":\"{{ 'true' if value != 'unknown' else 'false' }}\","
+                       "\"payload_available\":\"true\","
+                       "\"payload_not_available\":\"false\"}"
+                       "],"
+                       "%s}",
+                       device_id,
+                       battery_topic,
+                       connection_topic,
+                       battery_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
+int mqtt_ha_format_battery_voltage_config(char *buf, size_t len, const char *device_id)
+{
+    char voltage_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(voltage_topic,
+                          sizeof(voltage_topic),
+                          device_id,
+                          "battery_voltage")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Battery pack voltage\","
+                       "\"unique_id\":\"petfeeder_%s_battery_voltage\","
+                       "\"state_topic\":\"%s\","
+                       "\"unit_of_measurement\":\"mV\","
+                       "\"device_class\":\"voltage\","
+                       "\"state_class\":\"measurement\","
+                       "\"enabled_by_default\":false,"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       voltage_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
+int mqtt_ha_format_mains_config(char *buf, size_t len, const char *device_id)
+{
+    char mains_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(mains_topic, sizeof(mains_topic), device_id, "mains")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Mains connected\","
+                       "\"unique_id\":\"petfeeder_%s_mains\","
+                       "\"state_topic\":\"%s\","
+                       "\"payload_on\":\"ON\","
+                       "\"payload_off\":\"OFF\","
+                       "\"device_class\":\"power\","
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       mains_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 int mqtt_ha_format_dispense_completed_config(char *buf,
                                              size_t len,
                                              const char *device_id)
@@ -284,6 +454,21 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "sensor",
         .object_id = "bowl_weight",
         .format_config = mqtt_ha_format_bowl_weight_config,
+    },
+    {
+        .component = "sensor",
+        .object_id = "battery",
+        .format_config = mqtt_ha_format_battery_config,
+    },
+    {
+        .component = "sensor",
+        .object_id = "battery_voltage",
+        .format_config = mqtt_ha_format_battery_voltage_config,
+    },
+    {
+        .component = "binary_sensor",
+        .object_id = "mains",
+        .format_config = mqtt_ha_format_mains_config,
     },
     {
         .component = "event",

@@ -23,6 +23,7 @@
 #include "display_presentation.h"
 #include "mqtt_state.h"
 #include "mqtt_bowl_weight.h"
+#include "mqtt_mains.h"
 #include "display_wifi_indicator.h"
 #include "FreeRTOS.h"
 #include "mqtt_client.h"
@@ -42,6 +43,7 @@
 #include "hopper_ir_port.h"
 #include "power_source_input.h"
 #include "power_source_port.h"
+#include "battery_monitor.h"
 #include "motor_cli.h"
 #include "motor_port.h"
 #include "weigh_product.h"
@@ -238,6 +240,17 @@ static void app_weight_idle_on_display_tick(uint32_t now_ms)
 
     s_weight_last_sample_ms = now_ms;
     app_weight_idle_tick();
+}
+
+static void app_power_mqtt_sync(void)
+{
+    power_source_transition_t tr;
+
+    while (power_source_input_pop_transition(&tr)) {
+        mqtt_mains_sync(tr.edge == POWER_SOURCE_EDGE_MAINS);
+        battery_monitor_force_sample();
+        battery_monitor_poll(tr.at_ms);
+    }
 }
 
 bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out)
@@ -528,6 +541,7 @@ void app_dispatch(const app_event_t *ev)
         }
         hopper_input_poll(ev->u.display_tick.now_ms);
         power_source_input_poll(ev->u.display_tick.now_ms);
+        app_power_mqtt_sync();
         break;
 
     case EVT_BUTTON_IRQ:
@@ -535,12 +549,19 @@ void app_dispatch(const app_event_t *ev)
         power_source_input_notify_irq(ev->u.button_irq.now_ms);
         app_button_poll(ev->u.button_irq.now_ms);
         power_source_input_poll(ev->u.button_irq.now_ms);
+        app_power_mqtt_sync();
         break;
 
     case EVT_TIMER_TICK:
-        dispense_poll((uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS));
-        (void)ota_slot_health_poll_ms();
-        app_weight_boot_advance();
+        {
+            uint32_t now_ms =
+                (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
+
+            dispense_poll(now_ms);
+            (void)ota_slot_health_poll_ms();
+            app_weight_boot_advance();
+            battery_monitor_poll(now_ms);
+        }
         break;
 
     case EVT_DISPENSE_REQUEST:

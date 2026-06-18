@@ -53,6 +53,20 @@ Run from `xiaomi.feeder.iv2001/`:
 If the entity appears under **Pet Feeder &lt;other-id&gt;** you used the wrong
 `DEVICE_ID` — set `export DEVICE_ID=...` to match the live feeder.
 
+## Battery slice
+
+Validate unavailable vs known SOC (requires `session online` first):
+
+```bash
+export DEVICE_ID=768722   # your feeder id
+./tools/mqtt/mqtt-bench.sh ha discovery battery
+./tools/mqtt/mqtt-bench.sh battery unknown   # HA → unavailable
+./tools/mqtt/mqtt-bench.sh battery 75        # HA → 75 %
+```
+
+Do **not** use an empty payload for unknown — Mosquitto drops zero-length
+retains. Payload files live in `payloads/battery-unknown` and `payloads/ha-battery.json`.
+
 ## Generic commands
 
 ```bash

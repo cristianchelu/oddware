@@ -34,6 +34,7 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | calib | span_raw | int32 | — | Raw CS1270 count at span_g |
 | power | battery_wifi | enum | on | Wi-Fi on battery: on / off / scheduled_only |
 | power | batt_scale_x1000 | uint16 | 11000 | Pack mV = pin_mV × value / 1000; key absent → 11.0 default |
+| power | batt_chemistry | uint8 | 0 | `battery_chemistry_t` enum; absent → `BATTERY_CHEM_AA_ALK_4S` (0); not loaded at runtime yet |
 | system | boot_count | uint32 | 0 | Incremented each boot while the A/B control block `unverified` flag is set; cleared on crash-free slot confirm (see [ota-flow.md](ota-flow.md) § Slot health) |
 | system | last_reset | enum | — | Reason for last reset (watchdog / ota / user / power) |
 

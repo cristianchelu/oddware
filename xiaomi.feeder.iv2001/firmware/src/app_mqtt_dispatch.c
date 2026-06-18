@@ -4,13 +4,21 @@
 
 #include "app_log.h"
 #include "app_mqtt_dispatch.h"
+#include "battery_monitor.h"
 #include "mqtt_client.h"
 #include "mqtt_dispense_cmd.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
 #include "mqtt_state.h"
 #include "mqtt_bowl_weight.h"
+#include "mqtt_battery.h"
+#include "mqtt_battery_voltage.h"
+#include "mqtt_mains.h"
 #include "ota_client.h"
+#include "power_source_input.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 void app_mqtt_on_connected(void)
 {
@@ -19,6 +27,15 @@ void app_mqtt_on_connected(void)
     ota_client_on_mqtt_connected();
     mqtt_state_on_mqtt_connected();
     mqtt_bowl_weight_on_mqtt_connected();
+    if (power_source_input_is_valid()) {
+        mqtt_mains_connect_snapshot(power_source_input_get() == POWER_SOURCE_MAINS);
+    }
+    battery_monitor_force_sample();
+    if (!battery_monitor_poll(
+            (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS))) {
+        mqtt_battery_on_mqtt_connected();
+        mqtt_battery_voltage_on_mqtt_connected();
+    }
     if (device_id != NULL && device_id[0] != '\0') {
         mqtt_ha_discovery_schedule(device_id);
     }

@@ -226,7 +226,11 @@ static port_err_t mqtt_adapter_publish(const char *topic,
     MQTTMessage message;
     int rc;
 
-    if (!s_session_up || topic == NULL || payload == NULL) {
+    if (!s_session_up || topic == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    if (len > 0u && payload == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -239,7 +243,7 @@ static port_err_t mqtt_adapter_publish(const char *topic,
     memset(&message, 0, sizeof(message));
     message.qos = qos;
     message.retained = retain ? 1 : 0;
-    message.payload = (void *)payload;
+    message.payload = len > 0u ? (void *)payload : NULL;
     message.payloadlen = len;
 
     rc = MQTTPublish(&s_client, topic, &message);
