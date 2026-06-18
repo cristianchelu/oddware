@@ -112,6 +112,7 @@ APP_FILES      += $(APP_PATH_SRC)/mqtt_outbox.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_ha_discovery.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_state.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_bowl_weight.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_dispense_event.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_dispense_cmd.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_client.c
 APP_FILES      += $(APP_PATH_SRC)/app_mqtt_cli.c

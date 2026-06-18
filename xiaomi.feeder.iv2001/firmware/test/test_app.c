@@ -195,7 +195,7 @@ void test_app_mqtt_message_dispense_busy_while_active(void)
     mqtt_client_test_bootstrap();
     mqtt_client_test_set_device_id("ddeeff");
 
-    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u, DISPENSE_SOURCE_MQTT));
     app_step();
 
     memset(&ev, 0, sizeof(ev));

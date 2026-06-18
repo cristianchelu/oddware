@@ -22,6 +22,10 @@ int mqtt_ha_format_bowl_weight_config(char *buf,
                                       size_t len,
                                       const char *device_id);
 
+int mqtt_ha_format_dispense_completed_config(char *buf,
+                                             size_t len,
+                                             const char *device_id);
+
 void mqtt_ha_discovery_schedule(const char *device_id);
 
 #endif /* MQTT_HA_DISCOVERY_H */

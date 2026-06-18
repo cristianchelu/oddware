@@ -72,12 +72,25 @@ void test_mqtt_ha_format_bowl_weight_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "value_json.bowl_error == false"));
 }
 
+void test_mqtt_ha_format_dispense_completed_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_dispense_completed_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Dispense completed\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/dispense/event\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"]"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"unique_id\":\"petfeeder_ddeeff_dispense_completed\""));
+}
+
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
 {
     mqtt_outbox_reset();
     mqtt_outbox_set_accepting(true);
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
-    TEST_ASSERT_EQUAL_UINT(3, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(4, mqtt_outbox_pending());
 }
 
 void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
@@ -94,8 +107,8 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     drain_all_outbox();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(3, mqtt->publish_calls);
-    TEST_ASSERT_EQUAL_STRING("homeassistant/sensor/petfeeder_ddeeff/bowl_weight/config",
+    TEST_ASSERT_EQUAL_UINT(4, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/event/petfeeder_ddeeff/dispense_completed/config",
                              mqtt->last_publish_topic);
-    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"device_class\":\"weight\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"]"));
 }

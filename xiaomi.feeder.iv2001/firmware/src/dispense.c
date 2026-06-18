@@ -7,34 +7,186 @@
 #include "app.h"
 #include "app_event.h"
 #include "app_log.h"
+#include "bowl_error.h"
 #include "dispense_cli.h"
 #include "display_dispense_indicator.h"
+#include "FreeRTOS.h"
 #include "hopper_input.h"
 #include "motor_jam.h"
 #include "motor_port.h"
+#include "mqtt_client.h"
+#include "mqtt_dispense_event.h"
 #include "port_err.h"
+#include "task.h"
+#include "weight_port.h"
 
-static bool s_job_active;
+typedef enum {
+    DISPENSE_PHASE_NONE = 0,
+    DISPENSE_PHASE_MOTOR,
+    DISPENSE_PHASE_SETTLE,
+} dispense_phase_t;
+
 static bool s_job_pending;
+static dispense_phase_t s_phase;
+static dispense_outcome_t s_outcome;
+static dispense_source_t s_source;
+static uint8_t s_portions;
+static int32_t s_baseline_grams;
+static bool s_baseline_valid;
+static uint32_t s_settle_start_ms;
+static uint8_t s_zero_delta_streak;
 
-static void dispense_finish_job(dispense_outcome_t outcome)
+static bool dispense_capture_baseline(uint32_t now_ms)
 {
-    if (!s_job_active && !s_job_pending) {
+    app_bowl_grams_snapshot_t snap;
+
+    if (app_bowl_grams_snapshot(now_ms, &snap) &&
+        snap.valid &&
+        snap.sample_age_ms < DISPENSE_BASELINE_FRESH_MS) {
+        s_baseline_grams = snap.grams;
+        s_baseline_valid = true;
+        return true;
+    }
+
+    {
+        const weight_port_t *wp = weight_port_get();
+        int32_t grams;
+        port_err_t err;
+
+        if (wp == NULL || wp->read_grams == NULL) {
+            s_baseline_valid = false;
+            return false;
+        }
+
+        err = wp->read_grams(&grams);
+        if (err != PORT_OK) {
+            s_baseline_valid = false;
+            return false;
+        }
+
+        s_baseline_grams = grams;
+        s_baseline_valid = true;
+        app_bowl_grams_notify_read(grams, true, now_ms);
+        return true;
+    }
+}
+
+static bool dispense_read_post_grams(int32_t *grams_out)
+{
+    const weight_port_t *wp = weight_port_get();
+    port_err_t err;
+
+    if (wp == NULL || wp->read_grams == NULL || grams_out == NULL) {
+        return false;
+    }
+
+    err = wp->read_grams(grams_out);
+    return err == PORT_OK;
+}
+
+static bool dispense_scale_trusted(int32_t grams, bool valid)
+{
+    const weight_port_t *wp = weight_port_get();
+    weight_cal_status_t cal;
+    bowl_error_kind_t bowl_err;
+
+    if (!valid) {
+        return false;
+    }
+
+    cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
+                                                   : WEIGHT_CAL_UNCALIBRATED;
+    bowl_err = bowl_error_eval(cal, true, grams);
+    return !bowl_error_is_active(bowl_err);
+}
+
+static void dispense_update_zero_delta_streak(int32_t raw_delta)
+{
+    if (raw_delta <= 0) {
+        if (s_zero_delta_streak < 255u) {
+            s_zero_delta_streak++;
+        }
+    } else {
+        s_zero_delta_streak = 0u;
+    }
+}
+
+static void dispense_finish_job(uint32_t now_ms)
+{
+    dispense_completion_t completion;
+    int32_t post_grams = 0;
+    bool post_valid;
+    int32_t raw_delta;
+    int32_t event_grams;
+    bool measured;
+
+    if (s_phase == DISPENSE_PHASE_NONE) {
         return;
     }
 
-    s_job_active = false;
+    post_valid = dispense_read_post_grams(&post_grams);
+    if (post_valid) {
+        app_bowl_grams_notify_read(post_grams, true, now_ms);
+    }
+
+    measured = s_baseline_valid && post_valid &&
+               dispense_scale_trusted(s_baseline_grams, s_baseline_valid) &&
+               dispense_scale_trusted(post_grams, post_valid);
+
+    if (measured) {
+        raw_delta = post_grams - s_baseline_grams;
+        dispense_update_zero_delta_streak(raw_delta);
+        event_grams = raw_delta;
+        if (event_grams < 0) {
+            app_log_info("dispense", "negative delta clamped raw=%ld", (long)raw_delta);
+            event_grams = 0;
+        }
+    } else {
+        if (s_baseline_valid && post_valid) {
+            raw_delta = post_grams - s_baseline_grams;
+            dispense_update_zero_delta_streak(raw_delta);
+        }
+        event_grams = (int32_t)s_portions * (int32_t)DISPENSE_GRAMS_PER_PORTION;
+    }
+
+    completion.grams = event_grams;
+    completion.grams_estimated = !measured;
+    completion.target_g = (uint16_t)s_portions * DISPENSE_GRAMS_PER_PORTION;
+    completion.outcome = s_outcome;
+    completion.source = s_source;
+    completion.mode = DISPENSE_MODE_OPEN_LOOP;
+    completion.batch_count = 1u;
+    completion.portions = s_portions;
+
+    {
+        const char *device_id = mqtt_client_device_id();
+
+        if (device_id != NULL && device_id[0] != '\0') {
+            mqtt_dispense_event_set_device_id(device_id);
+            (void)mqtt_dispense_event_publish(&completion);
+        }
+    }
+
+    app_weight_notify_dispense_complete();
+
+    s_phase = DISPENSE_PHASE_NONE;
     s_job_pending = false;
     display_dispense_indicator_idle();
 
-    if (outcome == DISPENSE_OUTCOME_SUCCESS) {
+    if (s_outcome == DISPENSE_OUTCOME_SUCCESS) {
         (void)dispense_cli_on_job_done();
-        hopper_input_notify_dispense_complete();
-        app_weight_notify_dispense_complete();
     } else {
         (void)dispense_cli_on_job_fault();
-        hopper_input_notify_dispense_complete();
     }
+
+    hopper_input_notify_dispense_complete();
+}
+
+static void dispense_begin_settle(dispense_outcome_t outcome)
+{
+    s_outcome = outcome;
+    s_phase = DISPENSE_PHASE_SETTLE;
+    s_settle_start_ms = 0u;
 }
 
 static port_err_t dispense_kick_motor(uint8_t pulse_target)
@@ -48,7 +200,8 @@ static port_err_t dispense_kick_motor(uint8_t pulse_target)
     return motor->request_burst(pulse_target, MOTOR_BURST_TIMEOUT_MS);
 }
 
-dispense_submit_result_t dispense_submit_portions(uint8_t portions)
+dispense_submit_result_t dispense_submit_portions(uint8_t portions,
+                                                  dispense_source_t source)
 {
     app_event_t ev;
 
@@ -74,6 +227,7 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions)
     ev.type = EVT_DISPENSE_REQUEST;
     ev.u.dispense_request.kind = DISPENSE_KIND_PORTIONS;
     ev.u.dispense_request.target = portions;
+    ev.u.dispense_request.source = source;
 
     if (!app_event_post(&ev)) {
         app_log_info("dispense", "busy");
@@ -87,15 +241,16 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions)
 
 bool dispense_is_active(void)
 {
-    return s_job_active || s_job_pending;
+    return s_job_pending || s_phase != DISPENSE_PHASE_NONE;
 }
 
 void dispense_start_from_request(const app_dispense_request_t *req)
 {
     uint8_t portions;
     port_err_t err;
+    uint32_t now_ms;
 
-    if (req == NULL || !s_job_pending || s_job_active) {
+    if (req == NULL || !s_job_pending || s_phase != DISPENSE_PHASE_NONE) {
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
@@ -118,14 +273,20 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     }
 
     s_job_pending = false;
-    s_job_active = true;
+    s_portions = portions;
+    s_source = req->source;
+    s_phase = DISPENSE_PHASE_MOTOR;
+
+    now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
+    (void)dispense_capture_baseline(now_ms);
+
     if (display_dispense_indicator_active() != PORT_OK) {
         app_log_info("dispense", "indicator unavailable");
     }
 
     err = dispense_kick_motor(portions);
     if (err != PORT_OK) {
-        s_job_active = false;
+        s_phase = DISPENSE_PHASE_NONE;
         display_dispense_indicator_idle();
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
@@ -134,33 +295,57 @@ void dispense_start_from_request(const app_dispense_request_t *req)
 
 bool dispense_on_burst_done(void)
 {
-    if (!s_job_active) {
+    if (s_phase != DISPENSE_PHASE_MOTOR) {
         return false;
     }
 
-    dispense_finish_job(DISPENSE_OUTCOME_SUCCESS);
+    dispense_begin_settle(DISPENSE_OUTCOME_SUCCESS);
     return true;
 }
 
 bool dispense_on_motor_fault(void)
 {
-    if (!s_job_active) {
+    if (s_phase != DISPENSE_PHASE_MOTOR) {
         return false;
     }
 
-    dispense_finish_job(DISPENSE_OUTCOME_STUCK);
+    dispense_begin_settle(DISPENSE_OUTCOME_STUCK);
     return true;
 }
 
-void dispense_poll(void)
+void dispense_poll(uint32_t now_ms)
 {
-    /* Job lifecycle is explicit (burst done / fault / future compensate steps).
-     * Motor idle between batches or during weigh settle does not end the job. */
+    if (s_phase != DISPENSE_PHASE_SETTLE) {
+        return;
+    }
+
+    if (s_settle_start_ms == 0u) {
+        s_settle_start_ms = now_ms;
+        return;
+    }
+
+    if ((now_ms - s_settle_start_ms) < DISPENSE_SETTLE_MS) {
+        return;
+    }
+
+    dispense_finish_job(now_ms);
+}
+
+uint8_t dispense_test_zero_delta_streak(void)
+{
+    return s_zero_delta_streak;
 }
 
 void dispense_test_reset(void)
 {
-    s_job_active = false;
     s_job_pending = false;
+    s_phase = DISPENSE_PHASE_NONE;
+    s_outcome = DISPENSE_OUTCOME_SUCCESS;
+    s_source = DISPENSE_SOURCE_MQTT;
+    s_portions = 0u;
+    s_baseline_grams = 0;
+    s_baseline_valid = false;
+    s_settle_start_ms = 0u;
+    s_zero_delta_streak = 0u;
     display_dispense_indicator_idle();
 }

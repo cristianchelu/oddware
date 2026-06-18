@@ -77,7 +77,7 @@ void test_app_mqtt_dispatch_logs_dispense_busy(void)
     const char *payload = "{}";
 
     mqtt_dispatch_test_reset();
-    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u, DISPENSE_SOURCE_MQTT));
 
     mqtt_dispatch_log_capture_begin();
     app_mqtt_dispatch(topic, payload, strlen(payload), "ddeeff");

@@ -60,7 +60,6 @@ static port_err_t fake_mqtt_publish(const char *topic,
                                     bool retain)
 {
     (void)qos;
-    (void)retain;
 
     if (!s_state.connected) {
         return PORT_ERR_INVALID_ARG;
@@ -80,6 +79,7 @@ static port_err_t fake_mqtt_publish(const char *topic,
     }
 
     s_state.publish_calls++;
+    s_state.last_publish_retain = retain;
     if (topic != NULL) {
         strncpy(s_state.last_publish_topic, topic, sizeof(s_state.last_publish_topic) - 1);
     }

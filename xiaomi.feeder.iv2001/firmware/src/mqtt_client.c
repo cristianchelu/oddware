@@ -23,6 +23,7 @@
 #include "mqtt_port.h"
 #include "mqtt_route.h"
 #include "mqtt_bowl_weight.h"
+#include "mqtt_dispense_event.h"
 #include "mqtt_state.h"
 #include "mqtt_topics.h"
 #include "ota_client.h"
@@ -316,6 +317,7 @@ static port_err_t mqtt_client_do_connect(void)
     ota_client_set_device_id(s_device_id);
     mqtt_state_set_device_id(s_device_id);
     mqtt_bowl_weight_set_device_id(s_device_id);
+    mqtt_dispense_event_set_device_id(s_device_id);
 
     {
         app_event_t ev;

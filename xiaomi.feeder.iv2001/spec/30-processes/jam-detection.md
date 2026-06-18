@@ -91,7 +91,7 @@ If anti-jam retries exhausted:
 1. De-assert EN (P0.1 low) — motor off.
 2. Disable motor-index IR LED (P0.6 low).
 3. Set dispense outcome = `stuck`.
-4. Publish fault via MQTT `.../dispense/status`: `{"state": "fault", "last_result": "stuck"}`.
+4. Publish completion event via MQTT `.../dispense/event` with `"event_type": "stuck"`.
 5. Abort remaining dispense queue.
 6. Recovery: user must clear physical jam and re-trigger via MQTT or button.
 

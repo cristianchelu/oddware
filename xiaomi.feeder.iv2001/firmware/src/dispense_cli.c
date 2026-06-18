@@ -50,7 +50,7 @@ static uint8_t dispense_cli_submit(uint8_t portions)
 {
     dispense_submit_result_t result;
 
-    result = dispense_submit_portions(portions);
+    result = dispense_submit_portions(portions, DISPENSE_SOURCE_UART);
     if (result == DISPENSE_SUBMIT_INVALID) {
         dispense_cli_emit("dispense usage: portions <1-15>");
         return 1u;

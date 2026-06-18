@@ -17,13 +17,22 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../bowl_weight` | `42` — plain integer grams; empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
 | `.../hopper` | `{"level": "normal"}` | 1 |
 | `.../power` | `{"source": "mains", "battery_pct": 100}` | 1 |
-| `.../dispense/status` | `{"state": "idle", "last_result": "success", "last_g": 30}` | 1 |
-| `.../dispense/progress` | `{"pct": 65, "target_g": 30}` | 1 |
 | `.../schedule/list` | `[{"hour":8,"min":0,"days":127,"g":30,"enabled":true}, ...]` | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | `{...full config object...}` | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
+
+## Event topics (published by device, not retained)
+
+| Topic | Payload | QoS | Retain |
+|-------|---------|-----|--------|
+| `.../dispense/event` | Dispense completion JSON — see [Dispense event](#dispense-event) | 1 | false |
+
+Dropped from the protocol: retained `.../dispense/status` and
+`.../dispense/progress`. Completion is reported only via the fire-and-forget
+dispense event. Other retained state topics (`state`, `bowl_weight`, etc.) are
+unchanged.
 
 ## Command topics (subscribed by device, not retained)
 
@@ -75,6 +84,7 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 | sensor | hopper_level | `enum` | Options: normal, low |
 | binary_sensor | power_mains | `power` | On/off |
 | button | dispense | — | Triggers default portion |
+| event | dispense_completed | — | Fires on each dispense job completion |
 | number | dispense_custom | — | Range: 5–150 g |
 | switch | child_lock | — | On/off |
 | select | display_mode | — | Options: weight, eaten_today, off |
@@ -127,6 +137,22 @@ Bench payloads: `tools/mqtt/payloads/ha-bowl_error.json`.
 No `value_template` on the sensor — the topic payload is the gram reading directly.
 
 Bench payloads: `tools/mqtt/payloads/ha-bowl_weight.json`, `bowl_weight-42`, `bowl_weight-empty`.
+
+**Dispense completed** event (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/event/petfeeder_<device_id>/dispense_completed/config` |
+| `name` | `Dispense completed` |
+| `state_topic` | `petfeeder/<device_id>/dispense/event` |
+| `event_types` | `["success", "underfill", "stuck", "empty_hopper", "aborted"]` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+
+Event payloads use HA MQTT event JSON on `state_topic` (non-retained). See
+[Dispense event](#dispense-event). No post-connect snapshot — events are
+ephemeral.
 
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
@@ -216,12 +242,13 @@ command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
 A/B bank swap, slot-health confirm), [mqtt_outbox](#publish-path)
 (post-connect publish queue), device condition (`bowl_error` on `.../state`),
 `bank` on every `ota/status`, HA validation-slice **Dispense** button, **Bowl
-error** binary_sensor, and **Bowl weight** sensor discovery, `cmd/dispense` → one portion.
+error** binary_sensor, **Bowl weight** sensor, and **Dispense completed** event
+discovery, `cmd/dispense` → one portion, `.../dispense/event` on job completion.
 
 **Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice).
 
 **Not implemented yet:** remaining telemetry topics (`hopper`, `power`, `eaten_today`,
-dispense, schedule, config, display), additional HA entities from the full table,
+schedule, config, display), additional HA entities from the full table,
 300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
 coalescing on the outbox.
 
@@ -270,7 +297,7 @@ Exponential backoff on disconnect:
 |---------|-----------------|--------|
 | Outbox drain (all post-connect TX) | 1 publish per `[tune]` 100 ms | `[design]` |
 | State topics (general, when implemented) | 1 per topic per `[tune]` 2 s | `[design]` |
-| Dispense progress (when implemented) | 1 per `[tune]` 500 ms | `[design]` |
+| Dispense event | 1 per completed job; drop when MQTT offline | `[design]` |
 
 The outbox drain interval spaces connect-time bursts (e.g. ten HA entities
 ≈ 1 s). Per-topic last-value-wins coalescing for high-rate state publishers
@@ -331,6 +358,79 @@ coalesce delay.
 Home Assistant marks the entity unavailable when `bowl_error` is `true` on
 `.../state` (dual `availability` in discovery) so a stale retained gram value is
 not shown as a live reading while the bowl is missing or cal is incomplete.
+
+## Dispense event
+
+Topic `.../dispense/event` (QoS 1, **not retained**). Published once per
+terminal dispense job when MQTT is connected at completion. If MQTT is offline
+when the job finishes, the event is **dropped** — no replay buffer.
+
+Home Assistant discovers an **event** entity (`object_id`: `dispense_completed`,
+`name`: `Dispense completed`). The UI shows the outcome above the fold as the
+event type (e.g. **Dispense completed** → `stuck`). Automations trigger on
+`event_type` (`success`, `stuck`, etc.) and read properties such as `grams`.
+
+### Payload fields
+
+| Field | Type | When present |
+|-------|------|--------------|
+| `event_type` | string | Always — terminal outcome: `success`, `underfill`, `stuck`, `empty_hopper`, `aborted` |
+| `grams` | int | Always — clamped ≥ 0 in payload |
+| `grams_estimated` | bool | Always |
+| `target_g` | int | Always — portion mode: `portions × 10`; gram mode: request target |
+| `source` | string | Always — `mqtt`, `uart`, `button`, `schedule` (when implemented) |
+| `mode` | string | Always — `open_loop` or `compensated` |
+| `batch_count` | int | Always — motor batches in job (1 in open-loop portion v1) |
+| `deficit_g` | int | Compensated mode only — `max(0, target_g − grams)` |
+
+When `grams_estimated` is `true`, `grams` is a motor-based fallback
+(`portions × 10`) because the scale read failed or `bowl_error` was active.
+When `false`, `grams` is the measured bowl delta (`post_settle − baseline`).
+
+Example (measured success):
+
+```json
+{
+  "event_type": "success",
+  "grams": 28,
+  "grams_estimated": false,
+  "target_g": 30,
+  "source": "mqtt",
+  "mode": "open_loop",
+  "batch_count": 1
+}
+```
+
+Example (estimated — bowl error):
+
+```json
+{
+  "event_type": "success",
+  "grams": 10,
+  "grams_estimated": true,
+  "target_g": 10,
+  "source": "button",
+  "mode": "open_loop",
+  "batch_count": 1
+}
+```
+
+Example (stuck):
+
+```json
+{
+  "event_type": "stuck",
+  "grams": 5,
+  "grams_estimated": false,
+  "target_g": 10,
+  "source": "uart",
+  "mode": "open_loop",
+  "batch_count": 1
+}
+```
+
+Negative raw bowl deltas are clamped to **0** in `grams`; the signed raw delta
+feeds internal hopper-empty detection (see [dispense-cycle.md](dispense-cycle.md)).
 
 ## OTA status
 

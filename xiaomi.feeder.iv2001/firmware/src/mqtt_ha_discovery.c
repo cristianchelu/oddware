@@ -214,6 +214,61 @@ int mqtt_ha_format_bowl_weight_config(char *buf, size_t len, const char *device_
     return written;
 }
 
+int mqtt_ha_format_dispense_completed_config(char *buf,
+                                             size_t len,
+                                             const char *device_id)
+{
+    char event_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(event_topic,
+                          sizeof(event_topic),
+                          device_id,
+                          "dispense/event")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Dispense completed\","
+                       "\"unique_id\":\"petfeeder_%s_dispense_completed\","
+                       "\"state_topic\":\"%s\","
+                       "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"],"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       event_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -229,6 +284,11 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "sensor",
         .object_id = "bowl_weight",
         .format_config = mqtt_ha_format_bowl_weight_config,
+    },
+    {
+        .component = "event",
+        .object_id = "dispense_completed",
+        .format_config = mqtt_ha_format_dispense_completed_config,
     },
 };
 

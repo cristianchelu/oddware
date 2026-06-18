@@ -146,7 +146,11 @@ time:
 | Value | Type | Unit | Owner | Description |
 |-------|------|------|-------|-------------|
 | `eaten_today` | int | grams | Monitoring | Cumulative consumption since midnight; uses bowl snapshots + dispense history |
-| `last_dispense_actual` | int | grams | Dispense supervisor | `bowl_after − bowl_before` for the completed cycle |
+| `last_dispense_actual` | int | grams | Dispense supervisor | `bowl_after − bowl_before` for the completed cycle; published in `.../dispense/event` |
+
+Pre-dispense baseline reuses the last idle sample when younger than `[tune]` 2 s;
+otherwise the supervisor performs a blocking `read_grams` before motor start
+(see [dispense-cycle.md](dispense-cycle.md) § Pre-dispense baseline).
 
 MQTT `.../bowl_weight` publishes presented food grams (plain integer string) from
 the same rules as the panel weight digits, without the 999 g display cap — see

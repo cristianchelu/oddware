@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "app_log.h"
 #include "app.h"
@@ -23,7 +24,9 @@
 #include "mqtt_state.h"
 #include "mqtt_bowl_weight.h"
 #include "display_wifi_indicator.h"
+#include "FreeRTOS.h"
 #include "mqtt_client.h"
+#include "task.h"
 
 #if REMOTE_CLI_ENABLE
 #include "remote_cli.h"
@@ -237,6 +240,33 @@ static void app_weight_idle_on_display_tick(uint32_t now_ms)
     app_weight_idle_tick();
 }
 
+bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out)
+{
+    if (out == NULL || s_weight_boot != WEIGHT_BOOT_DONE) {
+        return false;
+    }
+
+    out->valid = s_bowl_valid;
+    out->grams = s_bowl_g;
+    if (!s_bowl_valid || s_weight_last_sample_ms == 0u) {
+        out->sample_age_ms = UINT32_MAX;
+    } else if (now_ms >= s_weight_last_sample_ms) {
+        out->sample_age_ms = now_ms - s_weight_last_sample_ms;
+    } else {
+        out->sample_age_ms = 0u;
+    }
+
+    return true;
+}
+
+void app_bowl_grams_notify_read(int32_t grams, bool valid, uint32_t now_ms)
+{
+    s_bowl_g = grams;
+    s_bowl_valid = valid;
+    s_weight_last_sample_ms = now_ms;
+    app_weight_sync_display_scene(true);
+}
+
 static void app_weight_boot_advance(void)
 {
     const weight_port_t *wp = weight_port_get();
@@ -365,7 +395,7 @@ static void app_button_handle_gesture(const button_gesture_event_t *ev)
     }
 
     if (ev->id == BUTTON_ID_DISPENSE && ev->kind == BUTTON_GESTURE_SHORT) {
-        (void)dispense_submit_portions(1u);
+        (void)dispense_submit_portions(1u, DISPENSE_SOURCE_BUTTON);
     }
 }
 
@@ -484,7 +514,7 @@ void app_dispatch(const app_event_t *ev)
         break;
 
     case EVT_DISPLAY_TICK:
-        dispense_poll();
+        dispense_poll(ev->u.display_tick.now_ms);
         app_button_poll(ev->u.display_tick.now_ms);
         if (!display_child_lock_indicator_feedback_active()) {
             app_weight_resample_after_dispense_if_needed();
@@ -508,7 +538,7 @@ void app_dispatch(const app_event_t *ev)
         break;
 
     case EVT_TIMER_TICK:
-        dispense_poll();
+        dispense_poll((uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS));
         (void)ota_slot_health_poll_ms();
         app_weight_boot_advance();
         break;

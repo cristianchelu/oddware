@@ -22,5 +22,6 @@ void mqtt_dispense_cmd_handle(const char *topic,
         return;
     }
 
-    (void)dispense_submit_portions((uint8_t)MQTT_DISPENSE_DEFAULT_PORTIONS);
+    (void)dispense_submit_portions((uint8_t)MQTT_DISPENSE_DEFAULT_PORTIONS,
+                                   DISPENSE_SOURCE_MQTT);
 }

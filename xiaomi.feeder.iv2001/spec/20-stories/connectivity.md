@@ -8,9 +8,9 @@ cloud dependency and no phone-home telemetry.
 ## Design principles
 
 - **Home Assistant auto-discovery** — entities appear automatically. Shipped
-  today: **Dispense** button and **Bowl error** binary sensor; the full entity
-  table is in [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity
-  table (planned).
+  today: **Dispense** button, **Bowl error** binary sensor, **Bowl weight**
+  sensor, and **Dispense completed** event; the full entity table is in
+  [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
 - **Neutral namespace** — topic paths use `petfeeder/<device_id>/...`
@@ -38,8 +38,7 @@ The feeder publishes the following retained state topics:
 - **Device condition** — faults and health (`bowl_error`, extensible).
 - **Hopper** — fill level (normal / low).
 - **Power** — source (mains / battery), battery percentage.
-- **Dispense status** — idle or active, last result, last grams.
-- **Dispense progress** — live percentage during a dispense.
+- **Dispense completed** — fire-and-forget event with grams and outcome per job.
 - **Schedule list** — all configured slots.
 - **Next scheduled feed** — time and gram amount.
 - **Config** — current device settings.

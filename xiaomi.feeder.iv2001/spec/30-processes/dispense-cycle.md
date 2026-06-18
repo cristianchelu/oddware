@@ -21,17 +21,47 @@ A portion request carries **N** portions (`1 ≤ N ≤ 15`). `[design]`
   count only until the Nth pulse de-asserts EN on the last hole (mechanical
   park).
 - No separate `motor park` step for portion dispense.
+- Event `target_g` = `N × 10` (design estimate) until gram requests land.
 
 ### Modes
 
 | Mode | Behavior | Selection |
 |------|----------|-----------|
-| **Open-loop** | Run all planned bursts, check bowl changed, done | Default (`feed/mode = open_loop`) |
+| **Open-loop** | Run all planned bursts, measure bowl delta, publish completion event | Default (`feed/mode = open_loop`) |
 | **Compensated** | After each batch, compare bowl delta to target; compute extra bursts if under | Opt-in via MQTT (`feed/mode = compensated`) |
 
 Bowl **deltas** (`bowl_after − bowl_before`) are computed by the dispense
 supervisor using two `read_grams` calls — not by runtime tare or offsets in the
 weigh driver ([weighing.md](weighing.md) **Weigh driver boundary**).
+
+## Pre-dispense baseline
+
+Before the first motor EN assert:
+
+1. If the last idle bowl sample is **< `[tune]` 2 s** old, use it as
+   `weight_at_dispense_start`.
+2. Otherwise perform a blocking `read_grams` before motor start.
+
+Idle sampling runs every `[tune]` 500 ms on `EVT_DISPLAY_TICK` while no dispense
+job is active ([app-event-loop.md](app-event-loop.md)).
+
+## Post-dispense weigh (open-loop and compensated)
+
+After motor completion (success or stuck), before the job ends:
+
+| Step | Action | Timing |
+|------|--------|--------|
+| 1 | De-assert motor EN | Immediate (motor_ctrl) |
+| 2 | Wait for mechanical settle | `[tune]` 3 s |
+| 3 | Blocking `read_grams` | — |
+| 4 | `grams_delivered = post − baseline`; clamp event `grams` ≥ 0 | — |
+| 5 | Publish MQTT `.../dispense/event`; refresh `.../bowl_weight` | — |
+
+While settling, `dispense_is_active()` remains true (dispensing pictograph
+blinks). Job completion is **not** tied to `EVT_BURST_DONE` alone.
+
+When scale reads fail or `bowl_error` is active, the event still fires with
+`grams_estimated: true` and motor fallback `grams = portions × 10`.
 
 ## Motor sequencing per burst
 
@@ -84,23 +114,34 @@ final continuous run after the last burst, stopping only on the slot condition.
 ## Dispense job scope
 
 The dispense supervisor owns one **job-active** flag from request accept until
-an explicit outcome. It is **not** tied to `motor_port.is_active()`:
+post-settle weigh completes and the completion event is published (or dropped
+when MQTT offline). It is **not** tied to `motor_port.is_active()`:
 
-- Open-loop portion dispense today: job ends on `EVT_BURST_DONE` (success) or
-  `EVT_MOTOR_FAULT` (stuck after anti-jam).
-- Future compensated gram dispense: job remains active through motor-off weigh
-  settle and optional extra batches until target grams are met or the outcome
-  is faulted — see [weight-compensation.md](weight-compensation.md).
+- Open-loop portion dispense: job stays active from request accept through
+  motor completion, `[tune]` 3 s settle, post-read, and event publish.
+- Compensated gram dispense: job remains active through optional extra batches
+  until target grams are met or the outcome is faulted — see
+  [weight-compensation.md](weight-compensation.md).
 
 While the job is active, `dispense_is_active()` is true, the dispensing
 pictograph blinks, and idle bowl-gram sampling on `EVT_DISPLAY_TICK` is
 suspended ([app-event-loop.md](app-event-loop.md)).
 
-Job completion is **event-driven** only (`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`,
-or future compensate / cancel paths). There is no fallback that infers
-completion from `motor_port.is_active()` going false — a lost completion
-event leaves the job (and indicator) active until a future watchdog or
-explicit fault path is added.
+Job completion is **event-driven** (`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`,
+settle timer in `dispense_poll`, or future compensate / cancel paths). There is
+no fallback that infers completion from `motor_port.is_active()` going false.
+
+## Zero-delta counter (hopper foundation)
+
+After motor runs, track consecutive jobs where **raw** bowl delta
+(`post − baseline`, signed) is ≤ 0:
+
+- Increment counter when raw delta ≤ 0 after motor ran.
+- Reset counter when raw delta > 0.
+- Future: after `[tune]` 3 consecutive zero-delta jobs with hopper IR low →
+  outcome `empty_hopper` and hopper level transition (see `hopper-sensing.md`).
+
+v1: counter is internal only (logged / test-visible); hopper MQTT topic unchanged.
 
 ## Dispense queue
 
@@ -108,23 +149,21 @@ explicit fault path is added.
 - Additional requests (schedule, MQTT, button) enter a FIFO queue.
 - Maximum queue depth: `[tune]` 4 entries.
 - Queued requests are serviced in order after current job completes.
-- Queue overflow: reject with `aborted` status.
-
-## Dispense progress reporting
-
-Publish 0–100 % to MQTT `.../dispense/progress` while active:
-
-- Weight-based: `grams_delivered / target_grams × 100`
-- Motor-based: `bursts_completed / bursts_planned × 100`
-- Publish whichever is greater (capped at 100 %).
-- Update interval: `[tune]` 1000 ms during active dispense.
+- Queue overflow: reject with `aborted` status (future).
 
 ## Completion outcomes
+
+Every terminal job publishes one MQTT dispense event (when online):
 
 | Outcome | Condition |
 |---------|-----------|
 | `success` | Target met (compensated) or all bursts ran (open-loop) |
 | `underfill` | Compensated mode measured delivery below target after retries |
 | `stuck` | Anti-jam retries exhausted (see `jam-detection.md`) |
-| `empty_hopper` | Motor ran, bowl delta ≈ 0, hopper IR confirms low (see `hopper-sensing.md`) |
-| `aborted` | Queue overflow, policy rejection, or user cancel via MQTT |
+| `empty_hopper` | Motor ran, raw bowl delta ≤ 0, hopper IR confirms low (future) |
+| `aborted` | Queue overflow, policy rejection, or user cancel via MQTT (future) |
+
+v1 firmware emits `success` and `stuck` only.
+
+Completion is reported via `.../dispense/event` only — no retained
+`dispense/status` or in-progress `dispense/progress` topics.

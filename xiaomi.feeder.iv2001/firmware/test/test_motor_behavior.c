@@ -173,6 +173,8 @@ void test_dispense_completes_when_index_pulse_seen_e2e(void)
 
     cli_test_reset();
     TEST_ASSERT_TRUE(app_step());
+    dispense_poll(1000u);
+    dispense_poll(1000u + DISPENSE_SETTLE_MS);
     assert_cli_body("dispense done");
 
     {

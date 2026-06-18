@@ -4,7 +4,8 @@ serves:
   - ../20-stories/feeding.md
 
 Applies only in **compensated** dispense mode (`feed/mode = compensated`).
-In open-loop mode, bursts run without weight feedback.
+In open-loop mode, bursts run without weight feedback but still measure
+pre/post bowl delta for the completion event (see [dispense-cycle.md](dispense-cycle.md)).
 
 ## Post-burst bowl weight check
 
@@ -43,12 +44,16 @@ On give-up:
 
 1. Check hopper IR (see `hopper-sensing.md`): if `level = low`, set outcome = `empty_hopper`.
 2. Otherwise set outcome = `underfill`.
-3. Publish final result to MQTT `.../dispense/status`.
+3. Publish completion event to MQTT `.../dispense/event`.
+
+## Batch cap
+
+Maximum `[tune]` **3** total motor batches per job (initial + compensation
+rounds). When the cap is reached without meeting target → outcome `underfill`.
 
 ## Accuracy tolerance
 
-- If `grams_delivered ≥ target_grams − [tune] 2 g`, treat as `success`
-  (load cell resolution is ~1 g; don't chase rounding errors).
+- If `grams_delivered ≥ target_grams − [tune] 5 g`, treat as `success`.
 - If `grams_delivered ≥ target_grams`, stop immediately — do not over-dispense.
 
 ## Interaction with weighing subsystem
@@ -58,7 +63,7 @@ The dispense supervisor owns session state; the weigh driver does not (see
 
 | Dispense supervisor | `weight_port` |
 |---------------------|---------------|
-| `weight_at_dispense_start` = `read_grams()` before motor | Stateless; no remembered zero |
+| `weight_at_dispense_start` = fresh idle sample or `read_grams()` before motor | Stateless; no remembered zero |
 | `grams_delivered` = current `read_grams()` − start | Each read is absolute food g |
 | Extra bursts, give-up counters | Power rail + UART only |
 
@@ -73,4 +78,7 @@ The dispense supervisor owns session state; the weigh driver does not (see
 |-------|-------|-------|
 | `last_dispense_actual` | Dispense supervisor | Final `grams_delivered` after all batches |
 | `eaten_today` | Monitoring | Updated from dispense history + bowl snapshots (not weigh driver) |
-| Published to | — | `.../bowl_weight` and `.../dispense/status` |
+| Published to | — | `.../dispense/event` and `.../bowl_weight` |
+
+Compensated events include `deficit_g = max(0, target_g − grams)` when
+`grams_estimated` is false. Open-loop events omit `deficit_g`.

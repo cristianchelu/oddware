@@ -41,10 +41,10 @@ void test_mqtt_dispense_cmd_submits_portions(void)
 void test_dispense_submit_logs_busy(void)
 {
     mqtt_dispense_cmd_test_reset();
-    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u, DISPENSE_SOURCE_MQTT));
 
     app_log_test_reset();
-    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_BUSY, dispense_submit_portions(1u));
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_BUSY, dispense_submit_portions(1u, DISPENSE_SOURCE_MQTT));
     TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "[dispense]"));
     TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "busy"));
 }

@@ -15,6 +15,12 @@
 
 extern void fake_app_event_q_reset(void);
 
+static void dispense_cli_advance_settle(uint32_t start_ms)
+{
+    dispense_poll(start_ms);
+    dispense_poll(start_ms + DISPENSE_SETTLE_MS);
+}
+
 static void dispense_cli_test_reset_all(void)
 {
     motor_port_host_reset();
@@ -89,6 +95,7 @@ void test_dispense_cli_done_after_burst_event(void)
     TEST_ASSERT_TRUE(app_event_post(&ev));
     cli_test_reset();
     TEST_ASSERT_TRUE(app_step());
+    dispense_cli_advance_settle(1000u);
     assert_cli_body("dispense done");
 }
 
@@ -104,6 +111,7 @@ void test_dispense_cli_fault_on_motor_fault_event(void)
     TEST_ASSERT_TRUE(app_event_post(&ev));
     cli_test_reset();
     TEST_ASSERT_TRUE(app_step());
+    dispense_cli_advance_settle(1000u);
     assert_cli_body("dispense fault: stuck");
 }
 

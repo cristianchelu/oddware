@@ -21,6 +21,7 @@ typedef struct fake_mqtt_port_state {
     bool fail_subscribe;
     bool fail_publish;
     bool connected;
+    bool last_publish_retain;
 } fake_mqtt_port_state_t;
 
 void fake_mqtt_port_reset(void);

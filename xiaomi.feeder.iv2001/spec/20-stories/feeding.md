@@ -20,17 +20,22 @@ The user can choose between two modes (persistent setting):
 
 | Mode | Behavior |
 |------|----------|
-| **Open-loop** | Run the planned motor sequence and finish. No weight-based adjustment. |
+| **Open-loop** | Run the planned motor sequence, measure bowl delta, publish completion event. No weight-based adjustment. |
 | **Compensated** | After each batch, compare delivered weight to the target and add more if under. |
 
 Delivered grams come from `read_grams` before and after each batch (dispense
 supervisor), not from a zero offset inside the weigh driver — see
 [weighing.md](../30-processes/weighing.md) **Weigh driver boundary**.
 
-## Progress reporting
+## Completion reporting
 
-While a dispense is in progress the feeder publishes a 0–100 %
-completion value so the user (or automation) can track it in real time.
+When a dispense job finishes, the feeder publishes a **Dispense completed**
+Home Assistant event (MQTT `.../dispense/event`) with measured grams when the
+scale is valid, or an estimated amount with `grams_estimated: true` when not.
+Automations can trigger on each completion (`event_type`: `success`, `stuck`,
+etc.) and read `source`, `grams`, and other properties.
+
+There is no retained dispense status topic or live progress percentage.
 
 ## Completion outcomes
 
