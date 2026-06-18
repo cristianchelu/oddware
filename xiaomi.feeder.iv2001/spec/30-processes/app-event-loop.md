@@ -83,10 +83,14 @@ pixels.
 non-blocking on the CLI task: started/busy lines print immediately; done/fault
 lines print when `app` handles the matching completion event.
 
-`dispense_poll()` runs on each `EVT_DISPLAY_TICK` and `EVT_TIMER_TICK`. When a
-dispense job is active but `motor_port.is_active()` is false (motor session
-ended), the supervisor completes the job as if `EVT_BURST_DONE` arrived —
-recovery when the motor completion event was lost or delayed.
+`dispense_poll()` is called on each `EVT_DISPLAY_TICK` and `EVT_TIMER_TICK` as a
+hook for future job-level timeouts; it does **not** complete the job from
+`motor_port.is_active()`. A dispense **job** stays active from request accept
+until the supervisor finishes it explicitly (`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`,
+or future compensate / cancel paths). Motor may stop and restart within one job
+(e.g. post-batch weigh settle); the dispensing pictograph blinks for the whole
+job — see [display-presentation.md](display-presentation.md) § Dispensing
+indicator.
 
 While a dispense job is active, idle bowl-gram sampling on `EVT_DISPLAY_TICK`
 is suspended so WFCI / weigh UART work cannot block completion handling.

@@ -1,5 +1,7 @@
 /* Tests: spec/30-processes/dispense-cycle.md, uart-console.md § dispense */
 
+#include <string.h>
+
 #include "unity.h"
 
 #include "app.h"
@@ -8,10 +10,13 @@
 #include "cli_test_assert.h"
 #include "dispense.h"
 #include "dispense_cli.h"
+#include "display_presentation.h"
+#include "fake_display_port.h"
 #include "fake_motor_port.h"
 #include "motor_jam.h"
 #include "port_err.h"
 #include "motor_port_provider_host.h"
+#include "tm1637.h"
 
 extern void fake_app_event_q_reset(void);
 
@@ -20,6 +25,8 @@ static void dispense_test_reset_all(void)
     motor_port_host_reset();
     fake_motor_port_reset();
     fake_app_event_q_reset();
+    fake_display_port_reset();
+    display_presentation_reset();
     dispense_test_reset();
     dispense_cli_test_reset();
     app_test_reset();
@@ -105,7 +112,7 @@ void test_dispense_job_aborts_on_motor_fault(void)
     TEST_ASSERT_EQUAL(1u, fake_motor_port_burst_calls());
 }
 
-void test_dispense_recovers_when_motor_idle_without_burst_event(void)
+void test_dispense_stays_active_when_motor_idle_without_completion_event(void)
 {
     dispense_test_reset_all();
     TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
@@ -115,7 +122,52 @@ void test_dispense_recovers_when_motor_idle_without_burst_event(void)
     fake_motor_port_set_active(false);
     dispense_poll();
 
-    TEST_ASSERT_FALSE(dispense_is_active());
+    TEST_ASSERT_TRUE(dispense_is_active());
+}
+
+void test_dispense_stays_active_before_async_motor_start(void)
+{
+    dispense_test_reset_all();
+    fake_motor_port_set_defer_burst_active(true);
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(1u));
+    TEST_ASSERT_TRUE(app_step());
+    TEST_ASSERT_TRUE(dispense_is_active());
+
+    dispense_poll();
+    TEST_ASSERT_TRUE(dispense_is_active());
+}
+
+void test_dispense_job_blinks_dispensing_indicator(void)
+{
+    app_event_t ev;
+    uint32_t now_ms = 0u;
+    bool saw_on = false;
+    bool saw_off = false;
+    uint8_t grids[TM1637_GRID_COUNT];
+
+    dispense_test_reset_all();
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(2u));
+    TEST_ASSERT_TRUE(app_step());
+    TEST_ASSERT_TRUE(dispense_is_active());
+
+    for (uint32_t step = 0u; step <= 24u; step++) {
+        memset(&ev, 0, sizeof(ev));
+        ev.type = EVT_DISPLAY_TICK;
+        ev.u.display_tick.now_ms = now_ms;
+        TEST_ASSERT_TRUE(app_event_post(&ev));
+        TEST_ASSERT_TRUE(app_step());
+
+        fake_display_port_last_grids(grids);
+        if ((grids[3] & 0x04u) != 0u) {
+            saw_on = true;
+        } else {
+            saw_off = true;
+        }
+        now_ms += 50u;
+    }
+
+    TEST_ASSERT_TRUE_MESSAGE(saw_on, "dispensing icon should turn on during job");
+    TEST_ASSERT_TRUE_MESSAGE(saw_off, "dispensing icon should turn off during job");
 }
 
 void test_app_prioritizes_burst_done_before_display_tick(void)

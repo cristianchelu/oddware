@@ -49,9 +49,10 @@ Wi-Fi and MQTT indicators are independent — both may be active at once.
 
 ### Dispensing indicator
 
-- **Blinking** while a dispense job is active (motor run and, in future
-  compensated mode, through post-dispense weigh settle until bowl grams update).
-- **Off** when no dispense is running.
+- **Blinking** while a dispense **job** is active (from request accept until
+  explicit completion — including future post-motor weigh settle between
+  batches).
+- **Off** when no dispense job is running.
 
 ### Child lock indicator
 

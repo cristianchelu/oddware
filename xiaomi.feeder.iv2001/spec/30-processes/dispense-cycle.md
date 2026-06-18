@@ -81,6 +81,27 @@ Dispense bursts use the same forward direction and index feedback; each burst
 runs EN uninterrupted until its duration or pulse target. Parking is the
 final continuous run after the last burst, stopping only on the slot condition.
 
+## Dispense job scope
+
+The dispense supervisor owns one **job-active** flag from request accept until
+an explicit outcome. It is **not** tied to `motor_port.is_active()`:
+
+- Open-loop portion dispense today: job ends on `EVT_BURST_DONE` (success) or
+  `EVT_MOTOR_FAULT` (stuck after anti-jam).
+- Future compensated gram dispense: job remains active through motor-off weigh
+  settle and optional extra batches until target grams are met or the outcome
+  is faulted — see [weight-compensation.md](weight-compensation.md).
+
+While the job is active, `dispense_is_active()` is true, the dispensing
+pictograph blinks, and idle bowl-gram sampling on `EVT_DISPLAY_TICK` is
+suspended ([app-event-loop.md](app-event-loop.md)).
+
+Job completion is **event-driven** only (`EVT_BURST_DONE`, `EVT_MOTOR_FAULT`,
+or future compensate / cancel paths). There is no fallback that infers
+completion from `motor_port.is_active()` going false — a lost completion
+event leaves the job (and indicator) active until a future watchdog or
+explicit fault path is added.
+
 ## Dispense queue
 
 - Only one dispense job executes at a time.

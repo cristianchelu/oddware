@@ -119,7 +119,9 @@ void dispense_start_from_request(const app_dispense_request_t *req)
 
     s_job_pending = false;
     s_job_active = true;
-    display_dispense_indicator_active();
+    if (display_dispense_indicator_active() != PORT_OK) {
+        app_log_info("dispense", "indicator unavailable");
+    }
 
     err = dispense_kick_motor(portions);
     if (err != PORT_OK) {
@@ -152,20 +154,8 @@ bool dispense_on_motor_fault(void)
 
 void dispense_poll(void)
 {
-    const motor_port_t *motor;
-
-    if (!s_job_active) {
-        return;
-    }
-
-    motor = motor_port_get();
-    if (motor == NULL || motor->is_active == NULL) {
-        return;
-    }
-
-    if (!motor->is_active()) {
-        dispense_finish_job(DISPENSE_OUTCOME_SUCCESS);
-    }
+    /* Job lifecycle is explicit (burst done / fault / future compensate steps).
+     * Motor idle between batches or during weigh settle does not end the job. */
 }
 
 void dispense_test_reset(void)

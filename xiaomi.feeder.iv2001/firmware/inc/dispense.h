@@ -38,6 +38,10 @@ bool dispense_is_active(void);
 void dispense_start_from_request(const app_dispense_request_t *req);
 bool dispense_on_burst_done(void);
 bool dispense_on_motor_fault(void);
+
+/* Hook for future job-level timeouts; called on EVT_DISPLAY_TICK and
+ * EVT_TIMER_TICK. Job completion is event-driven (EVT_BURST_DONE,
+ * EVT_MOTOR_FAULT), not inferred from motor_port.is_active(). */
 void dispense_poll(void);
 void dispense_test_reset(void);
 

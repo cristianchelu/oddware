@@ -97,8 +97,14 @@ indicator.
 
 | State | Presentation | `[tune]` blink on/off |
 |-------|--------------|----------------------|
-| Dispense job active | `display_dispense_indicator_active()` | 500 ms / 500 ms |
+| Dispense job active | `display_dispense_indicator_active()` | 150 ms / 150 ms |
 | Idle (no job) | `display_dispense_indicator_idle()` | steady off |
+
+`display_dispense_indicator_active()` returns `PORT_ERR_BUSY` when all blink
+slots are in use; the dispense supervisor logs and continues the job without
+the pictograph. On success it calls `display_presentation_refresh()` so the
+first on-phase is visible before the next `EVT_DISPLAY_TICK`.
+`display_dispense_indicator_idle()` also refreshes immediately.
 
 In future **compensated** gram dispense, the job (and blink) remain active
 through post-motor weigh settle until bowl grams are stabilized and the display
@@ -113,6 +119,11 @@ indicator helpers. Helpers update presentation **scene state only** — they do
 not call `display_presentation_refresh()`. Physical TM1637 updates come from
 `EVT_DISPLAY_TICK` via `display_presentation_tick` → `try_show_grids`. See
 [app-event-loop.md](app-event-loop.md) § Coexistence with MQTT connect.
+
+**Immediate refresh exceptions:** `display_dispense_indicator_active()` /
+`idle()` and child-lock blocked feedback call `display_presentation_refresh()`
+after scene changes so user-visible feedback is not delayed until the next
+display tick.
 User-facing semantics: [display.md](../20-stories/display.md) § MQTT / broker
 indicator.
 

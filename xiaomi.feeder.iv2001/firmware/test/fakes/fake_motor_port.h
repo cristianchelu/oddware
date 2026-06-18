@@ -12,6 +12,7 @@ void fake_motor_port_set_timed_fwd_err(port_err_t err);
 void fake_motor_port_set_timed_rev_err(port_err_t err);
 void fake_motor_port_set_burst_err(port_err_t err);
 void fake_motor_port_set_active(bool active);
+void fake_motor_port_set_defer_burst_active(bool defer);
 void fake_motor_port_complete_burst(void);
 uint32_t fake_motor_port_timed_fwd_calls(void);
 uint32_t fake_motor_port_last_timed_fwd_ms(void);
