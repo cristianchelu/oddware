@@ -88,7 +88,7 @@ on the connect task. See [uart-console.md](uart-console.md#wifi-disconnect).
 
 Booting while flash bank B is active (OTA apply, `bank switch`, or cold start
 with the control block pointing at B) shows a ~30 s N9 idle gap before
-`PORT_SECURE` and DHCP — **not** tied to OTA download or `system/ota_pending`.
+`PORT_SECURE` and DHCP — **not** tied to OTA download or A/B slot health.
 Bank-A boots reach `STA ready` in ~1–2 s on the same bench. `[probe]`
 
 Firmware has no bank-specific Wi-Fi source branches; A and B images differ only
@@ -111,7 +111,7 @@ MIC/sanity errors before the handshake completes. `[probe]` 2026-06-16
 default until bench proves a shorter budget is safe.
 
 See [ota-flow.md](ota-flow.md) § Known limitation for UART symptoms and
-rollback timing.
+slot-health confirm timing.
 
 ## Acceptance
 

@@ -54,7 +54,9 @@ Format matches LinkIt SDK dual-image FOTA (see
 | Magic | 0x00 | 4 B | `0x4455414C` ("DUAL") |
 | Active flag | 0x04 | 4 B | `0xABCDDCBA` (Bank A) or `0x54322345` (Bank B) |
 | SHA-512 hash | 0x08 | 64 B | Image integrity hash of active bank |
-| (reserved) | 0x48 | — | Pad to sector boundary |
+| Unverified | 0x48 | 4 B | `1` while the active slot awaits crash-free confirm; `0` when confirmed |
+| Boot attempts | 0x4C | 1 B | Bootloader strike counter while `unverified` is set; cleared on confirm |
+| (reserved) | 0x4D | — | Pad to sector boundary |
 
 The bootloader reads the control block before jumping. Logic:
 
@@ -63,6 +65,20 @@ The bootloader reads the control block before jumping. Logic:
 | Magic valid, flag = A mark | Bank A (`0x08012000`) |
 | Magic valid, flag = B mark | Bank B (`0x08100000`) |
 | Magic invalid or flag = 0xFF (erased flash) | Bank A (safe default) |
+
+### Slot health (`unverified` / `boot_attempts`)
+
+Every bank swap (OTA apply, UART `bank switch`) sets `unverified = 1` and
+`boot_attempts = 0`. The application clears both on
+crash-free confirm (`[tune]` 60 s uptime without reset). While
+`unverified` is set, the bootloader increments `boot_attempts` on each boot;
+at `[tune]` `BOOT_MAX_ATTEMPTS = 3` it toggles the active bank, resets
+`boot_attempts` to `0`, and keeps `unverified = 1` until the application
+confirms the new slot.
+
+Erased flash (`0xFF`) in `unverified` or `boot_attempts` is treated as
+not unverified / zero attempts (backward compatible with pre-slot-health
+images).
 
 ## Regions detail
 

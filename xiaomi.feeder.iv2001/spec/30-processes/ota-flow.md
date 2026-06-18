@@ -152,17 +152,79 @@ partition the bootloader will run. Bench OTA scripts (`tools/ota/`) read the
 active bank from retained `ota/status`, not from `.../state`. See
 [mqtt-protocol.md](mqtt-protocol.md) § OTA status.
 
-## Rollback
+## Slot health
 
-On boot after OTA:
+One recovery path covers OTA apply and UART `bank switch`. The bootloader
+auto-toggles the active bank after the strike limit when a slot stays
+unverified. Slot confirmation means the firmware image boots and stays up —
+not that MQTT is reachable.
 
-1. Increment `system/boot_count` in NVDM.
-2. Attempt Wi-Fi + MQTT connect.
-3. If no successful MQTT connection within `[tune]` 120 s:
-   - Mark current bank as bad.
-   - Revert bootloader pointer to previous bank.
-   - Reboot into known-good image.
-4. On successful MQTT connect: clear boot_count, confirm new image.
+### Control block
+
+See [partition-layout.md](../40-architecture/partition-layout.md). Every
+bank swap sets `unverified = 1` and `boot_attempts = 0`. Only crash-free
+confirm clears `unverified` and `boot_attempts`.
+
+### Bootloader: boot-attempt trap
+
+Before bank selection on each boot, while `unverified` is set:
+
+1. Increment `boot_attempts` and persist.
+2. If `boot_attempts >=` `[tune]` `BOOT_MAX_ATTEMPTS` (3):
+   - Log `boot attempt limit — switching bank`.
+   - Toggle `active_flag` to the other bank.
+   - Set `boot_attempts = 0`; keep `unverified = 1`.
+   - Persist.
+
+Then run existing header validation and cross-bank fallback. Bank validity
+uses a vector-table scan over the first `[tune]` 64 KB (4-byte steps) —
+the same probe used pre-swap during OTA verify — not the 8-byte header
+probe alone.
+
+There is no application-side timeout revert. Resets before confirm are
+handled by the bootloader strike counter.
+
+### Application: crash-free confirm
+
+On boot, when `unverified` is clear, return immediately (steady-state boots).
+
+When `unverified == 1`:
+
+1. Increment `system/boot_count` in NVDM (diagnostics).
+2. Start `[tune]` 60 s uptime timer.
+3. On expiry without intervening reset: clear `unverified`, `boot_attempts`,
+   and `boot_count` in the control block / NVDM.
+
+Poll via the app timer tick (`ota_slot_health_poll_ms()`). MQTT connect is
+not part of slot confirmation.
+
+When a software watchdog is present (`power-state-machine.md`), a hang
+during the confirm window feeds the bootloader strike path via WDT reset;
+the confirm timer and WDT are independent mechanisms.
+
+### Recovery layers
+
+| Layer | Trigger | Location |
+|-------|---------|----------|
+| Boot attempt counter | Reset before 60 s confirm while `unverified` | Bootloader — 3 strikes, auto bank toggle |
+| Crash-free confirm | 60 s uptime without reset while `unverified` | Application — clears `unverified` |
+| Vector-table scan | Invalid vector table in first 64 KB | Bootloader — reject bank before jump |
+
+### Dev deploy paths
+
+| Workflow | UART required |
+|----------|---------------|
+| OTA when device is online | No |
+| Iteration on a confirmed slot | No |
+| Partial CODA flash, bootloader update, both slots bad | Yes |
+
+Guardrails:
+
+- Primary deploy: `mqtt-ota.sh` when MQTT is available.
+- CODA / `iot-flash.sh`: flash bootloader + both banks from
+  `flash_download.cfg`.
+- Do not `bank switch` to a partially written slot; complete the
+  inactive-bank write or use OTA.
 
 ## Error handling
 
@@ -172,7 +234,7 @@ On boot after OTA:
 | Download interrupted | Abort, publish `"download_failed"`, inactive bank discarded |
 | Verification failed | Abort, publish `"verify_failed"`, do not apply |
 | Image too large | Abort mid-download, publish `"image_too_large"` |
-| Post-apply crash loop | Rollback to previous bank or UART recovery |
+| Post-apply crash loop | Bootloader bank toggle after 3 strikes; UART recovery if both slots fail |
 
 ## UART0 recovery (last resort)
 

@@ -32,10 +32,10 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 | `EVT_WIFI_STA_FAILED` | STA connect or IP failure | `display_wifi_indicator_off()` |
 | `EVT_WIFI_STA_AP_MODE` | `provision.c` / `provision_wifi_try.c` when AP portal active | `display_wifi_indicator_ap_mode()` |
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
-| `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `app_mqtt_on_connected()` — OTA rollback confirm, enqueue idle `ota/status`, schedule HA discovery; no display side effect |
+| `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `app_mqtt_on_connected()` — enqueue idle `ota/status`, schedule HA discovery; no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (`cmd/ota`, `cmd/dispense`, other routes stub) |
 | `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) + `hopper_input_poll(now_ms)` in one handler |
-| `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_rollback_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
+| `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_slot_health_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 
 The `app` task waits on the queue with a `[tune]` 50 ms timeout; on timeout it

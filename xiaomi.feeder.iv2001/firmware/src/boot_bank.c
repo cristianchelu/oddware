@@ -32,6 +32,124 @@ uint32_t boot_bank_rom_length(boot_bank_t bank)
     return CM4_LENGTH;
 }
 
+bool boot_bank_is_unverified(const boot_control_block_t *ctrl)
+{
+    if (ctrl == NULL) {
+        return false;
+    }
+
+    return ctrl->unverified == BOOT_UNVERIFIED_SET;
+}
+
+uint8_t boot_bank_effective_boot_attempts(uint8_t raw)
+{
+    return (raw == 0xFFu) ? 0u : raw;
+}
+
+boot_attempt_result_t boot_bank_record_boot_attempt(boot_control_block_t *ctrl)
+{
+    if (ctrl == NULL || !boot_bank_is_unverified(ctrl)) {
+        return BOOT_ATTEMPT_CONTINUE;
+    }
+
+    ctrl->boot_attempts = boot_bank_effective_boot_attempts(ctrl->boot_attempts);
+
+    if (ctrl->boot_attempts < 255u) {
+        ctrl->boot_attempts++;
+    }
+
+    if (ctrl->boot_attempts < BOOT_MAX_ATTEMPTS) {
+        return BOOT_ATTEMPT_CONTINUE;
+    }
+
+    ctrl->boot_attempts = 0;
+    if (ctrl->active_flag == BOOT_FLAG_B) {
+        ctrl->active_flag = BOOT_FLAG_A;
+    } else {
+        ctrl->active_flag = BOOT_FLAG_B;
+    }
+
+    return BOOT_ATTEMPT_TOGGLED;
+}
+
+void boot_bank_arm_unverified(boot_control_block_t *ctrl)
+{
+    if (ctrl == NULL) {
+        return;
+    }
+
+    ctrl->unverified = BOOT_UNVERIFIED_SET;
+    ctrl->boot_attempts = 0;
+}
+
+void boot_bank_confirm_slot(boot_control_block_t *ctrl)
+{
+    if (ctrl == NULL) {
+        return;
+    }
+
+    ctrl->unverified = BOOT_UNVERIFIED_CLEAR;
+    ctrl->boot_attempts = 0;
+}
+
+bool boot_bank_vector_table_valid(const uint8_t hdr[8], uint32_t rom_base)
+{
+    uint32_t sp;
+    uint32_t reset;
+
+    if (hdr == NULL) {
+        return false;
+    }
+
+    sp = (uint32_t)hdr[0] |
+         ((uint32_t)hdr[1] << 8) |
+         ((uint32_t)hdr[2] << 16) |
+         ((uint32_t)hdr[3] << 24);
+    reset = (uint32_t)hdr[4] |
+            ((uint32_t)hdr[5] << 8) |
+            ((uint32_t)hdr[6] << 16) |
+            ((uint32_t)hdr[7] << 24);
+
+    if (!((sp >= VSYSRAM_BASE && sp <= (VSYSRAM_BASE + VSYSRAM_LENGTH)) ||
+          (sp >= TCM_BASE && sp <= (TCM_BASE + TCM_LENGTH)))) {
+        return false;
+    }
+
+    if ((reset & 1u) == 0u) {
+        return false;
+    }
+
+    if (reset < rom_base || reset >= (rom_base + CM4_LENGTH)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool boot_bank_scan_vector_table(boot_bank_flash_read_fn read,
+                                 uint32_t bank_rom_offset,
+                                 uint32_t rom_base)
+{
+    uint8_t hdr[8];
+    uint32_t off;
+
+    if (read == NULL) {
+        return false;
+    }
+
+    for (off = 0; off < BOOT_VECTOR_SCAN_LIMIT; off += BOOT_VECTOR_SCAN_STEP) {
+        if (read(bank_rom_offset + off, hdr, sizeof(hdr)) != 0) {
+            return false;
+        }
+
+        if (boot_bank_vector_table_valid(hdr, rom_base)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool boot_bank_image_header_valid(const uint8_t hdr[8], uint32_t rom_base)
 {
     uint32_t sp;

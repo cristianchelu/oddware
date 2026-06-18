@@ -51,8 +51,12 @@ static uint8_t app_cli_bank_show(uint8_t argc, char *argv[])
     (void)argv;
 
     boot_bank_t active = boot_bank_query_active();
+    bool unverified = boot_bank_query_unverified();
+    uint8_t attempts = boot_bank_query_boot_attempts();
 
     app_log_info("cli", "active bank: %c", (active == BOOT_BANK_B) ? 'B' : 'A');
+    app_log_info("cli", "unverified: %u", unverified ? 1u : 0u);
+    app_log_info("cli", "boot_attempts: %u", (unsigned)attempts);
     return 0;
 }
 

@@ -213,7 +213,7 @@ below — not `#`, not other devices' namespaces.
 
 **Implemented now:** connect/LWT/`connection` presence, subscribe, reconnect backoff,
 command topic classification, OTA download via `cmd/ota` (HTTP + SHA-512 verify,
-A/B bank swap, post-boot rollback timer), [mqtt_outbox](#publish-path)
+A/B bank swap, slot-health confirm), [mqtt_outbox](#publish-path)
 (post-connect publish queue), device condition (`bowl_error` on `.../state`),
 `bank` on every `ota/status`, HA validation-slice **Dispense** button, **Bowl
 error** binary_sensor, and **Bowl weight** sensor discovery, `cmd/dispense` → one portion.

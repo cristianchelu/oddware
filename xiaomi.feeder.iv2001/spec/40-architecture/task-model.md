@@ -83,7 +83,7 @@ Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-eve
 |-------|----------|-----------------|
 | `EVT_WIFI_CONNECTED` | WiFi event handler | Update state, attempt MQTT connect |
 | `EVT_WIFI_DISCONNECTED` | WiFi event handler | Start reconnect timer |
-| `EVT_MQTT_CONNECTED` | `mqtt_io` | `app_mqtt_on_connected()` — OTA rollback confirm, enqueue idle `ota/status`, schedule HA discovery |
+| `EVT_MQTT_CONNECTED` | `mqtt_io` | `app_mqtt_on_connected()` — enqueue idle `ota/status`, schedule HA discovery |
 | `EVT_MQTT_DISCONNECTED` | `mqtt_io` | Start backoff reconnect |
 | `EVT_MQTT_MESSAGE` | `mqtt_io` | Dispatch by topic (cmd/dispense, cmd/ota, etc.) |
 | `EVT_MQTT_RECONNECT_TICK` | Software timer | Attempt MQTT reconnect |

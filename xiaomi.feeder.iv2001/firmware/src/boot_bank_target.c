@@ -47,6 +47,28 @@ boot_bank_t boot_bank_query_active(void)
     return boot_bank_resolve(&ctrl);
 }
 
+bool boot_bank_query_unverified(void)
+{
+    boot_control_block_t ctrl;
+
+    if (boot_bank_read_ctrl(&ctrl) != 0) {
+        return false;
+    }
+
+    return boot_bank_is_unverified(&ctrl);
+}
+
+uint8_t boot_bank_query_boot_attempts(void)
+{
+    boot_control_block_t ctrl;
+
+    if (boot_bank_read_ctrl(&ctrl) != 0) {
+        return 0;
+    }
+
+    return boot_bank_effective_boot_attempts(ctrl.boot_attempts);
+}
+
 int boot_bank_switch_active(void)
 {
     return boot_bank_switch_with_hash(NULL);
@@ -74,6 +96,21 @@ int boot_bank_switch_with_hash(const uint8_t image_hash[64])
     if (image_hash != NULL) {
         memcpy(ctrl.sha512, image_hash, sizeof(ctrl.sha512));
     }
+
+    boot_bank_arm_unverified(&ctrl);
+
+    return boot_bank_write_ctrl(&ctrl);
+}
+
+int boot_bank_confirm_boot(void)
+{
+    boot_control_block_t ctrl;
+
+    if (boot_bank_read_ctrl(&ctrl) != 0) {
+        return -1;
+    }
+
+    boot_bank_confirm_slot(&ctrl);
 
     return boot_bank_write_ctrl(&ctrl);
 }

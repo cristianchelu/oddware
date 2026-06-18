@@ -19,7 +19,6 @@
 
 #define CONFIG_GROUP_SYSTEM        "system"
 #define CONFIG_KEY_BOOT_COUNT      "boot_count"
-#define CONFIG_KEY_OTA_PENDING     "ota_pending"
 
 #define CONFIG_GROUP_CALIB         "calib"
 #define CONFIG_KEY_CALIB_ZERO      "zero"

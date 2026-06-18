@@ -15,7 +15,7 @@
 #include "display_ota_indicator.h"
 #include "ota_client.h"
 #include "ota_port.h"
-#include "ota_rollback.h"
+#include "ota_slot_health.h"
 #include "ota_url.h"
 
 static char s_device_id[32];
@@ -180,11 +180,10 @@ void ota_client_on_mqtt_message(const char *topic, const void *payload, size_t l
 
 void ota_client_on_mqtt_connected(void)
 {
-    ota_rollback_on_mqtt_connected();
     ota_client_publish_status("idle", 0, "");
 }
 
 uint32_t ota_client_poll_ms(void)
 {
-    return ota_rollback_poll_ms();
+    return ota_slot_health_poll_ms();
 }

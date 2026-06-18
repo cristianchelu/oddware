@@ -12,7 +12,7 @@
 #include "app_cli.h"
 #include "boot_bank_target.h"
 #include "ota_client.h"
-#include "ota_rollback.h"
+#include "ota_slot_health.h"
 #include "config_port.h"
 #include "provision.h"
 #include "wifi_cred.h"
@@ -34,7 +34,7 @@ int main(void)
     app_cli_start();
     wifi_sta_start();
     provision_start();
-    ota_rollback_on_boot();
+    ota_slot_health_on_boot();
     ota_client_start();
     if (wifi_cred_is_stored(config_port_get())) {
         mqtt_client_start();

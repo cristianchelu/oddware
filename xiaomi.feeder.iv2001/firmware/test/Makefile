@@ -52,7 +52,7 @@ HOST_SRCS :=              ../src/app_log.c \
              fakes/shim/minicli_host.c \
              ../src/ota_url.c \
              ../src/ota_image.c \
-             ../src/ota_rollback.c \
+             ../src/ota_slot_health.c \
              ../src/flash_bank_logic.c \
              ../src/aw9523b.c \
              ../src/gpio_expander_bootstrap.c \
@@ -107,7 +107,7 @@ HOST_SRCS :=              ../src/app_log.c \
              fakes/fake_motor_port.c \
              fakes/fake_adc_port.c \
              fakes/fake_config_port.c \
-             fakes/ota_rollback_host_stubs.c \
+             fakes/fake_boot_bank.c \
              fakes/fake_mqtt_port.c \
              fakes/fake_ota_port.c \
              fakes/fake_wifi_port.c \

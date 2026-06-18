@@ -25,7 +25,6 @@
 #include "ota_image.h"
 #include "ota_port.h"
 #include "ota_preflight.h"
-#include "ota_rollback.h"
 #include "wifi_api.h"
 
 #define OTA_DL_TASK_STACK   (12288)
@@ -439,8 +438,6 @@ static void ota_adapter_task(void *param)
 
     ota_adapter_report(OTA_STATUS_APPLYING, 100, "");
     app_log_info("ota", "bank swap pending");
-
-    ota_rollback_mark_pending();
 
     if (flash->swap_banks(s_image_hash) != PORT_OK) {
         app_log_error("ota", "bank swap failed");

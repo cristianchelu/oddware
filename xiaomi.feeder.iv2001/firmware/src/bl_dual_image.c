@@ -39,18 +39,20 @@ static int bl_dual_image_write_ctrl(const boot_control_block_t *ctrl)
     return (status == HAL_FLASH_STATUS_OK) ? 0 : -1;
 }
 
+static int bl_dual_image_flash_read(uint32_t offset, uint8_t *buf, uint32_t len)
+{
+    return (hal_flash_read(offset, buf, len) == HAL_FLASH_STATUS_OK) ? 0 : -1;
+}
+
 static bool bl_dual_image_bank_valid(boot_bank_t bank)
 {
-    uint8_t hdr[8];
     uint32_t rom_base = boot_bank_load_address(bank);
-    hal_flash_status_t status;
+    uint32_t rom_offset = rom_base - ROM_BASE;
 
-    status = hal_flash_read(rom_base - ROM_BASE, hdr, sizeof(hdr));
-    if (status != HAL_FLASH_STATUS_OK) {
-        return false;
-    }
-
-    return boot_bank_image_header_valid(hdr, rom_base);
+    return boot_bank_scan_vector_table(
+        bl_dual_image_flash_read,
+        rom_offset,
+        rom_base);
 }
 
 static void bl_dual_image_persist_bank(boot_bank_t bank)
@@ -94,6 +96,14 @@ uint32_t bl_dual_image_boot_addr(void)
 
     if (bl_dual_image_read_ctrl(&ctrl) != 0) {
         return bl_dual_image_pick_bank(BOOT_BANK_A, BOOT_BANK_B);
+    }
+
+    if (boot_bank_is_unverified(&ctrl)) {
+        if (boot_bank_record_boot_attempt(&ctrl) == BOOT_ATTEMPT_TOGGLED) {
+            bl_print(LOG_WARN, "boot attempt limit — switching bank\r\n");
+        }
+
+        (void)bl_dual_image_write_ctrl(&ctrl);
     }
 
     preferred = boot_bank_resolve(&ctrl);

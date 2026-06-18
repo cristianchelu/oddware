@@ -30,7 +30,7 @@
 #endif
 #include "mqtt_cred.h"
 #include "ota_client.h"
-#include "ota_rollback.h"
+#include "ota_slot_health.h"
 #include "port_err.h"
 #include "dispense.h"
 #include "dispense_cli.h"
@@ -509,7 +509,7 @@ void app_dispatch(const app_event_t *ev)
 
     case EVT_TIMER_TICK:
         dispense_poll();
-        (void)ota_rollback_poll_ms();
+        (void)ota_slot_health_poll_ms();
         app_weight_boot_advance();
         break;
 

@@ -141,19 +141,24 @@ missing or empty, the device treats the network as open (no PSK).
 
 ### `bank show`
 
-Prints the active A/B application bank.
+Prints the active A/B application bank and slot-health fields from the
+control block (see [partition-layout.md](../40-architecture/partition-layout.md)).
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `active bank: A` or `active bank: B` followed by CRLF |
+| Success | `unverified: 0` or `unverified: 1` followed by CRLF |
+| Success | `boot_attempts: <0–255>` followed by CRLF |
 
 ### `bank switch`
 
 Toggles the dual-image active flag to the other bank and reboots immediately.
+Arms slot health: sets `unverified = 1` and `boot_attempts = 0` in the
+control block (same as OTA apply).
 
 | Step | Action |
 |------|--------|
-| 1 | Flip active flag in the A/B control block |
+| 1 | Flip active flag in the A/B control block; arm `unverified` |
 | 2 | Print confirmation |
 | 3 | Reboot whole system |
 
