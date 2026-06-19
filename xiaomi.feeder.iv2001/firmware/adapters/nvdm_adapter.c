@@ -58,6 +58,44 @@ static port_err_t nvdm_port_write(const char *group, const char *key, const char
                                                 (uint32_t)strlen(value) + 1));
 }
 
+static port_err_t nvdm_port_read_blob(const char *group,
+                                      const char *key,
+                                      void *buf,
+                                      size_t len,
+                                      size_t *out_len)
+{
+    uint32_t size = (uint32_t)len;
+    nvdm_status_t status;
+
+    if (group == NULL || key == NULL || buf == NULL || len == 0 || out_len == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    status = nvdm_read_data_item(group, key, (uint8_t *)buf, &size);
+    if (status != NVDM_STATUS_OK) {
+        return map_nvdm_status(status);
+    }
+
+    *out_len = (size_t)size;
+    return PORT_OK;
+}
+
+static port_err_t nvdm_port_write_blob(const char *group,
+                                       const char *key,
+                                       const void *data,
+                                       size_t len)
+{
+    if (group == NULL || key == NULL || data == NULL || len == 0) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    return map_nvdm_status(nvdm_write_data_item(group,
+                                                key,
+                                                NVDM_DATA_ITEM_TYPE_RAW_DATA,
+                                                (const uint8_t *)data,
+                                                (uint32_t)len));
+}
+
 static port_err_t nvdm_port_erase(const char *group, const char *key)
 {
     if (group == NULL || key == NULL) {
@@ -86,6 +124,8 @@ static port_err_t nvdm_port_erase_group(const char *group)
 static const config_port_t s_nvdm_port = {
     .read = nvdm_port_read,
     .write = nvdm_port_write,
+    .read_blob = nvdm_port_read_blob,
+    .write_blob = nvdm_port_write_blob,
     .erase = nvdm_port_erase,
     .erase_group = nvdm_port_erase_group,
 };

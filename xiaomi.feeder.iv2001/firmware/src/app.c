@@ -36,6 +36,7 @@
 #include "ota_client.h"
 #include "ota_slot_health.h"
 #include "port_err.h"
+#include "time_sync.h"
 #include "dispense.h"
 #include "dispense_cli.h"
 #include "feed_config.h"
@@ -505,6 +506,7 @@ void app_dispatch(const app_event_t *ev)
 
     case EVT_WIFI_STA_READY:
         display_wifi_indicator_connected();
+        time_sync_on_wifi_ready();
         mqtt_client_notify_wifi_ready();
 #if REMOTE_CLI_ENABLE
         remote_cli_start();
@@ -577,6 +579,7 @@ void app_dispatch(const app_event_t *ev)
 
             dispense_poll(now_ms);
             (void)ota_slot_health_poll_ms();
+            time_sync_poll(now_ms);
             app_weight_boot_advance();
             battery_monitor_poll(now_ms);
         }

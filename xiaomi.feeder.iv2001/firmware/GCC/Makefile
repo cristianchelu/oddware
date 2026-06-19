@@ -49,6 +49,7 @@ include $(SOURCE_DIR)/middleware/third_party/mbedtls/module.mk
 include $(SOURCE_DIR)/middleware/third_party/mqtt/module.mk
 include $(SOURCE_DIR)/middleware/third_party/httpclient/module.mk
 include $(SOURCE_DIR)/middleware/third_party/httpd/module.mk
+include $(SOURCE_DIR)/middleware/third_party/sntp/module.mk
 
 DEBUG           = 0
 FLOAT_TYPE      = hard
@@ -106,6 +107,12 @@ APP_FILES      += $(APP_PATH_SRC)/wifi_sdk_profile.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_cred.c
 APP_FILES      += $(APP_PATH_SRC)/feed_config.c
+APP_FILES      += $(APP_PATH_SRC)/tz_rule.c
+APP_FILES      += $(APP_PATH_SRC)/epoch_calendar.c
+APP_FILES      += $(APP_PATH_SRC)/time_local.c
+APP_FILES      += $(APP_PATH_SRC)/time_sync.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_config.c
+APP_FILES      += $(APP_PATH_SRC)/app_time_cli.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_backoff.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_topics.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_route.c
@@ -180,6 +187,7 @@ APP_FILES      += $(APP_PATH_SRC)/display_ota_indicator.c
 APP_FILES      += $(APP_PATH_SRC)/display_anim_builtin.c
 APP_FILES      += $(APP_PATH_SRC)/display_boot.c
 APP_FILES      += $(APP_PATH_ADAPT)/nvdm_adapter.c
+APP_FILES      += $(APP_PATH_ADAPT)/time_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_adapter.c
 APP_FILES      += $(APP_PATH_ADAPT)/wifi_sdk_hal.c
 APP_FILES      += $(APP_PATH_ADAPT)/http_server_adapter.c

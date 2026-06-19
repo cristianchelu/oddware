@@ -48,26 +48,14 @@ Serialized as blob in NVDM key `schedule/slots`.
 
 ## Time source
 
-### NTP sync
+NTP sync, on-chip RTC, and time-unknown deferral are defined in
+[time-sync.md](time-sync.md). Summary for scheduling:
 
-- **Primary:** NTP via Wi-Fi, synced on first connection.
-- **Periodic re-sync:** every `[tune]` 6 hours while Wi-Fi connected.
-- NTP server: configurable or hardcoded pool (`pool.ntp.org`). `[design]`
-
-### Internal RTC fallback
-
-- MT7682 has a 32 kHz crystal oscillator for RTC.
-- If Wi-Fi is unavailable, RTC free-runs from last NTP sync.
-- Drift is acceptable for feeding schedules (seconds per day).
-
-### Time-unknown deferral
-
-- If the device has **never** synced NTP since boot (no Wi-Fi, first boot
-  without connectivity):
-  - Do not execute any scheduled slots.
-  - Set status flag `time_unknown = true`.
-  - Publish `time_unknown` status via MQTT when connected.
-  - Resume scheduling immediately upon first successful NTP sync.
+- Slots run only when `time_sync_is_valid()` is true (first NTP success since
+  boot).
+- Local slot matching uses `time_local_now()` (civil time from TZ rule).
+- Retained `.../config` exposes `time_synced` and `utc_epoch` instead of a
+  separate time topic.
 
 ## Local timezone rule
 
@@ -102,8 +90,8 @@ When `dst_offset_min == std_offset_min`, DST is disabled — transition
 fields are ignored. Default at factory reset: `std_offset_min = 0`, all
 other fields zero (UTC, no DST).
 
-Optional display-only IANA label in NVDM `time/tz_label` (string). The
-firmware never parses it; scheduling uses only `time/tz_rule`.
+Optional display-only IANA label in NVDM `time/tz_label` (string, max 47
+bytes). The firmware never parses it; scheduling uses only `time/tz_rule`.
 
 ### Wire string (MQTT / logging)
 

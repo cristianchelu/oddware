@@ -17,7 +17,8 @@ food automatically at the configured times.
 ## Time source
 
 - **Primary:** NTP over Wi-Fi, synced periodically.
-- **Fallback:** internal RTC keeps time across short power losses.
+- **On-chip RTC** holds UTC only while powered; IV2001 has no RTC backup
+  supply — every boot requires NTP before schedules run (see time-sync.md).
 - If the device has never synced (no Wi-Fi since boot), scheduled feeds
   are deferred until a valid time is acquired.
 

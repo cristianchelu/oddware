@@ -11,6 +11,8 @@ typedef struct {
     char group[32];
     char key[32];
     char value[FAKE_VALUE_LEN];
+    bool is_blob;
+    size_t blob_len;
 } fake_entry_t;
 
 static fake_entry_t s_entries[FAKE_MAX_ENTRIES];
@@ -48,6 +50,10 @@ static port_err_t fake_read(const char *group, const char *key, char *buf, size_
         return PORT_ERR_NOT_FOUND;
     }
 
+    if (entry->is_blob) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
     if (strlen(entry->value) + 1 > len) {
         return PORT_ERR_INVALID_ARG;
     }
@@ -75,10 +81,74 @@ static port_err_t fake_write(const char *group, const char *key, const char *val
         entry->group[sizeof(entry->group) - 1] = '\0';
         strncpy(entry->key, key, sizeof(entry->key) - 1);
         entry->key[sizeof(entry->key) - 1] = '\0';
+        entry->is_blob = false;
+        entry->blob_len = 0;
     }
 
+    entry->is_blob = false;
+    entry->blob_len = 0;
     strncpy(entry->value, value, sizeof(entry->value) - 1);
     entry->value[sizeof(entry->value) - 1] = '\0';
+    return PORT_OK;
+}
+
+static port_err_t fake_read_blob(const char *group,
+                                 const char *key,
+                                 void *buf,
+                                 size_t len,
+                                 size_t *out_len)
+{
+    const fake_entry_t *entry;
+
+    if (group == NULL || key == NULL || buf == NULL || len == 0 || out_len == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    entry = find_entry(group, key);
+    if (entry == NULL) {
+        return PORT_ERR_NOT_FOUND;
+    }
+
+    if (!entry->is_blob) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    if (entry->blob_len > len) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    memcpy(buf, entry->value, entry->blob_len);
+    *out_len = entry->blob_len;
+    return PORT_OK;
+}
+
+static port_err_t fake_write_blob(const char *group,
+                                  const char *key,
+                                  const void *data,
+                                  size_t len)
+{
+    fake_entry_t *entry;
+
+    if (group == NULL || key == NULL || data == NULL || len == 0 || len > FAKE_VALUE_LEN) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    entry = find_entry(group, key);
+    if (entry == NULL) {
+        if (s_entry_count >= FAKE_MAX_ENTRIES) {
+            return PORT_ERR_IO;
+        }
+
+        entry = &s_entries[s_entry_count++];
+        strncpy(entry->group, group, sizeof(entry->group) - 1);
+        entry->group[sizeof(entry->group) - 1] = '\0';
+        strncpy(entry->key, key, sizeof(entry->key) - 1);
+        entry->key[sizeof(entry->key) - 1] = '\0';
+    }
+
+    memcpy(entry->value, data, len);
+    entry->is_blob = true;
+    entry->blob_len = len;
     return PORT_OK;
 }
 
@@ -131,6 +201,8 @@ static port_err_t fake_erase_group(const char *group)
 static const config_port_t s_fake_port = {
     .read = fake_read,
     .write = fake_write,
+    .read_blob = fake_read_blob,
+    .write_blob = fake_write_blob,
     .erase = fake_erase,
     .erase_group = fake_erase_group,
 };

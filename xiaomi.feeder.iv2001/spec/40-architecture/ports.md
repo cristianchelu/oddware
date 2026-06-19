@@ -130,11 +130,27 @@ portal.
 |----------|-----------|----------|
 | `read` | `(group, key, buf, len) -> err` | Read a string value from persistent storage |
 | `write` | `(group, key, value) -> err` | Write a string value to persistent storage |
+| `read_blob` | `(group, key, buf, len, &out_len) -> err` | Read a binary value; `out_len` receives bytes stored |
+| `write_blob` | `(group, key, data, len) -> err` | Write a binary value (e.g. `time/tz_rule`) |
 | `erase` | `(group, key) -> err` | Delete a key |
 | `erase_group` | `(group) -> err` | Delete all keys in a group (factory reset) |
 
 Adapter: wraps SDK NVDM API. Groups map to NVDM groups (e.g. `wifi`,
-`mqtt`, `schedule`).
+`mqtt`, `schedule`). Binary items use `NVDM_DATA_ITEM_TYPE_RAW_DATA`.
+
+### `time_port.h`
+
+UTC clock and NTP sync — see [time-sync.md](../30-processes/time-sync.md).
+
+| Function | Signature | Behavior |
+|----------|-----------|----------|
+| `init` | `() -> err` | Initialize RTC (`hal_rtc_init`) |
+| `get_utc_epoch` | `(&epoch) -> err` | Current UTC Unix seconds from RTC |
+| `request_sync` | `() -> err` | Start non-blocking SNTP request |
+| `poll_sync` | `(&done, &ok, &epoch) -> err` | Poll completion; `done` true when finished |
+
+Adapter: `time_adapter.c` — `hal_rtc` read + MediaTek SNTP (SDK writes RTC on
+NTP response). Host tests use `fake_time_port.c`.
 
 ### `motor_port.h`
 

@@ -28,14 +28,14 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 |-------|----------|-----------------|
 | `EVT_APP_BOOT` | `app_start()` once after queue + timers exist | Enter default display mode **weight**; start weight boot FSM (rail on → `[tune]` 1100 ms settle → first `read_grams`) |
 | `EVT_WIFI_STA_CONNECTING` | `wifi_sta_request_connect()` | `display_wifi_indicator_connecting()` |
-| `EVT_WIFI_STA_READY` | `wifi_sta.c` on DHCP OK | `display_wifi_indicator_connected()`; if MQTT broker config stored → `mqtt_client_request_connect()` |
+| `EVT_WIFI_STA_READY` | `wifi_sta.c` on DHCP OK | `display_wifi_indicator_connected()`; `time_sync_on_wifi_ready()`; if MQTT broker config stored → `mqtt_client_request_connect()` |
 | `EVT_WIFI_STA_FAILED` | STA connect or IP failure | `display_wifi_indicator_off()` |
 | `EVT_WIFI_STA_AP_MODE` | `provision.c` / `provision_wifi_try.c` when AP portal active | `display_wifi_indicator_ap_mode()` |
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
-| `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `app_mqtt_on_connected()` — enqueue idle `ota/status`, retained telemetry snapshots (mains, hopper, battery), schedule HA discovery; no display side effect |
+| `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `app_mqtt_on_connected()` — enqueue idle `ota/status`, retained telemetry snapshots (mains, hopper, battery, config), schedule HA discovery; no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (`cmd/ota`, `cmd/dispense`, other routes stub) |
 | `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) + `hopper_input_poll(now_ms, background_enabled)` (mains-only 60 s background) + `hopper_level_poll()` + drain `hopper_level_pop_transition` → `mqtt_hopper_sync` in one handler |
-| `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `ota_slot_health_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
+| `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `time_sync_poll(now_ms)`; `ota_slot_health_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 
 The `app` task waits on the queue with a `[tune]` 50 ms timeout; on timeout it

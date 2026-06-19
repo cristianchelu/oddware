@@ -21,6 +21,7 @@
 #include "power_source_port.h"
 #include "display_presentation.h"
 #include "task_def.h"
+#include "time_sync.h"
 
 #define APP_TASK_STACK_BYTES       4096u
 #define APP_DISPLAY_TIMER_MS       50u
@@ -114,6 +115,7 @@ static void app_task_fn(void *param)
 void app_start(void)
 {
     app_event_port_init();
+    time_sync_init();
 
     if (s_app_task == NULL) {
         if (xTaskCreate(app_task_fn,

@@ -21,6 +21,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/wifi_sdk_profile.c \
              ../src/wifi_sta.c \
              ../src/app_wifi_cli.c \
+             ../src/app_time_cli.c \
              ../src/provision_form.c \
              ../src/provision_scan_list.c \
              ../src/provision_flow.c \
@@ -30,6 +31,11 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/provision_reset.c \
              ../src/mqtt_cred.c \
              ../src/feed_config.c \
+             ../src/tz_rule.c \
+             ../src/epoch_calendar.c \
+             ../src/time_local.c \
+             ../src/time_sync.c \
+             ../src/mqtt_config.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
@@ -115,6 +121,7 @@ HOST_SRCS :=              ../src/app_log.c \
              fakes/fake_motor_port.c \
              fakes/fake_adc_port.c \
              fakes/fake_config_port.c \
+             fakes/fake_time_port.c \
              fakes/fake_boot_bank.c \
              fakes/fake_mqtt_port.c \
              fakes/fake_ota_port.c \

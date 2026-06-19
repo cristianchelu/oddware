@@ -42,6 +42,8 @@ mqtt set pass <password>
 mqtt set device_id <id>
 mqtt connect
 mqtt disconnect
+time show
+time sync
 display test
 display fill <hex_byte>
 display off
@@ -1001,6 +1003,32 @@ the device reboots. See [ota-flow.md](ota-flow.md) § Pre-download memory reclai
 
 No login or knock for v1. Compile-time off in production is the threat-model
 mitigation. Remote CLI exposes the same surface as the UART bench console.
+
+## `time` commands
+
+Bench helpers for civil clock — see [time-sync.md](time-sync.md).
+
+### `time show`
+
+Prints sync state, UTC epoch, wire `tz_rule`, and local civil time when known.
+
+| Outcome | UART response |
+|---------|---------------|
+| Time unknown | `time: not synced` plus `tz_rule=...` |
+| Synced | `time: synced utc=<epoch> local=YYYY-MM-DD HH:MM:SS wday=<0-6>` |
+
+### `time sync`
+
+Requests an immediate NTP sync (no-op with `time sync busy` if a sync is
+already in progress). Does not block until completion.
+
+| Outcome | UART response |
+|---------|---------------|
+| Request accepted | `time sync started` |
+| Sync succeeded (async) | `[time] time sync ok utc=<epoch>` |
+| Sync failed (async) | `[time] time sync failed` |
+| Busy | `time sync busy` |
+| Wi-Fi not ready | `time sync: no network` |
 
 ## `config` commands
 

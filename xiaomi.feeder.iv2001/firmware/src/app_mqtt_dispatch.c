@@ -7,6 +7,7 @@
 #include "battery_monitor.h"
 #include "mqtt_client.h"
 #include "mqtt_dispense_cmd.h"
+#include "mqtt_config.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
 #include "mqtt_state.h"
@@ -18,6 +19,7 @@
 #include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
+#include "port_err.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -42,6 +44,7 @@ void app_mqtt_on_connected(void)
     if (device_id != NULL && device_id[0] != '\0') {
         mqtt_ha_discovery_schedule(device_id);
     }
+    mqtt_config_connect_snapshot();
 }
 
 void app_mqtt_dispatch(const char *topic,
@@ -73,6 +76,16 @@ void app_mqtt_dispatch(const char *topic,
                      topic,
                      (unsigned)len);
         mqtt_dispense_cmd_handle(topic, payload, len, device_id);
+        break;
+    case MQTT_ROUTE_CMD_CONFIG:
+        app_log_info("mqtt",
+                     "cmd %s topic=%s len=%u",
+                     mqtt_route_label(route),
+                     topic,
+                     (unsigned)len);
+        if (mqtt_config_handle(payload, len) != PORT_OK) {
+            app_log_info("mqtt", "config rejected");
+        }
         break;
     default:
         app_log_debug("app", "mqtt cmd stub route=%d topic=%s", (int)route, topic);

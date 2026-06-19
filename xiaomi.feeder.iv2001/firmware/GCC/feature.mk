@@ -43,6 +43,9 @@ MTK_MBEDTLS_CONFIG_FILE             = config-mtk-basic.h
 # HTTP client for OTA download
 MTK_HTTPCLIENT_SSL_ENABLE           = n
 
+# SNTP for civil time sync — spec/30-processes/time-sync.md
+MTK_LWIP_ENABLE_SNTP                = y
+
 # UART flash self-test on first OTA write (128/256/2048 B); set y to validate on device
 FLASH_BANK_OTA_SELFTEST             = n
 

@@ -44,6 +44,9 @@ Firmware constants in `firmware/inc/config_keys.h`:
 |----------|-------|
 | `CONFIG_GROUP_FEED` | `feed` |
 | `CONFIG_KEY_CHILD_LOCK` | `child_lock` |
+| `CONFIG_GROUP_TIME` | `time` |
+| `CONFIG_KEY_TZ_RULE` | `tz_rule` |
+| `CONFIG_KEY_TZ_LABEL` | `tz_label` |
 
 ## Access pattern
 

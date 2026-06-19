@@ -31,4 +31,8 @@
 #define CONFIG_GROUP_POWER                 "power"
 #define CONFIG_KEY_POWER_BATT_SCALE_X1000  "batt_scale_x1000"
 
+#define CONFIG_GROUP_TIME          "time"
+#define CONFIG_KEY_TZ_RULE         "tz_rule"
+#define CONFIG_KEY_TZ_LABEL        "tz_label"
+
 #endif /* CONFIG_KEYS_H */

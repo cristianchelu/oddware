@@ -21,7 +21,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../mains` | `ON` or `OFF` — barrel connected; see [Mains](#mains) | 1 |
 | `.../schedule/list` | `[{"hour":8,"min":0,"days":127,"g":30,"enabled":true}, ...]` | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
-| `.../config` | `{...full config object...}` | 1 |
+| `.../config` | Config snapshot JSON — see [Config snapshot](#config-snapshot) | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
 
@@ -308,10 +308,12 @@ connected** binary_sensor, and **Dispense completed** event discovery,
 `.../battery`, `.../mains`, and `.../hopper` telemetry publishers, HA validation-slice
 **Hopper level** sensor.
 
-**Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice).
+**Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice);
+`.../config` time/TZ slice (`tz_rule`, `tz_label`, `time_synced`, `utc_epoch`);
+`cmd/config` for `tz_rule` and `tz_label`.
 
 **Not implemented yet:** remaining telemetry topics (`eaten_today`,
-schedule, config, display), additional HA entities from the full table,
+schedule, display), additional HA entities from the full table,
 300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
 coalescing on the outbox.
 
@@ -365,6 +367,32 @@ Exponential backoff on disconnect:
 The outbox drain interval spaces connect-time bursts (e.g. ten HA entities
 ≈ 1 s). Per-topic last-value-wins coalescing for high-rate state publishers
 is deferred until those topics ship.
+
+## Config snapshot
+
+Topic `.../config` (retained, QoS 1). Time/TZ fields in this slice; other
+keys ship with future `cmd/config` handlers.
+
+| Field | Type | Semantics |
+|-------|------|-----------|
+| `tz_rule` | string | Wire form from [scheduler-engine.md](scheduler-engine.md); default `"0"` (UTC) |
+| `tz_label` | string | Display-only IANA name; `""` when unset; max 47 UTF-8 bytes |
+| `time_synced` | bool | `true` after first successful NTP this boot |
+| `utc_epoch` | int | Unix seconds from RTC when synced; `0` when unknown |
+
+Example:
+
+```json
+{"tz_rule":"480","tz_label":"Asia/Singapore","time_synced":true,"utc_epoch":1718841600}
+```
+
+Publish on boot (after NVDM load), first NTP success, periodic NTP re-sync,
+`cmd/config` change, and MQTT connect snapshot.
+
+### `cmd/config` (time slice)
+
+Writable keys: `tz_rule`, `tz_label`. Unknown keys are rejected. See
+[config-store.md](config-store.md).
 
 ## Device condition
 
