@@ -41,6 +41,8 @@
 #include "feed_config.h"
 #include "hopper_input.h"
 #include "hopper_ir_port.h"
+#include "hopper_level.h"
+#include "mqtt_hopper.h"
 #include "power_source_input.h"
 #include "power_source_port.h"
 #include "battery_monitor.h"
@@ -250,6 +252,15 @@ static void app_power_mqtt_sync(void)
         mqtt_mains_sync(tr.edge == POWER_SOURCE_EDGE_MAINS);
         battery_monitor_force_sample();
         battery_monitor_poll(tr.at_ms);
+    }
+}
+
+static void app_hopper_mqtt_sync(void)
+{
+    hopper_level_state_transition_t tr;
+
+    while (hopper_level_pop_transition(&tr)) {
+        mqtt_hopper_sync(tr.level);
     }
 }
 
@@ -539,8 +550,15 @@ void app_dispatch(const app_event_t *ev)
             app_weight_sync_display_scene(false);
             (void)display_presentation_refresh();
         }
-        hopper_input_poll(ev->u.display_tick.now_ms);
         power_source_input_poll(ev->u.display_tick.now_ms);
+        {
+            bool hopper_bg = power_source_input_is_valid() &&
+                             power_source_input_get() == POWER_SOURCE_MAINS;
+
+            hopper_input_poll(ev->u.display_tick.now_ms, hopper_bg);
+        }
+        hopper_level_poll();
+        app_hopper_mqtt_sync();
         app_power_mqtt_sync();
         break;
 
@@ -673,6 +691,7 @@ void app_test_reset(void)
     s_bowl_missing = false;
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
+    hopper_level_init();
     power_source_input_init(power_source_port_get());
     button_gesture_reset();
     dispense_test_reset();

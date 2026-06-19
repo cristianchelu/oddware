@@ -46,7 +46,7 @@ Fixed lowercase strings. Callers pass the tag string to each `app_log_*` call.
 | `dispense` | `dispense` supervisor (source-agnostic lifecycle) |
 | `provision` | Captive portal and provisioning flow |
 | `app` | `app.c`, `app_task` lifecycle, button bring-up UART |
-| `hopper` | `hopper_input` level transitions |
+| `hopper` | `hopper_input` IR level transitions; `mqtt_hopper` published level on MQTT edge |
 | `power` | `power_source_input` mains connect / loss transitions |
 | `i2c` | `i2c_bus_adapter` |
 | `gpio` | `gpio_expander_adapter`, `aw9523_irq_adapter` |

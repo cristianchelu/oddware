@@ -12,7 +12,7 @@ static uint8_t s_blocked_streak;
 static bool s_debounce_active;
 static bool s_force_sample;
 static uint32_t s_next_sample_ms;
-static uint32_t s_last_background_ms;
+static uint32_t s_last_background_ms = UINT32_MAX;
 static hopper_level_transition_t s_transition_queue[HOPPER_INPUT_TRANSITION_QUEUE_DEPTH];
 static uint8_t s_transition_head;
 static uint8_t s_transition_tail;
@@ -44,7 +44,7 @@ static void hopper_input_set_level(hopper_level_t level, uint32_t at_ms)
                  level == HOPPER_LEVEL_LOW ? "low" : "normal");
 }
 
-static bool hopper_input_should_sample(uint32_t now_ms)
+static bool hopper_input_should_sample(uint32_t now_ms, bool background_enabled)
 {
     if (s_force_sample) {
         return true;
@@ -54,8 +54,8 @@ static bool hopper_input_should_sample(uint32_t now_ms)
         return true;
     }
 
-    if (!s_debounce_active) {
-        if (s_last_background_ms == 0u) {
+    if (!s_debounce_active && background_enabled) {
+        if (s_last_background_ms == UINT32_MAX) {
             s_last_background_ms = now_ms;
             return false;
         }
@@ -144,7 +144,7 @@ void hopper_input_reset(void)
     s_debounce_active = false;
     s_force_sample = false;
     s_next_sample_ms = 0u;
-    s_last_background_ms = 0u;
+    s_last_background_ms = UINT32_MAX;
     s_transition_head = 0u;
     s_transition_tail = 0u;
 }
@@ -155,15 +155,15 @@ void hopper_input_notify_dispense_complete(void)
     s_force_sample = true;
 }
 
-void hopper_input_poll(uint32_t now_ms)
+void hopper_input_poll(uint32_t now_ms, bool background_enabled)
 {
     bool background;
 
-    if (!hopper_input_should_sample(now_ms)) {
+    if (!hopper_input_should_sample(now_ms, background_enabled)) {
         return;
     }
 
-    background = !s_force_sample && !s_debounce_active;
+    background = background_enabled && !s_force_sample && !s_debounce_active;
     hopper_input_sample(now_ms, background);
 }
 

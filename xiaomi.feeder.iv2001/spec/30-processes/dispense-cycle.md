@@ -138,10 +138,20 @@ After motor runs, track consecutive jobs where **raw** bowl delta
 
 - Increment counter when raw delta ≤ 0 after motor ran.
 - Reset counter when raw delta > 0.
-- Future: after `[tune]` 3 consecutive zero-delta jobs with hopper IR low →
-  outcome `empty_hopper` and hopper level transition (see `hopper-sensing.md`).
+- Counter is internal (logged / test-visible); empty detection uses the **current**
+  job only (see below).
 
-v1: counter is internal only (logged / test-visible); hopper MQTT topic unchanged.
+## Empty hopper detection (open-loop v1)
+
+When a job finishes with motor success (`EVT_BURST_DONE`, not `stuck`):
+
+- If scale is trusted (`measured`), **raw** delta ≤ 0, and hopper IR is
+  `low` → outcome `empty_hopper` and published hopper MQTT level `empty`
+  (see [hopper-sensing.md](hopper-sensing.md) `hopper_level`).
+- If raw delta > 0 on success → clear hopper empty latch.
+
+Compensated mode uses the same `hopper_level` hook on `underfill` give-up
+(see [weight-compensation.md](weight-compensation.md)).
 
 ## Dispense queue
 
@@ -160,10 +170,11 @@ Every terminal job publishes one MQTT dispense event (when online):
 | `success` | Target met (compensated) or all bursts ran (open-loop) |
 | `underfill` | Compensated mode measured delivery below target after retries |
 | `stuck` | Anti-jam retries exhausted (see `jam-detection.md`) |
-| `empty_hopper` | Motor ran, raw bowl delta ≤ 0, hopper IR confirms low (future) |
+| `empty_hopper` | Motor ran (not stuck), measured raw bowl delta ≤ 0, hopper IR low |
 | `aborted` | Queue overflow, policy rejection, or user cancel via MQTT (future) |
 
-v1 firmware emits `success` and `stuck` only.
+v1 open-loop firmware emits `success`, `stuck`, and `empty_hopper` (when IR
+low and measured zero/negative delta).
 
 Completion is reported via `.../dispense/event` only — no retained
 `dispense/status` or in-progress `dispense/progress` topics.

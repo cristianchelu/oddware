@@ -29,7 +29,7 @@ typedef struct {
 void hopper_input_init(const hopper_ir_port_t *port);
 void hopper_input_reset(void);
 void hopper_input_notify_dispense_complete(void);
-void hopper_input_poll(uint32_t now_ms);
+void hopper_input_poll(uint32_t now_ms, bool background_enabled);
 hopper_level_t hopper_input_get_level(void);
 bool hopper_input_almost_empty(void);
 bool hopper_input_pop_transition(hopper_level_transition_t *tr);

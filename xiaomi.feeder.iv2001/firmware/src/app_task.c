@@ -15,6 +15,7 @@
 #include "button_input.h"
 #include "button_port.h"
 #include "hopper_input.h"
+#include "hopper_level.h"
 #include "hopper_ir_port.h"
 #include "power_source_input.h"
 #include "power_source_port.h"
@@ -128,6 +129,7 @@ void app_start(void)
     app_timers_start();
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
+    hopper_level_init();
     power_source_input_init(power_source_port_get());
     (void)aw9523_irq_adapter_start();
     app_post_simple(EVT_APP_BOOT);

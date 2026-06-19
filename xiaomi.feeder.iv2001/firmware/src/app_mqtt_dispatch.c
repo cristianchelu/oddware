@@ -13,7 +13,9 @@
 #include "mqtt_bowl_weight.h"
 #include "mqtt_battery.h"
 #include "mqtt_battery_voltage.h"
+#include "mqtt_hopper.h"
 #include "mqtt_mains.h"
+#include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
 
@@ -27,6 +29,7 @@ void app_mqtt_on_connected(void)
     ota_client_on_mqtt_connected();
     mqtt_state_on_mqtt_connected();
     mqtt_bowl_weight_on_mqtt_connected();
+    mqtt_hopper_connect_snapshot(hopper_level_get());
     if (power_source_input_is_valid()) {
         mqtt_mains_connect_snapshot(power_source_input_get() == POWER_SOURCE_MAINS);
     }

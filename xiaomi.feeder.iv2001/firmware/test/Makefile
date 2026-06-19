@@ -40,6 +40,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_battery.c \
              ../src/mqtt_battery_voltage.c \
              ../src/mqtt_mains.c \
+             ../src/mqtt_hopper.c \
              ../src/battery_pct.c \
              ../src/battery_monitor.c \
              ../src/mqtt_dispense_event.c \
@@ -48,6 +49,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/app_mqtt_dispatch.c \
              ../src/button_input.c \
              ../src/hopper_input.c \
+             ../src/hopper_level.c \
              ../src/power_source_input.c \
              ../src/button_gesture.c \
              ../src/mqtt_client.c \

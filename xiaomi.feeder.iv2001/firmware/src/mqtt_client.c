@@ -26,6 +26,7 @@
 #include "mqtt_battery.h"
 #include "mqtt_battery_voltage.h"
 #include "mqtt_dispense_event.h"
+#include "mqtt_hopper.h"
 #include "mqtt_mains.h"
 #include "mqtt_state.h"
 #include "mqtt_topics.h"
@@ -324,6 +325,7 @@ static port_err_t mqtt_client_do_connect(void)
     mqtt_battery_set_device_id(s_device_id);
     mqtt_battery_voltage_set_device_id(s_device_id);
     mqtt_mains_set_device_id(s_device_id);
+    mqtt_hopper_set_device_id(s_device_id);
     mqtt_dispense_event_set_device_id(s_device_id);
 
     {
@@ -404,6 +406,7 @@ static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
     mqtt_battery_on_outbox_reset();
     mqtt_battery_voltage_on_outbox_reset();
     mqtt_mains_on_outbox_reset();
+    mqtt_hopper_on_outbox_reset();
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
@@ -551,6 +554,7 @@ void mqtt_client_test_reset(void)
     mqtt_battery_test_reset();
     mqtt_battery_voltage_test_reset();
     mqtt_mains_test_reset();
+    mqtt_hopper_test_reset();
     battery_monitor_test_reset();
 }
 

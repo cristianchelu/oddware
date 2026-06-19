@@ -15,7 +15,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../connection` | `online` or `offline` (plain text) | 1 |
 | `.../state` | `{"bowl_error": false}` — device condition (faults / health); see [Device condition](#device-condition) | 1 |
 | `.../bowl_weight` | `42` — plain integer grams; empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
-| `.../hopper` | `{"level": "normal"}` | 1 |
+| `.../hopper` | `normal` \| `low` \| `empty` (plain text) | 1 |
 | `.../battery` | `75` — plain integer 0–100; `unknown` when absent; see [Battery](#battery) | 1 |
 | `.../battery_voltage` | `5200` — plain integer pack mV; see [Battery pack voltage](#battery-pack-voltage) | 1 |
 | `.../mains` | `ON` or `OFF` — barrel connected; see [Mains](#mains) | 1 |
@@ -83,7 +83,7 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 | sensor | bowl_weight | `weight` | Unit: g |
 | sensor | eaten_today | `weight` | Unit: g |
 | sensor | battery | `battery` | Unit: % |
-| sensor | hopper_level | `enum` | Options: normal, low |
+| sensor | hopper_level | `enum` | Options: normal, low, empty |
 | binary_sensor | mains | `power` | Mains connected — `ON`/`OFF` on `.../mains` |
 | button | dispense | — | Triggers default portion |
 | event | dispense_completed | — | Fires on each dispense job completion |
@@ -199,6 +199,21 @@ No `value_template` on the sensor — payload is plain integer percentage, or `u
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
 
+**Hopper level** sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/sensor/petfeeder_<device_id>/hopper_level/config` |
+| `name` | `Hopper level` |
+| `state_topic` | `petfeeder/<device_id>/hopper` |
+| `device_class` | `enum` |
+| `options` | `normal`, `low`, `empty` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+
+No `value_template` on the sensor — payload is the level string directly.
+
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
 dispense lands). UART logs use tag `dispense` — see
@@ -290,11 +305,12 @@ A/B bank swap, slot-health confirm), [mqtt_outbox](#publish-path)
 error** binary_sensor, **Bowl weight** sensor, **Battery** sensor, **Mains
 connected** binary_sensor, and **Dispense completed** event discovery,
 `cmd/dispense` → one portion, `.../dispense/event` on job completion,
-`.../battery` and `.../mains` telemetry publishers.
+`.../battery`, `.../mains`, and `.../hopper` telemetry publishers, HA validation-slice
+**Hopper level** sensor.
 
 **Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice).
 
-**Not implemented yet:** remaining telemetry topics (`hopper`, `eaten_today`,
+**Not implemented yet:** remaining telemetry topics (`eaten_today`,
 schedule, config, display), additional HA entities from the full table,
 300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
 coalescing on the outbox.
@@ -476,6 +492,21 @@ Publish triggers (same sample tick as [Battery](#battery)):
 
 Home Assistant discovers **Battery pack voltage** with `enabled_by_default`:
 `false` — hidden until enabled in the UI.
+
+## Hopper
+
+Topic `.../hopper` (retained, QoS 1) reports the published three-state hopper
+level (see [hopper-sensing.md](hopper-sensing.md) `hopper_level`).
+
+| Payload | Meaning |
+|---------|---------|
+| `normal` | IR beam blocked or hopper not latched empty |
+| `low` | IR almost empty; hopper not latched empty |
+| `empty` | Confirmed out-of-food or compensated underfill |
+
+Publish on published-level edge change and as a connect snapshot after MQTT
+connect (`mqtt_hopper_connect_snapshot`). Not tied to the IR background poll
+interval.
 
 ## Mains
 

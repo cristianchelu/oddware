@@ -12,6 +12,7 @@
 #include "display_dispense_indicator.h"
 #include "FreeRTOS.h"
 #include "hopper_input.h"
+#include "hopper_level.h"
 #include "motor_jam.h"
 #include "motor_port.h"
 #include "mqtt_client.h"
@@ -145,9 +146,16 @@ static void dispense_finish_job(uint32_t now_ms)
         if (s_baseline_valid && post_valid) {
             raw_delta = post_grams - s_baseline_grams;
             dispense_update_zero_delta_streak(raw_delta);
+        } else {
+            raw_delta = 0;
         }
         event_grams = (int32_t)s_portions * (int32_t)DISPENSE_GRAMS_PER_PORTION;
     }
+
+    s_outcome = hopper_level_on_dispense_finished(s_outcome,
+                                                  raw_delta,
+                                                  measured,
+                                                  now_ms);
 
     completion.grams = event_grams;
     completion.grams_estimated = !measured;
@@ -179,7 +187,7 @@ static void dispense_finish_job(uint32_t now_ms)
         (void)dispense_cli_on_job_fault();
     }
 
-    hopper_input_notify_dispense_complete();
+    hopper_level_notify_dispense_complete();
 }
 
 static void dispense_begin_settle(dispense_outcome_t outcome)

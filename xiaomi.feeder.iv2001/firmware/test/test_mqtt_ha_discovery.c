@@ -119,6 +119,20 @@ void test_mqtt_ha_format_mains_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"device_class\":\"power\""));
 }
 
+void test_mqtt_ha_format_hopper_level_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_hopper_level_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Hopper level\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/hopper\""));
+    TEST_ASSERT_NULL(strstr(buf, "value_template"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"device_class\":\"enum\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"options\":[\"normal\",\"low\",\"empty\"]"));
+}
+
 void test_mqtt_ha_format_dispense_completed_config_json(void)
 {
     char buf[768];
@@ -137,7 +151,7 @@ void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
     mqtt_outbox_reset();
     mqtt_outbox_set_accepting(true);
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
-    TEST_ASSERT_EQUAL_UINT(7, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(8, mqtt_outbox_pending());
 }
 
 void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
@@ -154,7 +168,7 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     drain_all_outbox();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(7, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(8, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("homeassistant/event/petfeeder_ddeeff/dispense_completed/config",
                              mqtt->last_publish_topic);
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"]"));

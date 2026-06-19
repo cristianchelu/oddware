@@ -27,12 +27,19 @@ device is doing and whether it needs attention.
 
 ## Hopper fill level
 
-- Two-state indicator: **normal** or **low** (almost empty — IR beam clear).
-- Based on a break-beam sensor inside the hopper cavity.
-- Checked after every completed dispense and periodically while idle.
-- Distinct from the `empty_hopper` dispense outcome (motor ran but bowl weight
-  did not increase); that path also requires `low` hopper level — see
-  [hopper-sensing.md](../30-processes/hopper-sensing.md).
+- Three-state indicator over MQTT: **normal**, **low** (almost empty — IR beam
+  clear), and **empty** (confirmed out-of-food via dispense weight check with
+  IR low, or compensated underfill after retries).
+- Based on a break-beam sensor inside the hopper cavity plus dispense bowl
+  delta when the hopper is almost empty.
+- Checked after every completed dispense. On **mains**, also polled about every
+  60 s while idle so a manual refill updates the level without waiting for the
+  next feed. On **battery**, sensing runs after dispense only.
+- Retained MQTT topic `petfeeder/<device_id>/hopper` (`normal` | `low` | `empty`).
+  Home Assistant discovers a **Hopper level** enum sensor — see
+  [mqtt-protocol.md](../30-processes/mqtt-protocol.md).
+- See [hopper-sensing.md](../30-processes/hopper-sensing.md) for IR debounce,
+  empty latch, and mains-vs-battery sampling.
 
 ## Calibration
 

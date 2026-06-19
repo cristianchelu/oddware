@@ -45,11 +45,14 @@ On give-up:
 1. Check hopper IR (see `hopper-sensing.md`): if `level = low`, set outcome = `empty_hopper`.
 2. Otherwise set outcome = `underfill`.
 3. Publish completion event to MQTT `.../dispense/event`.
+4. Latch published hopper MQTT level `empty` via `hopper_level` (both
+   `empty_hopper` and `underfill` after retry exhaustion).
 
 ## Batch cap
 
 Maximum `[tune]` **3** total motor batches per job (initial + compensation
-rounds). When the cap is reached without meeting target → outcome `underfill`.
+rounds). When the cap is reached without meeting target → outcome `underfill`
+and published hopper level `empty`.
 
 ## Accuracy tolerance
 
