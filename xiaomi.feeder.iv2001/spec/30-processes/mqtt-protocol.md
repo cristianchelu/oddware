@@ -22,6 +22,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../schedule/list` | `[{"hour":8,"min":0,"days":127,"g":30,"enabled":true}, ...]` | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | Config snapshot JSON — see [Config snapshot](#config-snapshot) | 1 |
+| `.../timezone` | Device timezone plain text — see [Device timezone](#device-timezone) | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
 
@@ -214,6 +215,20 @@ No `value_template` on the sensor — payload is plain integer percentage, or `u
 
 No `value_template` on the sensor — payload is the level string directly.
 
+**Device timezone** sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/sensor/petfeeder_<device_id>/device_timezone/config` |
+| `name` | `Device timezone` |
+| `state_topic` | `petfeeder/<device_id>/timezone` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+
+No `device_class` — payload is a free-form string (`tz_label` when set, else
+POSIX `tz_rule`; always non-empty due to UTC0 fallback).
+
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
 dispense lands). UART logs use tag `dispense` — see
@@ -305,8 +320,8 @@ A/B bank swap, slot-health confirm), [mqtt_outbox](#publish-path)
 error** binary_sensor, **Bowl weight** sensor, **Battery** sensor, **Mains
 connected** binary_sensor, and **Dispense completed** event discovery,
 `cmd/dispense` → one portion, `.../dispense/event` on job completion,
-`.../battery`, `.../mains`, and `.../hopper` telemetry publishers, HA validation-slice
-**Hopper level** sensor.
+`.../battery`, `.../mains`, `.../hopper`, and `.../timezone` telemetry publishers,
+HA validation-slice **Hopper level** and **Device timezone** sensors.
 
 **Partially implemented:** `.../bowl_weight` telemetry publisher (validation slice);
 `.../config` time/TZ slice (`tz_rule`, `tz_label`, `time_synced`, `utc_epoch`);
@@ -393,6 +408,29 @@ Publish on boot (after NVDM load), first NTP success, periodic NTP re-sync,
 
 Writable keys: `tz_rule`, `tz_label`. Unknown keys are rejected. See
 [config-store.md](config-store.md).
+
+| Key | Empty string |
+|-----|--------------|
+| `tz_label` | Clears the label (erases NVDM key; display falls back to `tz_rule`) |
+| `tz_rule` | Resets to default UTC0 (erases NVDM key; scheduler uses UTC) |
+
+Publishes updated retained `.../config` and `.../timezone` on success.
+
+## Device timezone
+
+Topic `.../timezone` (retained, QoS 1) reports the effective timezone string
+for display and Home Assistant.
+
+| Payload | When |
+|---------|------|
+| `tz_label` value | NVDM `time/tz_label` is set and non-empty |
+| POSIX `tz_rule` | Label unset; e.g. `UTC0`, `EET-2EEST,M3.5.0/3,M10.5.0/4` |
+
+The payload is always non-empty: missing or cleared `tz_rule` loads as
+`UTC0` (see [config-store.md](config-store.md)).
+
+Publish on boot (MQTT connect snapshot), `cmd/config` change, and UART
+`time set` when MQTT is configured.
 
 ## Device condition
 

@@ -490,6 +490,58 @@ int mqtt_ha_format_dispense_completed_config(char *buf,
     return written;
 }
 
+int mqtt_ha_format_device_timezone_config(char *buf, size_t len, const char *device_id)
+{
+    char timezone_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(timezone_topic,
+                          sizeof(timezone_topic),
+                          device_id,
+                          "timezone")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Device timezone\","
+                       "\"unique_id\":\"petfeeder_%s_device_timezone\","
+                       "\"state_topic\":\"%s\","
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       timezone_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -525,6 +577,11 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "sensor",
         .object_id = "hopper_level",
         .format_config = mqtt_ha_format_hopper_level_config,
+    },
+    {
+        .component = "sensor",
+        .object_id = "device_timezone",
+        .format_config = mqtt_ha_format_device_timezone_config,
     },
     {
         .component = "event",

@@ -542,7 +542,30 @@ port_err_t tz_rule_label_save(const config_port_t *cfg, const char *label)
         return PORT_ERR_INVALID_ARG;
     }
 
+    if (label[0] == '\0') {
+        port_err_t err = cfg->erase(CONFIG_GROUP_TIME, CONFIG_KEY_TZ_LABEL);
+
+        return (err == PORT_OK || err == PORT_ERR_NOT_FOUND) ? PORT_OK : err;
+    }
+
     return cfg->write(CONFIG_GROUP_TIME, CONFIG_KEY_TZ_LABEL, label);
+}
+
+port_err_t tz_rule_clear_posix(const config_port_t *cfg)
+{
+    port_err_t err;
+
+    if (cfg == NULL || cfg->erase == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = cfg->erase(CONFIG_GROUP_TIME, CONFIG_KEY_TZ_RULE);
+    if (err != PORT_OK && err != PORT_ERR_NOT_FOUND) {
+        return err;
+    }
+
+    tz_rule_cache_refresh(NULL);
+    return PORT_OK;
 }
 
 void tz_rule_test_reset(void)

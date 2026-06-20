@@ -38,6 +38,10 @@ int mqtt_ha_format_hopper_level_config(char *buf,
                                        size_t len,
                                        const char *device_id);
 
+int mqtt_ha_format_device_timezone_config(char *buf,
+                                          size_t len,
+                                          const char *device_id);
+
 int mqtt_ha_format_dispense_completed_config(char *buf,
                                              size_t len,
                                              const char *device_id);

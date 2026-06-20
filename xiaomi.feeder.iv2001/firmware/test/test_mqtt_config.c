@@ -10,6 +10,7 @@
 #include "fake_time_port.h"
 #include "mqtt_config.h"
 #include "mqtt_outbox.h"
+#include "mqtt_timezone.h"
 #include "time_sync.h"
 #include "tz_rule.h"
 
@@ -35,10 +36,12 @@ static void setup_mqtt_config(void)
     fake_time_port_reset();
     mqtt_outbox_reset();
     mqtt_config_test_reset();
+    mqtt_timezone_test_reset();
     time_sync_test_reset();
     tz_rule_test_reset();
     fake_mqtt_port_get()->connect(NULL);
     mqtt_config_set_device_id(TEST_DEVICE_ID);
+    mqtt_timezone_set_device_id(TEST_DEVICE_ID);
 }
 
 void test_mqtt_config_format_snapshot_defaults(void)
@@ -67,7 +70,7 @@ void test_mqtt_config_handle_sets_tz_rule(void)
 
     drain_config_outbox();
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, BUCHAREST_POSIX));
 }
 
@@ -134,4 +137,36 @@ void test_mqtt_config_handle_rejects_long_tz_label(void)
     setup_mqtt_config();
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG,
                       mqtt_config_handle(payload, strlen(payload)));
+}
+
+void test_mqtt_config_handle_clears_tz_label(void)
+{
+    char label[TZ_RULE_LABEL_MAX];
+    const config_port_t *cfg = fake_config_port_get();
+
+    setup_mqtt_config();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      mqtt_config_handle("{\"tz_label\":\"Europe/Bucharest\"}",
+                                         strlen("{\"tz_label\":\"Europe/Bucharest\"}")));
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      mqtt_config_handle("{\"tz_label\":\"\"}",
+                                         strlen("{\"tz_label\":\"\"}")));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_label_load(cfg, label, sizeof(label)));
+    TEST_ASSERT_EQUAL_STRING("", label);
+}
+
+void test_mqtt_config_handle_clears_tz_rule_to_utc0(void)
+{
+    char loaded[TZ_RULE_POSIX_MAX];
+    const config_port_t *cfg = fake_config_port_get();
+
+    setup_mqtt_config();
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      mqtt_config_handle("{\"tz_rule\":\"EET-2EEST,M3.5.0/3,M10.5.0/4\"}",
+                                         strlen("{\"tz_rule\":\"EET-2EEST,M3.5.0/3,M10.5.0/4\"}")));
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      mqtt_config_handle("{\"tz_rule\":\"\"}",
+                                         strlen("{\"tz_rule\":\"\"}")));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_load_posix(cfg, loaded, sizeof(loaded)));
+    TEST_ASSERT_EQUAL_STRING("UTC0", loaded);
 }

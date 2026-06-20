@@ -125,6 +125,7 @@ APP_FILES      += $(APP_PATH_SRC)/mqtt_battery.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_battery_voltage.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_mains.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_hopper.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_timezone.c
 APP_FILES      += $(APP_PATH_SRC)/battery_pct.c
 APP_FILES      += $(APP_PATH_SRC)/battery_monitor.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_dispense_event.c

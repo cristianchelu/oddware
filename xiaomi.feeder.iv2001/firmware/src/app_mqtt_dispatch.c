@@ -16,6 +16,7 @@
 #include "mqtt_battery_voltage.h"
 #include "mqtt_hopper.h"
 #include "mqtt_mains.h"
+#include "mqtt_timezone.h"
 #include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
@@ -44,6 +45,7 @@ void app_mqtt_on_connected(void)
     if (device_id != NULL && device_id[0] != '\0') {
         mqtt_ha_discovery_schedule(device_id);
     }
+    mqtt_timezone_connect_snapshot();
     mqtt_config_connect_snapshot();
 }
 

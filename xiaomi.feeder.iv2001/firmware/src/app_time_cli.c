@@ -65,7 +65,7 @@ uint8_t time_cli_run_set_tz_rule(const char *posix)
     time_config_patch_t patch;
     port_err_t err;
 
-    if (posix == NULL || posix[0] == '\0') {
+    if (posix == NULL) {
         app_log_info("cli", "usage: time set tz_rule <posix>");
         return 1;
     }
@@ -91,7 +91,7 @@ uint8_t time_cli_run_set_tz_label(const char *label)
     time_config_patch_t patch;
     port_err_t err;
 
-    if (label == NULL || label[0] == '\0') {
+    if (label == NULL) {
         app_log_info("cli", "usage: time set tz_label <name>");
         return 1;
     }

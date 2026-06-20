@@ -48,6 +48,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_battery_voltage.c \
              ../src/mqtt_mains.c \
              ../src/mqtt_hopper.c \
+             ../src/mqtt_timezone.c \
              ../src/battery_pct.c \
              ../src/battery_monitor.c \
              ../src/mqtt_dispense_event.c \

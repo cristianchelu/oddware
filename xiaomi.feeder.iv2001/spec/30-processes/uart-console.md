@@ -1035,27 +1035,29 @@ already in progress). Does not block until completion.
 ### `time set tz_rule <posix>`
 
 Validates and writes NVDM `time/tz_rule` as a POSIX `TZ` string (see
-[scheduler-engine.md](scheduler-engine.md)). Publishes an updated retained
-`.../config` snapshot when MQTT is configured.
+[scheduler-engine.md](scheduler-engine.md)). An empty `<posix>` resets the
+rule to default UTC0 (erases the key; scheduler uses UTC). Publishes updated
+retained `.../config` and `.../timezone` snapshots when MQTT is configured.
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `tz_rule saved` |
 | Missing argument | `usage: time set tz_rule <posix>` |
-| Invalid POSIX | `invalid tz_rule` |
+| Invalid POSIX (non-empty) | `invalid tz_rule` |
 | NVDM write failure | `nvdm write failed` |
 
 ### `time set tz_label <name>`
 
 Validates and writes NVDM `time/tz_label` (IANA name for display; length
-limit in [scheduler-engine.md](scheduler-engine.md)). Publishes an updated
-retained `.../config` snapshot when MQTT is configured.
+limit in [scheduler-engine.md](scheduler-engine.md)). An empty `<name>` clears
+the label (erases the key; display falls back to `tz_rule`). Publishes updated
+retained `.../config` and `.../timezone` snapshots when MQTT is configured.
 
 | Outcome | UART response |
 |---------|---------------|
 | Success | `tz_label saved` |
 | Missing argument | `usage: time set tz_label <name>` |
-| Invalid label | `invalid tz_label` |
+| Invalid label (overlong) | `invalid tz_label` |
 | NVDM write failure | `nvdm write failed` |
 
 ### `time set` (invalid subcommand)

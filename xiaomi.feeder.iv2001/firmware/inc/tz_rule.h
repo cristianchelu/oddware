@@ -36,6 +36,7 @@ int16_t tz_rule_effective_offset_min(const tz_rule_t *rule, int64_t utc_epoch);
 void tz_rule_init(void);
 const tz_rule_t *tz_rule_get(void);
 port_err_t tz_rule_save_posix(const config_port_t *cfg, const char *posix);
+port_err_t tz_rule_clear_posix(const config_port_t *cfg);
 port_err_t tz_rule_load_posix(const config_port_t *cfg, char *out, size_t out_len);
 port_err_t tz_rule_label_load(const config_port_t *cfg, char *out, size_t out_len);
 port_err_t tz_rule_label_save(const config_port_t *cfg, const char *label);

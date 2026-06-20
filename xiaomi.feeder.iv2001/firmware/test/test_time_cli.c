@@ -195,3 +195,37 @@ void test_time_cli_set_tz_label_invalid(void)
 
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "invalid tz_label"));
 }
+
+void test_time_cli_set_tz_label_clears_with_empty_string(void)
+{
+    char label[TZ_RULE_LABEL_MAX];
+    const config_port_t *cfg = fake_config_port_get();
+
+    cli_log_begin();
+    fake_config_port_reset();
+    TEST_ASSERT_EQUAL_UINT8(0, time_cli_run_set_tz_label("Europe/Bucharest"));
+    TEST_ASSERT_EQUAL_UINT8(0, time_cli_run_set_tz_label(""));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_label saved"));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_label_load(cfg, label, sizeof(label)));
+    TEST_ASSERT_EQUAL_STRING("", label);
+}
+
+void test_time_cli_set_tz_rule_clears_to_utc0(void)
+{
+    char posix[TZ_RULE_POSIX_MAX];
+    const config_port_t *cfg = fake_config_port_get();
+
+    cli_log_begin();
+    fake_config_port_reset();
+    tz_rule_test_reset();
+    TEST_ASSERT_EQUAL_UINT8(0,
+                            time_cli_run_set_tz_rule("EET-2EEST,M3.5.0/3,M10.5.0/4"));
+    TEST_ASSERT_EQUAL_UINT8(0, time_cli_run_set_tz_rule(""));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_rule saved"));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_load_posix(cfg, posix, sizeof(posix)));
+    TEST_ASSERT_EQUAL_STRING("UTC0", posix);
+}
