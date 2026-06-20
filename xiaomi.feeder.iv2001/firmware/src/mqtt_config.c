@@ -10,6 +10,7 @@
 #include "mqtt_config.h"
 #include "mqtt_outbox.h"
 #include "mqtt_topics.h"
+#include "time_config.h"
 #include "time_sync.h"
 #include "tz_rule.h"
 
@@ -244,8 +245,7 @@ static void mqtt_json_escape_string(const char *in, char *out, size_t out_len)
 
 bool mqtt_config_format_snapshot(char *buf, size_t len)
 {
-    tz_rule_t rule;
-    char wire[TZ_RULE_WIRE_MAX];
+    char posix[TZ_RULE_POSIX_MAX];
     char label[TZ_RULE_LABEL_MAX];
     char label_json[TZ_RULE_LABEL_MAX + 8];
     int64_t utc_epoch = 0;
@@ -256,12 +256,8 @@ bool mqtt_config_format_snapshot(char *buf, size_t len)
         return false;
     }
 
-    if (tz_rule_load(config_port_get(), &rule) != PORT_OK) {
-        tz_rule_default(&rule);
-    }
-
-    if (!tz_rule_format_wire(&rule, wire, sizeof(wire))) {
-        return false;
+    if (tz_rule_load_posix(config_port_get(), posix, sizeof(posix)) != PORT_OK) {
+        strcpy(posix, "UTC0");
     }
 
     if (tz_rule_label_load(config_port_get(), label, sizeof(label)) != PORT_OK) {
@@ -277,7 +273,7 @@ bool mqtt_config_format_snapshot(char *buf, size_t len)
     written = snprintf(buf,
                          len,
                          "{\"tz_rule\":\"%s\",\"tz_label\":%s,\"time_synced\":%s,\"utc_epoch\":%lu}",
-                         wire,
+                         posix,
                          label_json,
                          synced ? "true" : "false",
                          (unsigned long)(synced ? utc_epoch : 0));
@@ -343,9 +339,9 @@ void mqtt_config_connect_snapshot(void)
 port_err_t mqtt_config_handle(const void *payload, size_t len)
 {
     const char *json = payload;
-    char tz_wire[TZ_RULE_WIRE_MAX];
+    char tz_posix[TZ_RULE_POSIX_MAX];
     char tz_label[TZ_RULE_LABEL_MAX];
-    tz_rule_t rule;
+    time_config_patch_t patch;
     bool have_rule = false;
     bool have_label = false;
 
@@ -357,30 +353,16 @@ port_err_t mqtt_config_handle(const void *payload, size_t len)
         return PORT_ERR_INVALID_ARG;
     }
 
-    have_rule = mqtt_json_find_string(json, len, "tz_rule", tz_wire, sizeof(tz_wire));
+    have_rule = mqtt_json_find_string(json, len, "tz_rule", tz_posix, sizeof(tz_posix));
     have_label = mqtt_json_find_string(json, len, "tz_label", tz_label, sizeof(tz_label));
 
     if (!have_rule && !have_label) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    if (have_rule) {
-        if (!tz_rule_parse_wire(tz_wire, &rule)) {
-            return PORT_ERR_INVALID_ARG;
-        }
-        if (tz_rule_save(config_port_get(), &rule) != PORT_OK) {
-            return PORT_ERR_IO;
-        }
-    }
-
-    if (have_label) {
-        if (tz_rule_label_save(config_port_get(), tz_label) != PORT_OK) {
-            return PORT_ERR_INVALID_ARG;
-        }
-    }
-
-    mqtt_config_publish_snapshot();
-    return PORT_OK;
+    patch.tz_rule_posix = have_rule ? tz_posix : NULL;
+    patch.tz_label = have_label ? tz_label : NULL;
+    return time_config_apply(config_port_get(), &patch);
 }
 
 void mqtt_config_test_reset(void)

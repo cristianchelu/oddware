@@ -68,15 +68,16 @@ The integration layer (Home Assistant, dashboard, etc.) owns the IANA TZ
 data and pushes **current** transition rules to the feeder whenever the
 user changes timezone or when upstream TZ data changes. `[design]`
 
-### Packed rule struct (firmware canonical form)
+### Runtime rule (RAM)
 
-Fixed-size, packed binary — stored in NVDM key `time/tz_rule` (blob).
-All multi-byte integers are little-endian.
+Parsed from NVDM at boot and refreshed on `time set` / `cmd/config`.
+Used by `tz_rule_effective_offset_min()` — never re-read from NVDM on the
+scheduler or `time_local_now` hot path.
 
 | Field | Type | Range | Description |
 |-------|------|-------|-------------|
-| `std_offset_min` | int16 | −720…840 | Standard-time offset from UTC, minutes |
-| `dst_offset_min` | int16 | −720…840 | Daylight offset from UTC, minutes |
+| `std_offset_min` | int16 | −720…840 | Standard-time offset from UTC, minutes east |
+| `dst_offset_min` | int16 | −720…840 | Daylight offset from UTC, minutes east |
 | `start_m` | uint8 | 1–12 | DST start month |
 | `start_w` | uint8 | 1–5 | Week of month (`5` = last week containing `start_d`) |
 | `start_d` | uint8 | 0–6 | Day of week (`0` = Sunday) |
@@ -87,34 +88,43 @@ All multi-byte integers are little-endian.
 | `end_h` | uint8 | 0–23 | Transition hour, **local standard time** |
 
 When `dst_offset_min == std_offset_min`, DST is disabled — transition
-fields are ignored. Default at factory reset: `std_offset_min = 0`, all
-other fields zero (UTC, no DST).
+fields are ignored.
+
+### NVDM storage (`time/tz_rule`)
+
+POSIX `TZ` environment-variable string (max **80** UTF-8 bytes). Stored
+verbatim after validation — no packed blob, no custom numeric wire format.
+Default at factory reset: `UTC0`.
+
+UART `time show` and retained `.../config` echo the stored string.
 
 Optional display-only IANA label in NVDM `time/tz_label` (string, max 47
-bytes). The firmware never parses it; scheduling uses only `time/tz_rule`.
+bytes). The firmware never resolves zone names; scheduling uses only
+`time/tz_rule`.
 
-### Wire string (MQTT / logging)
+### POSIX subset (set path)
 
-MQTT config uses a canonical string form of the same struct (firmware
-parses on `cmd/config`, serializes into retained `.../config`). Format:
+Accepted on `time set tz_rule`, MQTT `cmd/config`, and boot cache parse.
+Rejected otherwise (including legacy numeric wire such as `480`).
 
-```text
-<std_min>/<dst_min>/<start>/<end>
-```
+| Supported | Example |
+|-----------|---------|
+| Fixed offset | `UTC0`, `EET-2`, `IST-5:30` |
+| US Eastern | `EST5EDT,M3.2.0,M11.1.0` |
+| EU / Bucharest | `EET-2EEST,M3.5.0/3,M10.5.0/4` |
 
-Each transition is `M.w.d.h` (month.week.dow.hour), matching the struct
-fields. **No DST:** `<std_min>` only (shorthand) or `<std_min>/<std_min>`.
+Reject: `J` Julian rules, abbreviation-only strings (`EEST`), strings
+over 80 bytes, transition times with fractional hours (`M3.2.0/0:01`).
 
-Examples:
+Offset fields accept optional `:mm` and `:mm:ss` (`IST-5:30`, `NPT-5:45`).
+POSIX offsets are west-positive; firmware converts to minutes east for the
+RAM struct.
 
-| Rule | Wire string |
-|------|-------------|
-| UTC | `0` |
-| UTC+8, no DST | `480` |
-| US Eastern | `-300/-240/3.2.0.2/11.1.0.2` |
-| EU (CET/CEST) | `60/120/3.5.0.2/10.5.0.3` |
+Transition `M` rules use POSIX `Mm.w.d` with optional `/h` (default **2**
+when omitted). DST name without explicit offset defaults to std + 1 hour
+local (POSIX default).
 
-`cmd/config` accepts `{"tz_rule": "<wire string>"}` and optionally
+`cmd/config` accepts `{"tz_rule": "<POSIX string>"}` and optionally
 `{"tz_label": "Europe/Bucharest"}` for dashboards.
 
 ### Offset evaluation

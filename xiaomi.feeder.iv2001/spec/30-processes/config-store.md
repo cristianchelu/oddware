@@ -27,7 +27,7 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | display | mode | enum | weight | Display mode: weight / eaten_today / off |
 | display | brightness | uint8 | 4 | TM1637 brightness (1–4, maps to `0x88`–`0x8B`) |
 | schedule | slots | blob | [] | Serialized schedule array (up to 32 slots) |
-| time | tz_rule | blob | UTC default | Packed DST rule struct (see `scheduler-engine.md`) |
+| time | tz_rule | string | UTC0 | POSIX TZ string (see `scheduler-engine.md`) |
 | time | tz_label | string | "" | IANA name for display only; not used by scheduler |
 | calib | zero | int32 | — | Raw CS1270 count with bowl removed |
 | calib | span_g | int32 | 350 | Provided bowl mass in grams (`[product]`) |
@@ -52,8 +52,9 @@ Firmware constants in `firmware/inc/config_keys.h`:
 
 | Phase | Behavior |
 |-------|----------|
-| Boot | Read all keys → populate runtime config struct |
+| Boot | Read all keys → populate runtime config struct (`tz_rule_init` parses POSIX `time/tz_rule` into RAM) |
 | Runtime | Write on change (from MQTT `cmd/config`, provisioning, calibration, schedule update) |
+| Runtime (`time/tz_rule`, `time/tz_label`) | UART `time set` and MQTT `cmd/config` both call `time_config_apply` |
 | Write discipline | Minimize write frequency — flash has limited erase cycles. Batch writes where possible. |
 
 Keys that rarely change (wifi, mqtt, calib) are written only on explicit user action.

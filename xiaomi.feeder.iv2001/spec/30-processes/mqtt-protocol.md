@@ -375,7 +375,7 @@ keys ship with future `cmd/config` handlers.
 
 | Field | Type | Semantics |
 |-------|------|-----------|
-| `tz_rule` | string | Wire form from [scheduler-engine.md](scheduler-engine.md); default `"0"` (UTC) |
+| `tz_rule` | string | POSIX TZ from [scheduler-engine.md](scheduler-engine.md); default `"UTC0"` |
 | `tz_label` | string | Display-only IANA name; `""` when unset; max 47 UTF-8 bytes |
 | `time_synced` | bool | `true` after first successful NTP this boot |
 | `utc_epoch` | int | Unix seconds from RTC when synced; `0` when unknown |
@@ -383,7 +383,7 @@ keys ship with future `cmd/config` handlers.
 Example:
 
 ```json
-{"tz_rule":"480","tz_label":"Asia/Singapore","time_synced":true,"utc_epoch":1718841600}
+{"tz_rule":"EET-2EEST,M3.5.0/3,M10.5.0/4","tz_label":"Europe/Bucharest","time_synced":true,"utc_epoch":1718841600}
 ```
 
 Publish on boot (after NVDM load), first NTP success, periodic NTP re-sync,

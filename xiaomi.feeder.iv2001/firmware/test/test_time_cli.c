@@ -9,6 +9,7 @@
 #include "fake_config_port.h"
 #include "fake_time_port.h"
 #include "time_sync.h"
+#include "tz_rule.h"
 
 static char s_log_capture[256];
 static size_t s_log_capture_len;
@@ -68,7 +69,7 @@ void test_time_cli_show_not_synced_includes_tz_rule(void)
     cli_log_end();
 
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "time: not synced"));
-    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_rule=0"));
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_rule=UTC0"));
 }
 
 void test_time_cli_show_synced_includes_local_time(void)
@@ -81,6 +82,21 @@ void test_time_cli_show_synced_includes_local_time(void)
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "time: synced utc=1718841600"));
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "local="));
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "wday="));
+}
+
+void test_time_cli_show_synced_echoes_stored_posix(void)
+{
+    const config_port_t *cfg = fake_config_port_get();
+    static const char posix[] = "EET-2EEST,M3.5.0/3,M10.5.0/4";
+
+    cli_log_begin();
+    setup_synced_clock(1718841600LL);
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_save_posix(cfg, posix));
+    tz_rule_init();
+    TEST_ASSERT_EQUAL_UINT8(0, time_cli_run_show());
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_rule=EET-2EEST,M3.5.0/3,M10.5.0/4"));
 }
 
 void test_time_cli_sync_started(void)
@@ -124,4 +140,58 @@ void test_time_cli_sync_no_network_without_wifi(void)
     cli_log_end();
 
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "time sync: no network"));
+}
+
+void test_time_cli_set_tz_rule_saved(void)
+{
+    cli_log_begin();
+    fake_config_port_reset();
+    tz_rule_test_reset();
+    TEST_ASSERT_EQUAL_UINT8(0,
+                            time_cli_run_set_tz_rule("EET-2EEST,M3.5.0/3,M10.5.0/4"));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_rule saved"));
+}
+
+void test_time_cli_set_tz_rule_invalid_posix(void)
+{
+    cli_log_begin();
+    fake_config_port_reset();
+    tz_rule_test_reset();
+    TEST_ASSERT_EQUAL_UINT8(1, time_cli_run_set_tz_rule("480"));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "invalid tz_rule"));
+}
+
+void test_time_cli_set_tz_rule_usage(void)
+{
+    cli_log_begin();
+    TEST_ASSERT_EQUAL_UINT8(1, time_cli_run_set_tz_rule(NULL));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "usage: time set tz_rule <posix>"));
+}
+
+void test_time_cli_set_tz_label_saved(void)
+{
+    cli_log_begin();
+    fake_config_port_reset();
+    TEST_ASSERT_EQUAL_UINT8(0, time_cli_run_set_tz_label("Europe/Bucharest"));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "tz_label saved"));
+}
+
+void test_time_cli_set_tz_label_invalid(void)
+{
+    cli_log_begin();
+    fake_config_port_reset();
+    TEST_ASSERT_EQUAL_UINT8(1,
+                            time_cli_run_set_tz_label(
+                                "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMN"));
+    cli_log_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "invalid tz_label"));
 }

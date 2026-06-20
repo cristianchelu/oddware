@@ -22,6 +22,7 @@
 #include "display_presentation.h"
 #include "task_def.h"
 #include "time_sync.h"
+#include "tz_rule.h"
 
 #define APP_TASK_STACK_BYTES       4096u
 #define APP_DISPLAY_TIMER_MS       50u
@@ -116,6 +117,7 @@ void app_start(void)
 {
     app_event_port_init();
     time_sync_init();
+    tz_rule_init();
 
     if (s_app_task == NULL) {
         if (xTaskCreate(app_task_fn,

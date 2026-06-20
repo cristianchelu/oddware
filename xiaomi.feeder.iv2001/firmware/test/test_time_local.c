@@ -12,17 +12,17 @@
 
 #define TEST_EPOCH 1718841600LL
 
-static void setup_synced_with_rule(const char *wire, int64_t epoch)
+static void setup_synced_with_posix(const char *posix, int64_t epoch)
 {
-    tz_rule_t rule;
     const config_port_t *cfg = fake_config_port_get();
 
     fake_config_port_reset();
     fake_time_port_reset();
     time_sync_test_reset();
+    tz_rule_test_reset();
 
-    TEST_ASSERT_TRUE(tz_rule_parse_wire(wire, &rule));
-    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_save(cfg, &rule));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_save_posix(cfg, posix));
+    tz_rule_init();
 
     fake_time_port_set_epoch(epoch);
     time_sync_init();
@@ -66,7 +66,7 @@ void test_time_local_now_fixed_offset(void)
 {
     time_local_t local;
 
-    setup_synced_with_rule("480", TEST_EPOCH);
+    setup_synced_with_posix("CST-8", TEST_EPOCH);
     TEST_ASSERT_TRUE(time_local_now(&local));
     TEST_ASSERT_EQUAL_UINT8(8, local.hour);
 }
@@ -75,7 +75,7 @@ void test_time_local_now_us_eastern_winter(void)
 {
     time_local_t local;
 
-    setup_synced_with_rule("-300/-240/3.2.0.2/11.1.0.2", 1705320000LL);
+    setup_synced_with_posix("EST5EDT,M3.2.0,M11.1.0", 1705320000LL);
     TEST_ASSERT_TRUE(time_local_now(&local));
     TEST_ASSERT_EQUAL_UINT16(2024, local.year);
     TEST_ASSERT_EQUAL_UINT8(1, local.month);
@@ -90,6 +90,8 @@ void test_time_local_now_false_when_not_synced(void)
     fake_time_port_reset();
     fake_config_port_reset();
     time_sync_test_reset();
+    tz_rule_test_reset();
+    tz_rule_init();
     time_sync_init();
 
     TEST_ASSERT_FALSE(time_local_now(&local));

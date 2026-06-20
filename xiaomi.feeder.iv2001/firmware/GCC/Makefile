@@ -111,6 +111,7 @@ APP_FILES      += $(APP_PATH_SRC)/tz_rule.c
 APP_FILES      += $(APP_PATH_SRC)/epoch_calendar.c
 APP_FILES      += $(APP_PATH_SRC)/time_local.c
 APP_FILES      += $(APP_PATH_SRC)/time_sync.c
+APP_FILES      += $(APP_PATH_SRC)/time_config.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_config.c
 APP_FILES      += $(APP_PATH_SRC)/app_time_cli.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_backoff.c

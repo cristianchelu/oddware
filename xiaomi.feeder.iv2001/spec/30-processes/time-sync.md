@@ -73,19 +73,23 @@ Scheduling and eaten-today midnight logic resume once NTP succeeds.
 | `wday_mon0` | 0–6 | 0 = Monday … 6 = Sunday (schedule `days` bitmask) |
 
 Computation: `local = UTC + tz_rule_effective_offset_min(utc)` using the
-packed rule in NVDM `time/tz_rule`. Fall-back hour during DST end uses the
-**first** occurrence of a repeated local `(hour, minute)` (standard offset).
-Epoch ↔ civil-date math is shared in `epoch_calendar.c` (RTC adapter,
-`time_local`, and `tz_rule` DST boundaries).
+RAM rule parsed from NVDM `time/tz_rule` at boot (`tz_rule_init`). Fall-back
+hour during DST end uses the **first** occurrence of a repeated local
+`(hour, minute)` (standard offset). Epoch ↔ civil-date math is shared in
+`epoch_calendar.c` (RTC adapter, `time_local`, and `tz_rule` DST boundaries).
 
 ## MQTT and UART
 
 - Retained `.../config` carries `tz_rule`, `tz_label`, `time_synced`,
   `utc_epoch` — see mqtt-protocol.
 - `cmd/config` accepts `tz_rule` and `tz_label` in this slice.
-- UART bench commands: `time show`, `time sync` — see uart-console.md.
+- UART bench commands: `time show`, `time sync`, `time set tz_rule|tz_label` —
+  see uart-console.md.
+- UART `time set` and MQTT `cmd/config` use the same validation, NVDM write,
+  and config-snapshot publish path (`time_config_apply`).
 
 ## Boot init
 
-`time_sync_init()` initializes the RTC port (`hal_rtc_init()`). Called from
+`time_sync_init()` initializes the RTC port (`hal_rtc_init()`). `tz_rule_init()`
+loads and parses POSIX `time/tz_rule` into RAM. Both are called from
 `app_start()` before the event loop runs.

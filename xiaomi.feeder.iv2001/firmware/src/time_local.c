@@ -4,7 +4,6 @@
 
 #include "time_local.h"
 
-#include "config_port.h"
 #include "epoch_calendar.h"
 #include "time_sync.h"
 #include "tz_rule.h"
@@ -34,7 +33,6 @@ bool time_local_from_utc(int64_t utc_epoch, int16_t offset_min, time_local_t *ou
 bool time_local_now(time_local_t *out)
 {
     int64_t utc_epoch;
-    tz_rule_t rule;
     int16_t offset_min;
 
     if (out == NULL || !time_sync_is_valid()) {
@@ -45,10 +43,6 @@ bool time_local_now(time_local_t *out)
         return false;
     }
 
-    if (tz_rule_load(config_port_get(), &rule) != PORT_OK) {
-        tz_rule_default(&rule);
-    }
-
-    offset_min = tz_rule_effective_offset_min(&rule, utc_epoch);
+    offset_min = tz_rule_effective_offset_min(tz_rule_get(), utc_epoch);
     return time_local_from_utc(utc_epoch, offset_min, out);
 }

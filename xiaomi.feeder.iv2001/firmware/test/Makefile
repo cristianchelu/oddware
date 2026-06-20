@@ -35,6 +35,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/epoch_calendar.c \
              ../src/time_local.c \
              ../src/time_sync.c \
+             ../src/time_config.c \
              ../src/mqtt_config.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \

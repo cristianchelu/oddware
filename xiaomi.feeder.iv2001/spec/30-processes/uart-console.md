@@ -44,6 +44,8 @@ mqtt connect
 mqtt disconnect
 time show
 time sync
+time set tz_rule <posix>
+time set tz_label <name>
 display test
 display fill <hex_byte>
 display off
@@ -1010,12 +1012,12 @@ Bench helpers for civil clock — see [time-sync.md](time-sync.md).
 
 ### `time show`
 
-Prints sync state, UTC epoch, wire `tz_rule`, and local civil time when known.
+Prints sync state, UTC epoch, stored POSIX `tz_rule`, and local civil time when known.
 
 | Outcome | UART response |
 |---------|---------------|
 | Time unknown | `time: not synced` plus `tz_rule=...` |
-| Synced | `time: synced utc=<epoch> local=YYYY-MM-DD HH:MM:SS wday=<0-6>` |
+| Synced | `time: synced utc=<epoch> local=YYYY-MM-DD HH:MM:SS wday=<0-6> tz_rule=<posix>` |
 
 ### `time sync`
 
@@ -1029,6 +1031,38 @@ already in progress). Does not block until completion.
 | Sync failed (async) | `[time] time sync failed` |
 | Busy | `time sync busy` |
 | Wi-Fi not ready | `time sync: no network` |
+
+### `time set tz_rule <posix>`
+
+Validates and writes NVDM `time/tz_rule` as a POSIX `TZ` string (see
+[scheduler-engine.md](scheduler-engine.md)). Publishes an updated retained
+`.../config` snapshot when MQTT is configured.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `tz_rule saved` |
+| Missing argument | `usage: time set tz_rule <posix>` |
+| Invalid POSIX | `invalid tz_rule` |
+| NVDM write failure | `nvdm write failed` |
+
+### `time set tz_label <name>`
+
+Validates and writes NVDM `time/tz_label` (IANA name for display; length
+limit in [scheduler-engine.md](scheduler-engine.md)). Publishes an updated
+retained `.../config` snapshot when MQTT is configured.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `tz_label saved` |
+| Missing argument | `usage: time set tz_label <name>` |
+| Invalid label | `invalid tz_label` |
+| NVDM write failure | `nvdm write failed` |
+
+### `time set` (invalid subcommand)
+
+| Outcome | UART response |
+|---------|---------------|
+| Missing or unknown subcommand | `usage: time set tz_rule\|tz_label <value>` |
 
 ## `config` commands
 

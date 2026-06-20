@@ -25,9 +25,10 @@ food automatically at the configured times.
 ## Timezone
 
 - Schedule times are **local civil time** (what the user sees on a clock).
-- The device stores a compact DST rule, not a full timezone database.
+- The device stores a POSIX `TZ` string in config (parsed into a DST rule in
+  RAM), not a full timezone database.
 - The user's dashboard or integration translates their IANA timezone into
-  that rule and keeps it up to date when DST legislation changes.
+  that string and keeps it up to date when DST legislation changes.
 - Defaults to UTC until configured.
 
 ## Persistence

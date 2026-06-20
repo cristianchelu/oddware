@@ -14,6 +14,7 @@
 #include "tz_rule.h"
 
 #define TEST_DEVICE_ID "ddeeff"
+#define BUCHAREST_POSIX "EET-2EEST,M3.5.0/3,M10.5.0/4"
 
 static void drain_config_outbox(void)
 {
@@ -35,6 +36,7 @@ static void setup_mqtt_config(void)
     mqtt_outbox_reset();
     mqtt_config_test_reset();
     time_sync_test_reset();
+    tz_rule_test_reset();
     fake_mqtt_port_get()->connect(NULL);
     mqtt_config_set_device_id(TEST_DEVICE_ID);
 }
@@ -46,7 +48,7 @@ void test_mqtt_config_format_snapshot_defaults(void)
     fake_config_port_reset();
     time_sync_test_reset();
     TEST_ASSERT_TRUE(mqtt_config_format_snapshot(payload, sizeof(payload)));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"tz_rule\":\"0\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"tz_rule\":\"UTC0\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"time_synced\":false"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"utc_epoch\":0"));
 }
@@ -54,19 +56,19 @@ void test_mqtt_config_format_snapshot_defaults(void)
 void test_mqtt_config_handle_sets_tz_rule(void)
 {
     const fake_mqtt_port_state_t *mqtt;
-    tz_rule_t rule;
+    char loaded[TZ_RULE_POSIX_MAX];
     const config_port_t *cfg = fake_config_port_get();
+    static const char json[] = "{\"tz_rule\":\"EET-2EEST,M3.5.0/3,M10.5.0/4\"}";
 
     setup_mqtt_config();
-    TEST_ASSERT_EQUAL(PORT_OK,
-                      mqtt_config_handle("{\"tz_rule\":\"480\"}", strlen("{\"tz_rule\":\"480\"}")));
-    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_load(cfg, &rule));
-    TEST_ASSERT_EQUAL_INT16(480, rule.std_offset_min);
+    TEST_ASSERT_EQUAL(PORT_OK, mqtt_config_handle(json, strlen(json)));
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_load_posix(cfg, loaded, sizeof(loaded)));
+    TEST_ASSERT_EQUAL_STRING(BUCHAREST_POSIX, loaded);
 
     drain_config_outbox();
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
-    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"tz_rule\":\"480\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, BUCHAREST_POSIX));
 }
 
 void test_mqtt_config_handle_rejects_unknown_keys(void)
@@ -107,8 +109,8 @@ void test_mqtt_config_handle_rejects_invalid_tz_rule(void)
 {
     setup_mqtt_config();
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG,
-                      mqtt_config_handle("{\"tz_rule\":\"not-a-rule\"}",
-                                         strlen("{\"tz_rule\":\"not-a-rule\"}")));
+                      mqtt_config_handle("{\"tz_rule\":\"480\"}",
+                                         strlen("{\"tz_rule\":\"480\"}")));
 }
 
 void test_mqtt_config_handle_parses_escaped_tz_label(void)

@@ -131,7 +131,7 @@ portal.
 | `read` | `(group, key, buf, len) -> err` | Read a string value from persistent storage |
 | `write` | `(group, key, value) -> err` | Write a string value to persistent storage |
 | `read_blob` | `(group, key, buf, len, &out_len) -> err` | Read a binary value; `out_len` receives bytes stored |
-| `write_blob` | `(group, key, data, len) -> err` | Write a binary value (e.g. `time/tz_rule`) |
+| `write_blob` | `(group, key, data, len) -> err` | Write a binary value (e.g. `schedule/slots`) |
 | `erase` | `(group, key) -> err` | Delete a key |
 | `erase_group` | `(group) -> err` | Delete all keys in a group (factory reset) |
 
