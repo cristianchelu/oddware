@@ -7,8 +7,15 @@
 #include "app_log.h"
 #include "app_event_port.h"
 #include "dispense.h"
+#include "fake_config_port.h"
 #include "fake_motor_port.h"
+#include "fake_mqtt_port.h"
+#include "fake_time_port.h"
 #include "motor_port_provider_host.h"
+#include "mqtt_schedule.h"
+#include "schedule.h"
+#include "time_sync.h"
+#include "tz_rule.h"
 #include "app_mqtt_dispatch.h"
 
 extern void fake_app_event_q_reset(void);
@@ -87,4 +94,35 @@ void test_app_mqtt_dispatch_logs_dispense_busy(void)
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "[dispense]"));
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "busy"));
     TEST_ASSERT_NULL(strstr(s_log_capture, "started portions="));
+}
+
+void test_app_mqtt_dispatch_handles_schedule_set(void)
+{
+    const char *topic = "petfeeder/ddeeff/cmd/schedule/set";
+    const char *payload =
+        "{\"hour\":8,\"min\":0,\"repeat_days\":[0,1,2,3,4,5,6],\"g\":30,\"enabled\":true}";
+
+    fake_config_port_reset();
+    fake_time_port_reset();
+    time_sync_test_reset();
+    tz_rule_test_reset();
+    schedule_test_reset();
+    mqtt_schedule_test_reset();
+    TEST_ASSERT_EQUAL(PORT_OK, tz_rule_save_posix(fake_config_port_get(), "UTC0"));
+    tz_rule_init();
+    fake_time_port_set_epoch(1718841600LL);
+    time_sync_init();
+    time_sync_on_wifi_ready();
+    fake_time_port_queue_sync_result(true, 1718841600LL);
+    time_sync_poll(1000u);
+    schedule_init();
+
+    mqtt_dispatch_test_reset();
+
+    mqtt_dispatch_log_capture_begin();
+    app_mqtt_dispatch(topic, payload, strlen(payload), "ddeeff");
+    mqtt_dispatch_log_capture_end();
+
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "cmd schedule_set"));
+    TEST_ASSERT_EQUAL_size_t(1, schedule_slot_count());
 }

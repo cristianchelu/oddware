@@ -46,6 +46,14 @@ time show
 time sync
 time set tz_rule <posix>
 time set tz_label <name>
+schedule show
+schedule next
+schedule set <hour> <min> <days> <g> [on|off]
+schedule delete <hour> <min>
+schedule toggle <hour> <min>
+schedule skip <hour> <min> on|off
+schedule enable on|off
+schedule today on|off
 display test
 display fill <hex_byte>
 display off
@@ -1065,6 +1073,113 @@ retained `.../config` and `.../timezone` snapshots when MQTT is configured.
 | Outcome | UART response |
 |---------|---------------|
 | Missing or unknown subcommand | `usage: time set tz_rule\|tz_label <value>` |
+
+## `schedule` commands
+
+Bench helpers for the weekly feeding schedule — see
+[scheduler-engine.md](scheduler-engine.md) and [mqtt-protocol.md](mqtt-protocol.md)
+§ Schedule. Mutations use the same `schedule.c` APIs as MQTT commands;
+retained `.../schedule/state` coalesces when MQTT is connected.
+
+MQTT `cmd/schedule/set` and `schedule/state` use `repeat_days` (weekday
+array). UART `schedule set` keeps `<days>` as a decimal weekday bitmask.
+
+Not a product interface. Remote telnet exposes the same commands.
+
+### `schedule show`
+
+Prints global flags and one line per slot (sorted by time).
+
+Header:
+
+```
+schedule: enabled=<on|off> today=<on|off> slots=<N>
+```
+
+Per slot:
+
+```
+schedule: HH:MM days=<0-127> g=<5-150> enabled=<on|off> state=<native> skip=<on|off> g_actual=<grams|->
+```
+
+`state` is the native wire string (`pending`, `to_be_skipped`, `skipped`,
+`dispensing`, `dispensed`, `failed`). `g_actual` is `-` when unknown.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | Header plus zero or more slot lines |
+
+### `schedule next`
+
+Prints the next upcoming feed when time is synced and a slot qualifies.
+
+| Outcome | UART response |
+|---------|---------------|
+| Upcoming feed | `schedule next: HH:MM <g>g in <N> min` |
+| None / time invalid | `schedule: no upcoming` |
+
+### `schedule set <hour> <min> <days> <g> [on|off]`
+
+Upserts a slot. `<days>` is a decimal weekday bitmask (bit0=Mon … bit6=Sun).
+Optional `on`/`off` sets slot enabled (default `on`).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule set ok` |
+| Missing arguments | `usage: schedule set <hour> <min> <days> <g> [on\|off]` |
+| Invalid field | `schedule: invalid <field>` |
+| NVDM write failure | `schedule: nvdm write failed` |
+
+### `schedule delete <hour> <min>`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule delete ok` |
+| Slot missing | `schedule: slot not found` |
+| Missing arguments | `usage: schedule delete <hour> <min>` |
+| NVDM write failure | `schedule: nvdm write failed` |
+
+### `schedule toggle <hour> <min>`
+
+Flips slot `enabled`.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule toggle ok` |
+| Slot missing | `schedule: slot not found` |
+| Missing arguments | `usage: schedule toggle <hour> <min>` |
+| NVDM write failure | `schedule: nvdm write failed` |
+
+### `schedule skip <hour> <min> on|off`
+
+Sets RAM-only `skip_today` for the slot.
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule skip ok` |
+| Slot missing | `schedule: slot not found` |
+| Missing/invalid args | `usage: schedule skip <hour> <min> on\|off` |
+
+### `schedule enable on|off`
+
+Global master switch (NVDM `schedule/enabled`).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule enable ok` |
+| Unchanged value | `schedule: unchanged` |
+| Missing/invalid args | `usage: schedule enable on\|off` |
+| NVDM write failure | `schedule: nvdm write failed` |
+
+### `schedule today on|off`
+
+RAM today-only override (`today_enabled`).
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `schedule today ok` |
+| Unchanged value | `schedule: unchanged` |
+| Missing/invalid args | `usage: schedule today on\|off` |
 
 ## `config` commands
 

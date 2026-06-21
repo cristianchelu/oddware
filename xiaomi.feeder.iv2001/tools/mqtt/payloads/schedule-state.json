@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "today_enabled": true,
+  "schedule": [
+    {
+      "time": "08:00",
+      "repeat_days": [0, 1, 2, 3, 4, 5, 6],
+      "g": 30,
+      "g_actual": 28,
+      "enabled": true,
+      "today": true,
+      "state": "dispensed"
+    }
+  ]
+}

@@ -22,6 +22,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/wifi_sta.c \
              ../src/app_wifi_cli.c \
              ../src/app_time_cli.c \
+             ../src/app_schedule_cli.c \
              ../src/provision_form.c \
              ../src/provision_scan_list.c \
              ../src/provision_flow.c \
@@ -49,6 +50,8 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_mains.c \
              ../src/mqtt_hopper.c \
              ../src/mqtt_timezone.c \
+             ../src/schedule.c \
+             ../src/mqtt_schedule.c \
              ../src/battery_pct.c \
              ../src/battery_monitor.c \
              ../src/mqtt_dispense_event.c \

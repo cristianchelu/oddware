@@ -1,0 +1,12 @@
+#ifndef SCHEDULE_TEST_EPOCHS_H
+#define SCHEDULE_TEST_EPOCHS_H
+
+/*
+ * UTC civil times for schedule host tests (POSIX TZ UTC0).
+ * date -u -d @1718841600 → 2024-06-20 00:00:00 UTC (Thursday)
+ * date -u -d @1718870400 → 2024-06-20 08:00:00 UTC (Thursday)
+ */
+#define SCHEDULE_TEST_EPOCH_THU_00_00_UTC 1718841600LL
+#define SCHEDULE_TEST_EPOCH_THU_08_00_UTC 1718870400LL
+
+#endif /* SCHEDULE_TEST_EPOCHS_H */

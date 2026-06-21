@@ -542,6 +542,65 @@ int mqtt_ha_format_device_timezone_config(char *buf, size_t len, const char *dev
     return written;
 }
 
+int mqtt_ha_format_feeding_schedule_config(char *buf, size_t len, const char *device_id)
+{
+    char schedule_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(schedule_topic,
+                          sizeof(schedule_topic),
+                          device_id,
+                          "schedule/state")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Feeding schedule\","
+                       "\"unique_id\":\"petfeeder_%s_feeding_schedule\","
+                       "\"state_topic\":\"%s\","
+                       "\"value_template\":\"{{ value_json.enabled }}\","
+                       "\"payload_on\":true,"
+                       "\"payload_off\":false,"
+                       "\"json_attributes_topic\":\"%s\","
+                       "\"json_attributes_template\":\"{{ value_json | tojson }}\","
+                       "\"force_update\":true,"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       schedule_topic,
+                       schedule_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -582,6 +641,11 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "sensor",
         .object_id = "device_timezone",
         .format_config = mqtt_ha_format_device_timezone_config,
+    },
+    {
+        .component = "binary_sensor",
+        .object_id = "feeding_schedule",
+        .format_config = mqtt_ha_format_feeding_schedule_config,
     },
     {
         .component = "event",

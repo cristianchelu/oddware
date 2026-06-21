@@ -26,7 +26,9 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | feed | child_lock | bool | false | All physical button gestures blocked except unlock combo |
 | display | mode | enum | weight | Display mode: weight / eaten_today / off |
 | display | brightness | uint8 | 4 | TM1637 brightness (1–4, maps to `0x88`–`0x8B`) |
-| schedule | slots | blob | [] | Serialized schedule array (up to 32 slots) |
+| schedule | enabled | bool | true | Global schedule master switch |
+| schedule | slots | blob (IF1S v1) | empty | Packed slot config (up to 32 slots) — see [scheduler-engine.md](scheduler-engine.md) § NVDM persistence |
+| schedule | runtime | blob (IF1R v1) | — | **Future** — today runtime snapshot; separate key from config |
 | time | tz_rule | string | UTC0 | POSIX TZ string (see `scheduler-engine.md`); key absent → UTC0 |
 | time | tz_label | string | "" | IANA name for display only; not used by scheduler; key absent → `""` |
 | calib | zero | int32 | — | Raw CS1270 count with bowl removed |
@@ -47,6 +49,15 @@ Firmware constants in `firmware/inc/config_keys.h`:
 | `CONFIG_GROUP_TIME` | `time` |
 | `CONFIG_KEY_TZ_RULE` | `tz_rule` |
 | `CONFIG_KEY_TZ_LABEL` | `tz_label` |
+| `CONFIG_GROUP_SCHEDULE` | `schedule` |
+| `CONFIG_KEY_SCHEDULE_ENABLED` | `enabled` |
+| `CONFIG_KEY_SCHEDULE_SLOTS` | `slots` |
+| `CONFIG_KEY_SCHEDULE_RUNTIME` | `runtime` |
+
+Schedule runtime status (`state`, `skip_today`, `g_actual`, `fired_today`,
+`today_enabled`) is **RAM only** in current firmware. A future `schedule/runtime`
+(IF1R) blob may persist a subset across reboot — see
+[scheduler-engine.md](scheduler-engine.md) § Runtime state (RAM only).
 
 ## Access pattern
 

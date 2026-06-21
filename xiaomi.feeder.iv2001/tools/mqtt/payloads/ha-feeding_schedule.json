@@ -1,0 +1,20 @@
+{
+  "name": "Feeding schedule",
+  "unique_id": "petfeeder_DEVICE_ID_feeding_schedule",
+  "state_topic": "petfeeder/DEVICE_ID/schedule/state",
+  "value_template": "{{ value_json.enabled }}",
+  "payload_on": true,
+  "payload_off": false,
+  "json_attributes_topic": "petfeeder/DEVICE_ID/schedule/state",
+  "json_attributes_template": "{{ value_json | tojson }}",
+  "force_update": true,
+  "availability_topic": "petfeeder/DEVICE_ID/connection",
+  "payload_available": "online",
+  "payload_not_available": "offline",
+  "device": {
+    "identifiers": ["petfeeder_DEVICE_ID"],
+    "name": "Pet Feeder DEVICE_ID",
+    "manufacturer": "Xiaomi",
+    "model": "Smart Pet Food Feeder 2"
+  }
+}

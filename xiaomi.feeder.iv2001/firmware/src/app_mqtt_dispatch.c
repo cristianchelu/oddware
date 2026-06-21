@@ -17,6 +17,8 @@
 #include "mqtt_hopper.h"
 #include "mqtt_mains.h"
 #include "mqtt_timezone.h"
+#include "mqtt_schedule.h"
+#include "schedule.h"
 #include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
@@ -46,6 +48,7 @@ void app_mqtt_on_connected(void)
         mqtt_ha_discovery_schedule(device_id);
     }
     mqtt_timezone_connect_snapshot();
+    mqtt_schedule_connect_snapshot();
     mqtt_config_connect_snapshot();
 }
 
@@ -88,6 +91,19 @@ void app_mqtt_dispatch(const char *topic,
         if (mqtt_config_handle(payload, len) != PORT_OK) {
             app_log_info("mqtt", "config rejected");
         }
+        break;
+    case MQTT_ROUTE_CMD_SCHEDULE_SET:
+    case MQTT_ROUTE_CMD_SCHEDULE_DELETE:
+    case MQTT_ROUTE_CMD_SCHEDULE_TOGGLE:
+    case MQTT_ROUTE_CMD_SCHEDULE_SKIP:
+    case MQTT_ROUTE_CMD_SCHEDULE_ENABLE:
+    case MQTT_ROUTE_CMD_SCHEDULE_TODAY:
+        app_log_info("mqtt",
+                     "cmd %s topic=%s len=%u",
+                     mqtt_route_label(route),
+                     topic,
+                     (unsigned)len);
+        (void)mqtt_schedule_handle(route, payload, len);
         break;
     default:
         app_log_debug("app", "mqtt cmd stub route=%d topic=%s", (int)route, topic);

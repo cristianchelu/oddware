@@ -42,6 +42,8 @@ static const char *dispense_source_str(dispense_source_t source)
         return "uart";
     case DISPENSE_SOURCE_BUTTON:
         return "button";
+    case DISPENSE_SOURCE_SCHEDULE:
+        return "schedule";
     default:
         return "mqtt";
     }
@@ -88,22 +90,45 @@ bool mqtt_dispense_event_publish(const dispense_completion_t *completion)
         return false;
     }
 
-    written = snprintf(payload,
-                       sizeof(payload),
-                       "{\"event_type\":\"%s\","
-                       "\"grams\":%ld,"
-                       "\"grams_estimated\":%s,"
-                       "\"target_g\":%u,"
-                       "\"source\":\"%s\","
-                       "\"mode\":\"%s\","
-                       "\"batch_count\":%u}",
-                       dispense_outcome_str(completion->outcome),
-                       (long)completion->grams,
-                       completion->grams_estimated ? "true" : "false",
-                       (unsigned)completion->target_g,
-                       dispense_source_str(completion->source),
-                       dispense_mode_str(completion->mode),
-                       (unsigned)completion->batch_count);
+    if (completion->has_slot && completion->source == DISPENSE_SOURCE_SCHEDULE) {
+        written = snprintf(payload,
+                           sizeof(payload),
+                           "{\"event_type\":\"%s\","
+                           "\"grams\":%ld,"
+                           "\"grams_estimated\":%s,"
+                           "\"target_g\":%u,"
+                           "\"source\":\"%s\","
+                           "\"mode\":\"%s\","
+                           "\"batch_count\":%u,"
+                           "\"slot_hour\":%u,"
+                           "\"slot_min\":%u}",
+                           dispense_outcome_str(completion->outcome),
+                           (long)completion->grams,
+                           completion->grams_estimated ? "true" : "false",
+                           (unsigned)completion->target_g,
+                           dispense_source_str(completion->source),
+                           dispense_mode_str(completion->mode),
+                           (unsigned)completion->batch_count,
+                           (unsigned)completion->slot_hour,
+                           (unsigned)completion->slot_min);
+    } else {
+        written = snprintf(payload,
+                           sizeof(payload),
+                           "{\"event_type\":\"%s\","
+                           "\"grams\":%ld,"
+                           "\"grams_estimated\":%s,"
+                           "\"target_g\":%u,"
+                           "\"source\":\"%s\","
+                           "\"mode\":\"%s\","
+                           "\"batch_count\":%u}",
+                           dispense_outcome_str(completion->outcome),
+                           (long)completion->grams,
+                           completion->grams_estimated ? "true" : "false",
+                           (unsigned)completion->target_g,
+                           dispense_source_str(completion->source),
+                           dispense_mode_str(completion->mode),
+                           (unsigned)completion->batch_count);
+    }
     if (written <= 0 || (size_t)written >= sizeof(payload)) {
         return false;
     }

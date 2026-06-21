@@ -81,6 +81,25 @@ void test_dispense_submit_rejects_invalid_portions(void)
     TEST_ASSERT_EQUAL(0u, fake_motor_port_burst_calls());
 }
 
+void test_dispense_submit_grams_posts_request_event(void)
+{
+    dispense_test_reset_all();
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK,
+                      dispense_submit_grams(30u, DISPENSE_SOURCE_SCHEDULE));
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_TRUE(app_step());
+    TEST_ASSERT_EQUAL(3u, fake_motor_port_last_pulse_target());
+}
+
+void test_dispense_submit_grams_rejects_invalid_range(void)
+{
+    dispense_test_reset_all();
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_INVALID,
+                      dispense_submit_grams(4u, DISPENSE_SOURCE_SCHEDULE));
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_INVALID,
+                      dispense_submit_grams(151u, DISPENSE_SOURCE_SCHEDULE));
+}
+
 void test_dispense_submit_busy_while_job_active(void)
 {
     dispense_test_reset_all();

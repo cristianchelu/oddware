@@ -135,3 +135,35 @@ void test_mqtt_dispense_event_stuck_outcome(void)
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_type\":\"stuck\""));
     TEST_ASSERT_NULL(strstr(mqtt->last_publish_payload, "\"outcome\""));
 }
+
+void test_mqtt_dispense_event_schedule_includes_slot_fields(void)
+{
+    dispense_completion_t completion;
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_mqtt_port_reset();
+    mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
+    fake_mqtt_port_get()->connect(NULL);
+    mqtt_dispense_event_set_device_id(TEST_DEVICE_ID);
+
+    memset(&completion, 0, sizeof(completion));
+    completion.grams = 28;
+    completion.grams_estimated = false;
+    completion.target_g = 30;
+    completion.outcome = DISPENSE_OUTCOME_SUCCESS;
+    completion.source = DISPENSE_SOURCE_SCHEDULE;
+    completion.mode = DISPENSE_MODE_OPEN_LOOP;
+    completion.batch_count = 1u;
+    completion.has_slot = true;
+    completion.slot_hour = 8;
+    completion.slot_min = 0;
+
+    TEST_ASSERT_TRUE(mqtt_dispense_event_publish(&completion));
+    drain_all_outbox();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"source\":\"schedule\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"slot_hour\":8"));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"slot_min\":0"));
+}

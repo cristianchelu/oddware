@@ -8,11 +8,26 @@ food automatically at the configured times.
 ## Schedule model
 
 - Up to **32 time slots**.
-- Each slot specifies: hour, minute, days-of-week bitmask, gram amount
-  (5–150 g), and an enabled flag.
+- Each slot specifies: hour, minute, weekdays, gram amount (5–150 g), and an
+  enabled flag. MQTT exposes weekdays as a day list (`repeat_days`, Mon=0 …
+  Sun=6); the bench UART uses a numeric weekday bitmask.
 - **Hour + minute** uniquely identify a slot — only one feed per
   time-of-day.
-- Slots can be created, updated, listed, and deleted via MQTT.
+- Slots can be created, updated, listed, and deleted via MQTT or the bench
+  UART `schedule` commands (see [uart-console.md](../30-processes/uart-console.md)).
+- A global master switch enables or disables the entire schedule.
+- A today-only override can disable scheduled feeds for the current day
+  without changing recurring slot config.
+
+## Runtime status
+
+Each slot reports a native status on MQTT (`pending`, `to_be_skipped`,
+`skipped`, `dispensing`, `dispensed`, `failed`). The user can skip an
+individual slot for today only. When a feed completes, actual dispensed
+grams are reported alongside the target amount.
+
+Runtime status lives in RAM only — it resets at local midnight and after
+reboot. Slot configuration persists in non-volatile storage.
 
 ## Time source
 
@@ -33,12 +48,20 @@ food automatically at the configured times.
 
 ## Persistence
 
-- All schedule slots survive power cycles; stored in non-volatile
-  config.
-- A slot that has already fired in its current minute will not re-fire
-  if the device reboots within that same minute.
+- Schedule slot configuration and the global enable flag survive power
+  cycles; stored in non-volatile config.
+- Runtime status (per-slot state, skip-today, actual grams) does **not**
+  persist — see [scheduler-engine.md](../30-processes/scheduler-engine.md).
+- After reboot, past-due slots for today are marked skipped on the first
+  scheduler tick once time is valid.
 
 ## Next-feed reporting
 
 The feeder publishes the next upcoming feed time and gram amount so the
 user can see it in their dashboard or automation.
+
+## Home Assistant
+
+A **Feeding schedule** binary sensor is auto-discovered. Entity state
+reflects the global schedule on/off switch; the full schedule array and
+runtime status appear as entity attributes.

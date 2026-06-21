@@ -147,6 +147,24 @@ void test_mqtt_ha_format_device_timezone_config_json(void)
     TEST_ASSERT_NULL(strstr(buf, "value_template"));
 }
 
+void test_mqtt_ha_format_feeding_schedule_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_feeding_schedule_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Feeding schedule\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/schedule/state\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"value_template\":\"{{ value_json.enabled }}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_off\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"json_attributes_topic\":\"petfeeder/ddeeff/schedule/state\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"json_attributes_template\":\"{{ value_json | tojson }}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"force_update\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"unique_id\":\"petfeeder_ddeeff_feeding_schedule\""));
+}
+
 void test_mqtt_ha_format_dispense_completed_config_json(void)
 {
     char buf[768];
@@ -165,7 +183,7 @@ void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
     mqtt_outbox_reset();
     mqtt_outbox_set_accepting(true);
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
-    TEST_ASSERT_EQUAL_UINT(9, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(10, mqtt_outbox_pending());
 }
 
 void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
@@ -182,7 +200,7 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     drain_all_outbox();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(9, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_UINT(10, mqtt->publish_calls);
     TEST_ASSERT_EQUAL_STRING("homeassistant/event/petfeeder_ddeeff/dispense_completed/config",
                              mqtt->last_publish_topic);
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"]"));

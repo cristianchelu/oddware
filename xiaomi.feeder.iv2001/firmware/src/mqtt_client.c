@@ -29,6 +29,7 @@
 #include "mqtt_dispense_event.h"
 #include "mqtt_hopper.h"
 #include "mqtt_timezone.h"
+#include "mqtt_schedule.h"
 #include "mqtt_mains.h"
 #include "mqtt_state.h"
 #include "mqtt_topics.h"
@@ -412,6 +413,7 @@ static void mqtt_client_do_disconnect(const mqtt_port_t *mqtt)
     mqtt_mains_on_outbox_reset();
     mqtt_hopper_on_outbox_reset();
     mqtt_timezone_on_outbox_reset();
+    mqtt_schedule_test_reset();
     s_connect_pending = false;
     s_connect_busy = false;
     s_reconnect_at = 0;
@@ -449,6 +451,7 @@ uint32_t mqtt_client_step(void)
     if (!s_connect_pending && !s_connect_worker_running && mqtt->is_connected()) {
         mqtt_adapter_yield(50);
         (void)mqtt_outbox_drain_one(mqtt);
+        (void)mqtt_schedule_drain(mqtt);
         mqtt_adapter_yield(250);
         delay_ms = 250;
         goto done;
@@ -471,6 +474,7 @@ uint32_t mqtt_client_step(void)
         s_connect_busy = false;
         mqtt_adapter_yield(50);
         (void)mqtt_outbox_drain_one(mqtt);
+        (void)mqtt_schedule_drain(mqtt);
         mqtt_adapter_yield(250);
         delay_ms = 250;
         goto done;
@@ -561,6 +565,7 @@ void mqtt_client_test_reset(void)
     mqtt_mains_test_reset();
     mqtt_hopper_test_reset();
     mqtt_timezone_test_reset();
+    mqtt_schedule_test_reset();
     battery_monitor_test_reset();
 }
 

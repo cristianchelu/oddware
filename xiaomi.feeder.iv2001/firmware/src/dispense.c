@@ -18,6 +18,7 @@
 #include "mqtt_client.h"
 #include "mqtt_dispense_event.h"
 #include "port_err.h"
+#include "schedule.h"
 #include "task.h"
 #include "weight_port.h"
 
@@ -32,6 +33,8 @@ static dispense_phase_t s_phase;
 static dispense_outcome_t s_outcome;
 static dispense_source_t s_source;
 static uint8_t s_portions;
+static uint16_t s_target_grams;
+static bool s_gram_job;
 static int32_t s_baseline_grams;
 static bool s_baseline_valid;
 static uint32_t s_settle_start_ms;
@@ -159,12 +162,36 @@ static void dispense_finish_job(uint32_t now_ms)
 
     completion.grams = event_grams;
     completion.grams_estimated = !measured;
-    completion.target_g = (uint16_t)s_portions * DISPENSE_GRAMS_PER_PORTION;
+    completion.target_g = s_gram_job ? s_target_grams
+                                     : (uint16_t)s_portions * DISPENSE_GRAMS_PER_PORTION;
     completion.outcome = s_outcome;
     completion.source = s_source;
     completion.mode = DISPENSE_MODE_OPEN_LOOP;
     completion.batch_count = 1u;
     completion.portions = s_portions;
+    completion.has_slot = schedule_active_slot(&completion.slot_hour, &completion.slot_min);
+
+    if (s_source == DISPENSE_SOURCE_SCHEDULE && completion.has_slot) {
+        schedule_dispense_result_t sched_result;
+
+        sched_result.hour = completion.slot_hour;
+        sched_result.min = completion.slot_min;
+        sched_result.grams = completion.grams;
+
+        switch (s_outcome) {
+        case DISPENSE_OUTCOME_SUCCESS:
+            sched_result.outcome = SCHEDULE_DISPENSE_OK;
+            break;
+        case DISPENSE_OUTCOME_UNDERFILL:
+            sched_result.outcome = SCHEDULE_DISPENSE_UNDERFILL;
+            break;
+        default:
+            sched_result.outcome = SCHEDULE_DISPENSE_FAILED;
+            break;
+        }
+
+        schedule_on_dispense_complete(&sched_result);
+    }
 
     {
         const char *device_id = mqtt_client_device_id();
@@ -179,6 +206,7 @@ static void dispense_finish_job(uint32_t now_ms)
 
     s_phase = DISPENSE_PHASE_NONE;
     s_job_pending = false;
+    s_gram_job = false;
     display_dispense_indicator_idle();
 
     if (s_outcome == DISPENSE_OUTCOME_SUCCESS) {
@@ -247,6 +275,45 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions,
     return DISPENSE_SUBMIT_OK;
 }
 
+dispense_submit_result_t dispense_submit_grams(uint8_t grams,
+                                               dispense_source_t source)
+{
+    app_event_t ev;
+
+    if (grams < SCHEDULE_G_MIN || grams > SCHEDULE_G_MAX) {
+        app_log_info("dispense", "rejected result=%d", (int)DISPENSE_SUBMIT_INVALID);
+        return DISPENSE_SUBMIT_INVALID;
+    }
+
+    if (dispense_is_active()) {
+        app_log_info("dispense", "busy");
+        return DISPENSE_SUBMIT_BUSY;
+    }
+
+    {
+        const motor_port_t *motor = motor_port_get();
+
+        if (motor != NULL && motor->is_active != NULL && motor->is_active()) {
+            app_log_info("dispense", "busy");
+            return DISPENSE_SUBMIT_BUSY;
+        }
+    }
+
+    ev.type = EVT_DISPENSE_REQUEST;
+    ev.u.dispense_request.kind = DISPENSE_KIND_GRAMS;
+    ev.u.dispense_request.target = grams;
+    ev.u.dispense_request.source = source;
+
+    if (!app_event_post(&ev)) {
+        app_log_info("dispense", "busy");
+        return DISPENSE_SUBMIT_BUSY;
+    }
+
+    s_job_pending = true;
+    app_log_info("dispense", "started grams=%u", (unsigned)grams);
+    return DISPENSE_SUBMIT_OK;
+}
+
 bool dispense_is_active(void)
 {
     return s_job_pending || s_phase != DISPENSE_PHASE_NONE;
@@ -262,6 +329,52 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
+        return;
+    }
+
+    if (req->kind == DISPENSE_KIND_GRAMS) {
+        uint8_t grams = (uint8_t)req->target;
+        uint8_t portions;
+
+        if (grams < SCHEDULE_G_MIN || grams > SCHEDULE_G_MAX) {
+            app_log_info("dispense", "busy");
+            dispense_cli_cancel_wait();
+            s_job_pending = false;
+            return;
+        }
+
+        portions = (uint8_t)((grams + DISPENSE_GRAMS_PER_PORTION - 1u) /
+                             DISPENSE_GRAMS_PER_PORTION);
+        if (portions < DISPENSE_PORTIONS_MIN) {
+            portions = DISPENSE_PORTIONS_MIN;
+        }
+        if (portions > DISPENSE_PORTIONS_MAX) {
+            portions = DISPENSE_PORTIONS_MAX;
+        }
+
+        s_target_grams = grams;
+        s_gram_job = true;
+        s_portions = portions;
+        s_source = req->source;
+        s_phase = DISPENSE_PHASE_MOTOR;
+
+        now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
+        (void)dispense_capture_baseline(now_ms);
+
+        if (display_dispense_indicator_active() != PORT_OK) {
+            app_log_info("dispense", "indicator unavailable");
+        }
+
+        err = dispense_kick_motor(portions);
+        if (err != PORT_OK) {
+            s_phase = DISPENSE_PHASE_NONE;
+            s_gram_job = false;
+            display_dispense_indicator_idle();
+            app_log_info("dispense", "busy");
+            dispense_cli_cancel_wait();
+            return;
+        }
+
         return;
     }
 
@@ -281,6 +394,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     }
 
     s_job_pending = false;
+    s_gram_job = false;
     s_portions = portions;
     s_source = req->source;
     s_phase = DISPENSE_PHASE_MOTOR;
@@ -351,6 +465,8 @@ void dispense_test_reset(void)
     s_outcome = DISPENSE_OUTCOME_SUCCESS;
     s_source = DISPENSE_SOURCE_MQTT;
     s_portions = 0u;
+    s_gram_job = false;
+    s_target_grams = 0u;
     s_baseline_grams = 0;
     s_baseline_valid = false;
     s_settle_start_ms = 0u;

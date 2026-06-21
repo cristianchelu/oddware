@@ -35,6 +35,14 @@ void test_route_remaining_command_topics(void)
                       mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/set", "a4cf12"));
     TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_SCHEDULE_DELETE,
                       mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/delete", "a4cf12"));
+    TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_SCHEDULE_TOGGLE,
+                      mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/toggle", "a4cf12"));
+    TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_SCHEDULE_SKIP,
+                      mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/skip", "a4cf12"));
+    TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_SCHEDULE_ENABLE,
+                      mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/enable", "a4cf12"));
+    TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_SCHEDULE_TODAY,
+                      mqtt_route_classify("petfeeder/a4cf12/cmd/schedule/today", "a4cf12"));
     TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_CALIBRATE,
                       mqtt_route_classify("petfeeder/a4cf12/cmd/calibrate", "a4cf12"));
     TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_DISPLAY,

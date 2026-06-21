@@ -10,7 +10,8 @@ cloud dependency and no phone-home telemetry.
 - **Home Assistant auto-discovery** — entities appear automatically. Shipped
   today: **Dispense** button, **Bowl error** binary sensor, **Bowl weight**
   sensor, **Battery** sensor, **Mains connected** binary sensor, and
-  **Dispense completed** event; the full entity table is in
+  **Dispense completed** event, and **Feeding schedule** binary sensor; the
+  full entity table is in
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
@@ -41,7 +42,7 @@ The feeder publishes the following retained state topics:
 - **Mains** — barrel connected (`ON` / `OFF` on `.../mains`).
 - **Battery** — pack percentage 0–100 on `.../battery`.
 - **Dispense completed** — fire-and-forget event with grams and outcome per job.
-- **Schedule list** — all configured slots.
+- **Schedule state** — full schedule document with runtime status on `.../schedule/state`.
 - **Next scheduled feed** — time and gram amount.
 - **Config** — current device settings.
 - **Display** — current mode and brightness.
@@ -51,7 +52,7 @@ The feeder publishes the following retained state topics:
 The feeder subscribes to commands for:
 
 - **Dispense** — trigger with a gram amount, or cancel.
-- **Schedule CRUD** — create, update, delete schedule slots.
+- **Schedule** — create, update, delete slots; toggle global/today enable; skip for today.
 - **Calibrate** — zero or span the weight sensor.
 - **Display** — set mode and brightness.
 - **Config** — update user-facing settings.

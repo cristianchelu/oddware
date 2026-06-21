@@ -19,7 +19,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../battery` | `75` — plain integer 0–100; `unknown` when absent; see [Battery](#battery) | 1 |
 | `.../battery_voltage` | `5200` — plain integer pack mV; see [Battery pack voltage](#battery-pack-voltage) | 1 |
 | `.../mains` | `ON` or `OFF` — barrel connected; see [Mains](#mains) | 1 |
-| `.../schedule/list` | `[{"hour":8,"min":0,"days":127,"g":30,"enabled":true}, ...]` | 1 |
+| `.../schedule/state` | Schedule document JSON — see [Schedule](#schedule) | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | Config snapshot JSON — see [Config snapshot](#config-snapshot) | 1 |
 | `.../timezone` | Device timezone plain text — see [Device timezone](#device-timezone) | 1 |
@@ -43,8 +43,12 @@ unchanged.
 |-------|---------|-----|
 | `.../cmd/dispense` | `{"g": 30}` | 1 |
 | `.../cmd/dispense/cancel` | `{}` | 1 |
-| `.../cmd/schedule/set` | `{"hour":8,"min":0,"days":127,"g":30,"enabled":true}` | 1 |
+| `.../cmd/schedule/set` | `{"hour":8,"min":0,"repeat_days":[0,1,2,3,4,5,6],"g":30,"enabled":true}` | 1 |
 | `.../cmd/schedule/delete` | `{"hour":8,"min":0}` | 1 |
+| `.../cmd/schedule/toggle` | `{"hour":8,"min":0}` | 1 |
+| `.../cmd/schedule/skip` | `{"hour":8,"min":0,"skip":true}` | 1 |
+| `.../cmd/schedule/enable` | `{"enabled":true}` | 1 |
+| `.../cmd/schedule/today` | `{"enabled":true}` | 1 |
 | `.../cmd/calibrate` | `{"action": "zero"}` or `{"action": "span"}` | 1 |
 | `.../cmd/display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../cmd/config` | `{"key": "value", ...}` | 1 |
@@ -229,6 +233,28 @@ No `value_template` on the sensor — payload is the level string directly.
 No `device_class` — payload is a free-form string (`tz_label` when set, else
 POSIX `tz_rule`; always non-empty due to UTC0 fallback).
 
+**Feeding schedule** binary sensor (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/binary_sensor/petfeeder_<device_id>/feeding_schedule/config` |
+| `name` | `Feeding schedule` |
+| `state_topic` | `petfeeder/<device_id>/schedule/state` |
+| `value_template` | `{{ value_json.enabled }}` |
+| `payload_on` / `payload_off` | `true` / `false` |
+| `json_attributes_topic` | same as `state_topic` |
+| `json_attributes_template` | `{{ value_json \| tojson }}` |
+| `force_update` | `true` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+| `unique_id` | `petfeeder_<device_id>_feeding_schedule` |
+
+Entity `on`/`off` = global schedule enabled. Attributes expose the full JSON
+document including `schedule[]` and `today_enabled`.
+
+Bench payloads: `tools/mqtt/payloads/ha-feeding_schedule.json`.
+
 `cmd/dispense` accepts any payload; the handler ignores JSON and submits
 `[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
 dispense lands). UART logs use tag `dispense` — see
@@ -327,10 +353,15 @@ HA validation-slice **Hopper level** and **Device timezone** sensors.
 `.../config` time/TZ slice (`tz_rule`, `tz_label`, `time_synced`, `utc_epoch`);
 `cmd/config` for `tz_rule` and `tz_label`.
 
+**Implemented (validation slice):** schedule MQTT topics (`.../schedule/state`,
+`.../schedule/next`, `.../cmd/schedule/*`), dedicated coalesced publish path,
+and HA **Feeding schedule** binary sensor. Idempotent `cmd/schedule/enable` and
+`cmd/schedule/today` succeed without republishing when the value is unchanged.
+
 **Not implemented yet:** remaining telemetry topics (`eaten_today`,
-schedule, display), additional HA entities from the full table,
-300 s discovery refresh, non-dispense command handlers, per-topic last-value-wins
-coalescing on the outbox.
+display), additional HA entities from the full table,
+300 s discovery refresh, other non-dispense command handlers,
+per-topic last-value-wins coalescing on the outbox.
 
 ### Publish path
 
@@ -352,8 +383,20 @@ Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
 When the ring is full, new enqueues are dropped and a debug log is emitted.
 While MQTT is suspended for OTA (`mqtt_client_suspend_for_ota`), the outbox
 stops accepting enqueues — callers get a silent drop with pending count 0.
-`mqtt_outbox` is cleared on disconnect. OTA status, HA discovery, and future
+`mqtt_outbox` is cleared on disconnect. OTA status, HA discovery, and most
 state publishers share this path.
+
+### Schedule state publish path
+
+`.../schedule/state` payloads can reach `[tune]` 4096 B (32 slots). This
+exceeds the outbox slot limit and uses a dedicated coalesced buffer:
+
+| Parameter | Value |
+|-----------|-------|
+| Buffer size | `[tune]` 4096 B (single static allocation) |
+| Coalescing | Last-value-wins; rapid mutations overwrite pending JSON |
+| Drainer | `mqtt_io` calls `mqtt_schedule_drain()` each step when dirty |
+| Producer | `app` task only — format JSON into buffer and set dirty flag |
 
 ### Inbound commands
 
@@ -606,10 +649,12 @@ event type (e.g. **Dispense completed** → `stuck`). Automations trigger on
 | `grams` | int | Always — clamped ≥ 0 in payload |
 | `grams_estimated` | bool | Always |
 | `target_g` | int | Always — portion mode: `portions × 10`; gram mode: request target |
-| `source` | string | Always — `mqtt`, `uart`, `button`, `schedule` (when implemented) |
+| `source` | string | Always — `mqtt`, `uart`, `button`, `schedule` |
 | `mode` | string | Always — `open_loop` or `compensated` |
 | `batch_count` | int | Always — motor batches in job (1 in open-loop portion v1) |
 | `deficit_g` | int | Compensated mode only — `max(0, target_g − grams)` |
+| `slot_hour` | uint8 | When `source=schedule` — triggering slot hour |
+| `slot_min` | uint8 | When `source=schedule` — triggering slot minute |
 
 When `grams_estimated` is `true`, `grams` is a motor-based fallback
 (`portions × 10`) because the scale read failed or `bowl_error` was active.
@@ -659,6 +704,81 @@ Example (stuck):
 
 Negative raw bowl deltas are clamped to **0** in `grams`; the signed raw delta
 feeds internal hopper-empty detection (see [dispense-cycle.md](dispense-cycle.md)).
+
+Example (scheduled feed):
+
+```json
+{
+  "event_type": "success",
+  "grams": 28,
+  "grams_estimated": false,
+  "target_g": 30,
+  "source": "schedule",
+  "mode": "open_loop",
+  "batch_count": 3,
+  "slot_hour": 8,
+  "slot_min": 0
+}
+```
+
+## Schedule
+
+Topic `.../schedule/state` (retained, QoS 1). Published on CRUD, enable/today/
+skip/toggle commands, dispense lifecycle, midnight reset, minute rollover status
+changes, and MQTT connect snapshot. Uses the [coalesced publish path](#schedule-state-publish-path).
+
+### `schedule/state` payload
+
+```json
+{
+  "enabled": true,
+  "today_enabled": true,
+  "schedule": [
+    {
+      "time": "08:00",
+      "repeat_days": [0, 1, 2, 3, 4, 5, 6],
+      "g": 30,
+      "g_actual": 28,
+      "enabled": true,
+      "today": true,
+      "state": "dispensed"
+    }
+  ]
+}
+```
+
+| Field | Rule |
+|-------|------|
+| `enabled` | Mirrors NVDM `schedule/enabled` |
+| `today_enabled` | RAM today override |
+| `schedule[]` | Sorted by `time` ascending |
+| `time` | `HH:MM` zero-padded, local civil; slot key with `hour`/`min` on commands |
+| `repeat_days` | Weekday list (Mon=0 … Sun=6); `[]` = never repeat |
+| `g` | Target grams |
+| `g_actual` | Omitted when unknown |
+| `today` | `true` when weekday matches and entry is visible in today view |
+| `state` | Native status string (RAM-derived) |
+
+Runtime status fields are RAM-only — see [scheduler-engine.md](scheduler-engine.md).
+
+### Schedule commands
+
+Rejected commands log at info and do not mutate state (same policy as
+`cmd/config`). Successful mutations coalesce a `schedule/state` publish.
+NVDM is written only when persisted fields change. `cmd/schedule/enable` and
+`cmd/schedule/today` succeed without republishing when the requested value
+already matches RAM/NVDM state.
+
+| Topic | Payload |
+|-------|---------|
+| `cmd/schedule/set` | `{"hour":8,"min":0,"repeat_days":[0,1,2,3,4,5,6],"g":30,"enabled":true}` |
+| `cmd/schedule/delete` | `{"hour":8,"min":0}` |
+| `cmd/schedule/toggle` | `{"hour":8,"min":0}` |
+| `cmd/schedule/skip` | `{"hour":8,"min":0,"skip":true}` |
+| `cmd/schedule/enable` | `{"enabled":true}` |
+| `cmd/schedule/today` | `{"enabled":true}` |
+
+Topic `.../schedule/next` (retained): `{"hour":H,"min":M,"g":G,"in_min":N}`.
 
 ## OTA status
 

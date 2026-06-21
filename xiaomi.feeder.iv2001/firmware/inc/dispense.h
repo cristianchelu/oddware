@@ -30,6 +30,7 @@ typedef enum {
     DISPENSE_SOURCE_MQTT = 0,
     DISPENSE_SOURCE_UART,
     DISPENSE_SOURCE_BUTTON,
+    DISPENSE_SOURCE_SCHEDULE,
 } dispense_source_t;
 
 typedef enum {
@@ -60,10 +61,15 @@ typedef struct {
     dispense_mode_t mode;
     uint8_t batch_count;
     uint8_t portions;
+    bool has_slot;
+    uint8_t slot_hour;
+    uint8_t slot_min;
 } dispense_completion_t;
 
 dispense_submit_result_t dispense_submit_portions(uint8_t portions,
                                                   dispense_source_t source);
+dispense_submit_result_t dispense_submit_grams(uint8_t grams,
+                                               dispense_source_t source);
 bool dispense_is_active(void);
 void dispense_start_from_request(const app_dispense_request_t *req);
 bool dispense_on_burst_done(void);

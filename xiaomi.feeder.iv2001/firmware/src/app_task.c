@@ -20,9 +20,12 @@
 #include "power_source_input.h"
 #include "power_source_port.h"
 #include "display_presentation.h"
+#include "dispense.h"
 #include "task_def.h"
 #include "time_sync.h"
 #include "tz_rule.h"
+#include "schedule.h"
+#include "mqtt_schedule.h"
 
 #define APP_TASK_STACK_BYTES       4096u
 #define APP_DISPLAY_TIMER_MS       50u
@@ -57,6 +60,24 @@ static void app_housekeeping_timer_cb(TimerHandle_t timer)
 {
     (void)timer;
     app_post_simple(EVT_TIMER_TICK);
+}
+
+static schedule_fire_result_t app_schedule_fire(uint8_t hour, uint8_t min, uint8_t g)
+{
+    dispense_submit_result_t result;
+
+    (void)hour;
+    (void)min;
+
+    result = dispense_submit_grams(g, DISPENSE_SOURCE_SCHEDULE);
+    switch (result) {
+    case DISPENSE_SUBMIT_OK:
+        return SCHEDULE_FIRE_OK;
+    case DISPENSE_SUBMIT_BUSY:
+        return SCHEDULE_FIRE_BUSY;
+    default:
+        return SCHEDULE_FIRE_REJECTED;
+    }
 }
 
 static void app_timers_start(void)
@@ -118,6 +139,9 @@ void app_start(void)
     app_event_port_init();
     time_sync_init();
     tz_rule_init();
+    schedule_init();
+    schedule_set_changed_fn(mqtt_schedule_request_publish);
+    schedule_set_fire_fn(app_schedule_fire);
 
     if (s_app_task == NULL) {
         if (xTaskCreate(app_task_fn,

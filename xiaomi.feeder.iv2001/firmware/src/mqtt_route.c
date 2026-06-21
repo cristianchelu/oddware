@@ -51,6 +51,18 @@ mqtt_route_kind_t mqtt_route_classify(const char *topic, const char *device_id)
     if (topic_matches_cmd(topic, device_id, "schedule/delete")) {
         return MQTT_ROUTE_CMD_SCHEDULE_DELETE;
     }
+    if (topic_matches_cmd(topic, device_id, "schedule/toggle")) {
+        return MQTT_ROUTE_CMD_SCHEDULE_TOGGLE;
+    }
+    if (topic_matches_cmd(topic, device_id, "schedule/skip")) {
+        return MQTT_ROUTE_CMD_SCHEDULE_SKIP;
+    }
+    if (topic_matches_cmd(topic, device_id, "schedule/enable")) {
+        return MQTT_ROUTE_CMD_SCHEDULE_ENABLE;
+    }
+    if (topic_matches_cmd(topic, device_id, "schedule/today")) {
+        return MQTT_ROUTE_CMD_SCHEDULE_TODAY;
+    }
     if (topic_matches_cmd(topic, device_id, "calibrate")) {
         return MQTT_ROUTE_CMD_CALIBRATE;
     }
@@ -81,6 +93,14 @@ const char *mqtt_route_label(mqtt_route_kind_t route)
         return "schedule_set";
     case MQTT_ROUTE_CMD_SCHEDULE_DELETE:
         return "schedule_delete";
+    case MQTT_ROUTE_CMD_SCHEDULE_TOGGLE:
+        return "schedule_toggle";
+    case MQTT_ROUTE_CMD_SCHEDULE_SKIP:
+        return "schedule_skip";
+    case MQTT_ROUTE_CMD_SCHEDULE_ENABLE:
+        return "schedule_enable";
+    case MQTT_ROUTE_CMD_SCHEDULE_TODAY:
+        return "schedule_today";
     case MQTT_ROUTE_CMD_CALIBRATE:
         return "calibrate";
     case MQTT_ROUTE_CMD_DISPLAY:

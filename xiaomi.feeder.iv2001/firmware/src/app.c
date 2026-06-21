@@ -37,6 +37,7 @@
 #include "ota_slot_health.h"
 #include "port_err.h"
 #include "time_sync.h"
+#include "schedule.h"
 #include "dispense.h"
 #include "dispense_cli.h"
 #include "feed_config.h"
@@ -578,6 +579,7 @@ void app_dispatch(const app_event_t *ev)
                 (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
 
             dispense_poll(now_ms);
+            schedule_poll(now_ms);
             (void)ota_slot_health_poll_ms();
             time_sync_poll(now_ms);
             app_weight_boot_advance();

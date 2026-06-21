@@ -153,6 +153,16 @@ When a job finishes with motor success (`EVT_BURST_DONE`, not `stuck`):
 Compensated mode uses the same `hopper_level` hook on `underfill` give-up
 (see [weight-compensation.md](weight-compensation.md)).
 
+## Dispense submit API
+
+| Function | Kind | Target | Source |
+|----------|------|--------|--------|
+| `dispense_submit_portions(n, source)` | `DISPENSE_KIND_PORTIONS` | `n` portions (1–15) | caller |
+| `dispense_submit_grams(g, source)` | `DISPENSE_KIND_GRAMS` | `g` grams (5–150) | caller |
+
+`DISPENSE_SOURCE_SCHEDULE` is used when the scheduler fires a slot.
+The scheduler records the active slot `(hour, min)` until the job completes.
+
 ## Dispense queue
 
 - Only one dispense job executes at a time.

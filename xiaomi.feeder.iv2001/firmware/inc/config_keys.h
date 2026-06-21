@@ -35,4 +35,9 @@
 #define CONFIG_KEY_TZ_RULE         "tz_rule"
 #define CONFIG_KEY_TZ_LABEL        "tz_label"
 
+#define CONFIG_GROUP_SCHEDULE      "schedule"
+#define CONFIG_KEY_SCHEDULE_ENABLED "enabled"
+#define CONFIG_KEY_SCHEDULE_SLOTS  "slots"
+#define CONFIG_KEY_SCHEDULE_RUNTIME "runtime"  /* IF1R v1 — future persistence */
+
 #endif /* CONFIG_KEYS_H */

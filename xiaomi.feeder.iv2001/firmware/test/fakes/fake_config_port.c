@@ -5,7 +5,7 @@
 #include "fake_config_port.h"
 
 #define FAKE_MAX_ENTRIES 16
-#define FAKE_VALUE_LEN   128
+#define FAKE_VALUE_LEN   2048
 
 typedef struct {
     char group[32];

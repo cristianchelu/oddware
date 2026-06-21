@@ -12,39 +12,114 @@ Up to `[tune]` 32 time slots. Each slot:
 | `enabled` | bool | — | Slot active or suspended |
 | `hour` | uint8 | 0–23 | Trigger hour (local time) |
 | `minute` | uint8 | 0–59 | Trigger minute |
-| `days` | uint8 | bitmask | bit 0 = Mon … bit 6 = Sun; 0x7F = every day |
+| `days` | uint8 | bitmask | bit 0 = Mon … bit 6 = Sun; 0x7F = every day; `0` = never repeat |
 | `grams` | uint8 | 5–150 | Portion size |
 
 `hour` + `minute` form the slot key — at most one entry per time-of-day.
 `cmd/schedule/set` upserts by key; `cmd/schedule/delete` addresses a slot
 by `hour` and `min` only.
 
-Serialized as blob in NVDM key `schedule/slots`.
+MQTT and `schedule/state` use `repeat_days` (array Mon=0 … Sun=6). The
+firmware stores weekdays internally as a `uint8_t` bitmask (`days` field in
+RAM and NVDM). UART `schedule set` accepts the bitmask decimal form.
+
+## NVDM persistence
+
+| Key | Type | Default | Contents |
+|-----|------|---------|----------|
+| `schedule/enabled` | bool string | `true` | Global master switch (`"0"` / `"1"`) |
+| `schedule/slots` | blob (IF1S v1) | empty | Packed slot config — see below |
+| `schedule/runtime` | blob (IF1R v1) | — | **Future** — today runtime snapshot; not loaded yet |
+
+Config and runtime use **separate keys** so dispense-driven runtime writes
+(future) do not rewrite the slot config blob. `[design]`
+
+### `schedule/slots` (IF1S v1)
+
+Fixed-size binary blob (magic `IF1S`, version 1). Header plus up to 32 slots,
+each: `hour`, `min`, `days` (bitmask), `g`, `flags` (bit0 = enabled).
+Worst case ~168 B. Missing key or zero-length blob → empty schedule in RAM.
+Corrupt blob (wrong size, magic, version, slot fields, or duplicate
+`(hour, min)` keys) → empty schedule in RAM and immediate rewrite of a
+valid empty IF1S blob to NVDM. `[design]`
+
+NVDM writes on user-facing config changes (CRUD). Typical rate: ~0–2 writes
+per week. Global enable uses `schedule/enabled` only — does not rewrite
+`schedule/slots`.
+
+### `schedule/runtime` (IF1R v1, future)
+
+Reserved layout for optional reboot continuity of today-only state
+(`state`, `g_actual`, `fired_today`, `today_enabled`). `skip_today` still
+clears at local midnight even when persisted. Config CRUD erases or
+invalidates the runtime blob. Not implemented in firmware yet — runtime
+remains RAM-only until a future change.
+
+## Runtime state (RAM only)
+
+Runtime fields are included in retained MQTT `schedule/state` and cleared at
+local midnight. They are **not** written to NVDM in the current firmware.
+
+| Field | Scope | Cleared |
+|-------|-------|---------|
+| `state` | per slot | local midnight |
+| `skip_today` | per slot | local midnight |
+| `g_actual` | per slot | local midnight |
+| `fired_today` | per slot | local midnight |
+| `today_enabled` | global | local midnight |
+
+After reboot or power loss all runtime fields start at defaults
+(`state=pending`, `skip_today=false`, `g_actual` unknown, `fired_today=false`,
+`today_enabled=true`). Retained `schedule/state` republishes on MQTT connect
+with rebuilt runtime view. Past-due slots for today are marked `skipped` on
+the first `schedule_poll` after `time_sync_is_valid()`.
+
+## Status state machine
+
+Device publishes native `state` per entry in MQTT. `disabled` is **not**
+published — consumers derive it when `enabled=false` and the row is still
+future-today.
+
+| Native `state` | Set when |
+|----------------|----------|
+| `pending` | Applies today, not skipped, not yet dispensed this cycle |
+| `to_be_skipped` | `skip_today=true` and dispense time is still in the future |
+| `skipped` | `skip_today=true` and time passed; OR due minute missed; OR `today_enabled=false` for a future today entry |
+| `dispensing` | Gram job submitted for this slot and dispense supervisor active |
+| `dispensed` | Terminal dispense event with `event_type=success` or `underfill` |
+| `failed` | Terminal event with `event_type` in `stuck`, `empty_hopper`, `aborted` |
+
+**Global `schedule/enabled=false`:** entries keep native state; UI layers
+mark future rows disabled.
+
+**`g_actual`:** set from dispense completion `grams` when `source=schedule`
+and slot key matches active slot; published until midnight reset.
 
 ## RTC tick and slot matching
 
-- A periodic tick at `[tune]` 1-minute resolution checks all enabled slots.
-- For each slot where `hour == current_hour && minute == current_minute`
-  and `days` bitmask includes current weekday:
-  - Check "fired today" flag for this slot.
-  - If not fired: submit dispense request with `slot.grams`, set fired flag.
-  - If already fired: skip (prevents re-trigger on same minute).
+- `schedule_poll()` runs on `EVT_TIMER_TICK` when the local civil minute
+  changes (`[tune]` 1-minute resolution).
+- Slots run only when `time_sync_is_valid()` is true.
+- For each slot where `enabled && global_enabled && days` includes current
+  weekday, `!skip_today`, and `today_enabled`:
+  - If `fired_today`, skip.
+  - If `hour == current_hour && minute == current_minute`: invoke the
+    registered **fire callback** (app task submits `dispense_submit_grams`
+    with `DISPENSE_SOURCE_SCHEDULE`).
+  - On `SCHEDULE_FIRE_OK`: set `fired_today`, `state=dispensing`, record
+    active slot key.
+  - On `SCHEDULE_FIRE_BUSY` or `SCHEDULE_FIRE_REJECTED`: leave `fired_today`
+    clear; mark `skipped` on minute advance if never fired.
+- If a due slot never fires during its minute (busy queue, time invalid),
+  the first poll of the next minute sets `state=skipped`.
 
 ## "Fired today" tracking
 
 - Each slot is keyed by `(hour, minute)`; an in-memory "fired today" flag
   per key (not persisted to flash).
 - Flags reset at **midnight** (local time, per configured timezone rule).
-- On reboot mid-day, all flags start cleared — slots that should have
-  already fired will re-trigger if their minute hasn't passed. Acceptable
-  trade-off vs. persisting fired state. `[design]`
-
-## NVDM persistence
-
-- Full schedule array written to NVDM on any add/update/delete.
-- Read from NVDM at boot to populate runtime schedule table.
-- Minimize writes: batch schedule changes from MQTT if multiple arrive
-  within a short window. `[design]`
+- On reboot mid-day, all flags start cleared — first `schedule_poll`
+  reconciles past-due rows to `skipped`.
 
 ## Time source
 
@@ -149,9 +224,19 @@ once** — the first time that `(hour, minute)` is reached. `[design]`
 
 ## MQTT interface
 
+Operator mutations are accepted on MQTT command topics and on the bench UART
+`schedule` command tree ([uart-console.md](uart-console.md) § `schedule` commands).
+
+See [mqtt-protocol.md](mqtt-protocol.md) § Schedule for full topic table,
+`schedule/state` schema, and command payloads.
+
 | Topic | Direction | Payload |
 |-------|-----------|---------|
-| `.../schedule/list` | state (retained) | Full slot array |
+| `.../schedule/state` | state (retained) | Full schedule document with runtime status |
+| `.../schedule/next` | state (retained) | `{"hour":H,"min":M,"g":G,"in_min":N}` |
 | `.../cmd/schedule/set` | command | Single slot object |
 | `.../cmd/schedule/delete` | command | `{"hour":H,"min":M}` |
-| `.../schedule/next` | state (retained) | `{"hour":H,"min":M,"g":G,"in_min":N}` |
+| `.../cmd/schedule/toggle` | command | `{"hour":H,"min":M}` |
+| `.../cmd/schedule/skip` | command | `{"hour":H,"min":M,"skip":true}` |
+| `.../cmd/schedule/enable` | command | `{"enabled":true}` |
+| `.../cmd/schedule/today` | command | `{"enabled":true}` |

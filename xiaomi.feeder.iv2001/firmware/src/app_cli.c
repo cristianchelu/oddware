@@ -31,6 +31,7 @@
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
 #include "app_time_cli.h"
+#include "app_schedule_cli.h"
 #include "provision.h"
 
 #if REMOTE_CLI_ENABLE
@@ -131,6 +132,7 @@ static cmd_t app_cli_cmds[] = {
     { "wifi",   "wifi show|set|connect",      NULL, wifi_cli_subcmds },
     { "mqtt",   "mqtt show|set|connect",      NULL, mqtt_cli_subcmds },
     { "time",   "time show|sync|set",         NULL, time_cli_subcmds },
+    { "schedule", "schedule show|set|...",    NULL, schedule_cli_subcmds },
     { "display", "display test|fill|off",     NULL, display_cli_subcmds },
     { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },
     { "index",   "index read",                NULL, index_cli_subcmds },
