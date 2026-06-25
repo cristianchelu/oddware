@@ -9,6 +9,7 @@
 #include "dispense.h"
 #include "dispense_cli.h"
 #include "motor_cli.h"
+#include "schedule.h"
 
 typedef enum {
     DISPENSE_CLI_IDLE = 0,
@@ -44,6 +45,46 @@ port_err_t dispense_cli_parse_portions(const char *text, uint8_t *out)
 
     *out = (uint8_t)value;
     return PORT_OK;
+}
+
+port_err_t dispense_cli_parse_grams(const char *text, uint8_t *out)
+{
+    uint32_t value = 0u;
+    port_err_t err;
+
+    if (out == NULL) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    err = motor_cli_parse_duration_ms(text, &value);
+    if (err != PORT_OK) {
+        return err;
+    }
+
+    if (value < SCHEDULE_G_MIN || value > SCHEDULE_G_MAX) {
+        return PORT_ERR_INVALID_ARG;
+    }
+
+    *out = (uint8_t)value;
+    return PORT_OK;
+}
+
+static uint8_t dispense_cli_submit_grams(uint8_t grams)
+{
+    dispense_submit_result_t result;
+
+    result = dispense_submit_grams(grams, DISPENSE_SOURCE_UART);
+    if (result == DISPENSE_SUBMIT_INVALID) {
+        dispense_cli_emit("dispense usage: grams <5-150>");
+        return 1u;
+    }
+
+    if (result != DISPENSE_SUBMIT_OK) {
+        return 1u;
+    }
+
+    s_state = DISPENSE_CLI_WAIT_JOB;
+    return 0u;
 }
 
 static uint8_t dispense_cli_submit(uint8_t portions)
@@ -90,6 +131,25 @@ uint8_t dispense_cli_handle_portions(uint8_t argc, char *argv[])
     return dispense_cli_submit(portions);
 }
 
+uint8_t dispense_cli_handle_grams(uint8_t argc, char *argv[])
+{
+    uint8_t grams;
+    port_err_t err;
+
+    if (argc < 1u || argv == NULL || argv[0] == NULL) {
+        dispense_cli_emit("dispense usage: grams <5-150>");
+        return 1u;
+    }
+
+    err = dispense_cli_parse_grams(argv[0], &grams);
+    if (err != PORT_OK) {
+        dispense_cli_emit("dispense usage: grams <5-150>");
+        return 1u;
+    }
+
+    return dispense_cli_submit_grams(grams);
+}
+
 bool dispense_cli_on_job_done(void)
 {
     if (s_state != DISPENSE_CLI_WAIT_JOB) {
@@ -101,14 +161,28 @@ bool dispense_cli_on_job_done(void)
     return true;
 }
 
-bool dispense_cli_on_job_fault(void)
+bool dispense_cli_on_job_fault(dispense_outcome_t outcome)
 {
     if (s_state != DISPENSE_CLI_WAIT_JOB) {
         return false;
     }
 
     s_state = DISPENSE_CLI_IDLE;
-    dispense_cli_emit("dispense fault: stuck");
+    switch (outcome) {
+    case DISPENSE_OUTCOME_UNDERFILL:
+        dispense_cli_emit("dispense fault: underfill");
+        break;
+    case DISPENSE_OUTCOME_EMPTY_HOPPER:
+        dispense_cli_emit("dispense fault: empty_hopper");
+        break;
+    case DISPENSE_OUTCOME_ABORTED:
+        dispense_cli_emit("dispense fault: aborted");
+        break;
+    case DISPENSE_OUTCOME_STUCK:
+    default:
+        dispense_cli_emit("dispense fault: stuck");
+        break;
+    }
     return true;
 }
 

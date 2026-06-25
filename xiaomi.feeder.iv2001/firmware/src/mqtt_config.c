@@ -8,6 +8,7 @@
 #include "app_log.h"
 #include "config_port.h"
 #include "mqtt_config.h"
+#include "mqtt_json.h"
 #include "mqtt_outbox.h"
 #include "mqtt_topics.h"
 #include "time_config.h"
@@ -18,7 +19,7 @@ static char s_config_topic[96];
 static char s_last_payload[256];
 static bool s_last_payload_valid;
 
-static const char *mqtt_json_skip_string(const char *cursor, const char *end)
+static const char *mqtt_config_skip_string(const char *cursor, const char *end)
 {
     if (cursor >= end || *cursor != '"') {
         return NULL;
@@ -39,94 +40,6 @@ static const char *mqtt_json_skip_string(const char *cursor, const char *end)
     }
 
     return NULL;
-}
-
-static bool mqtt_json_copy_string(const char *cursor,
-                                  const char *end,
-                                  char *out,
-                                  size_t out_len)
-{
-    size_t out_i = 0;
-
-    if (cursor >= end || *cursor != '"') {
-        return false;
-    }
-
-    cursor++;
-    while (cursor < end) {
-        char c = *cursor++;
-
-        if (c == '"') {
-            if (out_i >= out_len) {
-                return false;
-            }
-            out[out_i] = '\0';
-            return true;
-        }
-
-        if (c == '\\') {
-            if (cursor >= end) {
-                return false;
-            }
-            c = *cursor++;
-        }
-
-        if (out_i + 1 >= out_len) {
-            return false;
-        }
-
-        out[out_i++] = c;
-    }
-
-    return false;
-}
-
-static bool mqtt_json_find_string(const char *json,
-                                  size_t len,
-                                  const char *key,
-                                  char *out,
-                                  size_t out_len)
-{
-    char pattern[32];
-    const char *cursor;
-    const char *end;
-
-    if (json == NULL || key == NULL || out == NULL || out_len == 0) {
-        return false;
-    }
-
-    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
-    end = json + len;
-    cursor = json;
-
-    while (cursor < end) {
-        const char *found = strstr(cursor, pattern);
-
-        if (found == NULL || found >= end) {
-            return false;
-        }
-
-        cursor = found + strlen(pattern);
-        while (cursor < end && (*cursor == ' ' || *cursor == '\t' ||
-                                *cursor == '\r' || *cursor == '\n')) {
-            cursor++;
-        }
-        if (cursor >= end || *cursor != ':') {
-            continue;
-        }
-        cursor++;
-        while (cursor < end && (*cursor == ' ' || *cursor == '\t' ||
-                                *cursor == '\r' || *cursor == '\n')) {
-            cursor++;
-        }
-        if (cursor >= end || *cursor != '"') {
-            return false;
-        }
-
-        return mqtt_json_copy_string(cursor, end, out, out_len);
-    }
-
-    return false;
 }
 
 static bool mqtt_json_has_unknown_keys(const char *json, size_t len)
@@ -205,7 +118,7 @@ static bool mqtt_json_has_unknown_keys(const char *json, size_t len)
         }
 
         if (*cursor == '"') {
-            after_value = mqtt_json_skip_string(cursor, end);
+            after_value = mqtt_config_skip_string(cursor, end);
             if (after_value == NULL) {
                 return true;
             }
@@ -270,13 +183,16 @@ bool mqtt_config_format_snapshot(char *buf, size_t len)
         (void)time_sync_get_utc_epoch(&utc_epoch);
     }
 
-    written = snprintf(buf,
-                         len,
-                         "{\"tz_rule\":\"%s\",\"tz_label\":%s,\"time_synced\":%s,\"utc_epoch\":%lu}",
-                         posix,
-                         label_json,
-                         synced ? "true" : "false",
-                         (unsigned long)(synced ? utc_epoch : 0));
+    {
+        written = snprintf(buf,
+                           len,
+                           "{\"tz_rule\":\"%s\",\"tz_label\":%s,\"time_synced\":%s,"
+                           "\"utc_epoch\":%lu}",
+                           posix,
+                           label_json,
+                           synced ? "true" : "false",
+                           (unsigned long)(synced ? utc_epoch : 0));
+    }
     return written > 0 && (size_t)written < len;
 }
 
@@ -362,6 +278,7 @@ port_err_t mqtt_config_handle(const void *payload, size_t len)
 
     patch.tz_rule_posix = have_rule ? tz_posix : NULL;
     patch.tz_label = have_label ? tz_label : NULL;
+
     return time_config_apply(config_port_get(), &patch);
 }
 

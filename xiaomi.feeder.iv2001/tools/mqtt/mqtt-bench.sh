@@ -25,8 +25,9 @@ Commands:
   battery 75|unknown
   battery_voltage <mV>
   mains ON|OFF
-  ha discovery <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains>
-  verify ha <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains>   # print topic + JSON (no publish)
+  feed_mode open_loop|compensated
+  ha discovery <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains|weight_compensation|weight_compensation-broken>
+  verify ha <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains|weight_compensation>   # print topic + JSON (no publish)
   clean [--slice state|ota|ha|connection|power|all]
 
 Environment:
@@ -123,6 +124,11 @@ case "$cmd" in
         mqtt_bench_mains "$mode"
         ;;
 
+    feed_mode)
+        mode="${1:?open_loop|compensated required}"
+        mqtt_bench_feed_mode "$mode"
+        ;;
+
     ha)
         sub="${1:?discovery required}"
         entity="${2:?entity required}"
@@ -164,6 +170,10 @@ case "$cmd" in
             dispense)
                 topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
                 payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
+                ;;
+            weight_compensation)
+                topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
+                payload="$(mqtt_bench_ha_weight_compensation_payload)"
                 ;;
             *)
                 echo "error: unknown HA entity: $entity" >&2

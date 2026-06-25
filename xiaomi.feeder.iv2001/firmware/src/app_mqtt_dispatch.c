@@ -8,6 +8,7 @@
 #include "mqtt_client.h"
 #include "mqtt_dispense_cmd.h"
 #include "mqtt_config.h"
+#include "mqtt_feed_mode.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
 #include "mqtt_state.h"
@@ -50,6 +51,7 @@ void app_mqtt_on_connected(void)
     mqtt_timezone_connect_snapshot();
     mqtt_schedule_connect_snapshot();
     mqtt_config_connect_snapshot();
+    mqtt_feed_mode_connect_snapshot();
 }
 
 void app_mqtt_dispatch(const char *topic,
@@ -90,6 +92,16 @@ void app_mqtt_dispatch(const char *topic,
                      (unsigned)len);
         if (mqtt_config_handle(payload, len) != PORT_OK) {
             app_log_info("mqtt", "config rejected");
+        }
+        break;
+    case MQTT_ROUTE_CMD_FEED_MODE:
+        app_log_info("mqtt",
+                     "cmd %s topic=%s len=%u",
+                     mqtt_route_label(route),
+                     topic,
+                     (unsigned)len);
+        if (mqtt_feed_mode_handle(payload, len) != PORT_OK) {
+            app_log_info("mqtt", "feed mode rejected");
         }
         break;
     case MQTT_ROUTE_CMD_SCHEDULE_SET:

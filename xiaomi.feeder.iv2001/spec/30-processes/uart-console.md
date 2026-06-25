@@ -46,6 +46,7 @@ time show
 time sync
 time set tz_rule <posix>
 time set tz_label <name>
+feed mode [open_loop|compensated]
 schedule show
 schedule next
 schedule set <hour> <min> <days> <g> [on|off]
@@ -81,6 +82,7 @@ motor fwd <ms>
 motor rev <ms>
 motor park
 dispense [portions <N>]
+dispense grams <G>
 config factory-reset
 ```
 
@@ -888,14 +890,38 @@ Async open-loop portion dispense. Bare `dispense` is an alias for
 `1 ≤ N ≤ 15` (digits only — no leading zeros, same parse rules as
 `motor fwd <ms>`).
 
+**Ignores persisted `feed/mode`.** Always open-loop (~10 g design target per
+portion). Use `dispense grams <G>` to exercise compensation on the bench.
+
 Posts `EVT_DISPENSE_REQUEST` with `kind = portions` and `target = N` to the
 app event loop. The dispense supervisor enqueues one continuous
 `motor_port.request_burst(N, 8000)` — motor runs without stopping between
 index holes; holes count only until the Nth pulse stops the auger on the
 last hole (mechanical park). No separate `motor park` step.
 
-`dispense grams <G>` is reserved for future gram-targeted dispense; not
-implemented on UART yet.
+### `dispense grams <G>`
+
+Async gram-targeted dispense. `<G>` is a strict unsigned decimal gram target,
+`5 ≤ G ≤ 150` (same bounds as schedule and MQTT `cmd/dispense`).
+
+Posts `EVT_DISPENSE_REQUEST` with `kind = grams` and `target = G`. Respects
+persisted `feed/mode` (compensation when mode is `compensated`).
+
+The CLI handler returns to the prompt **before** motion ends once the
+supervisor accepts the job. Completion or fault lines arrive later on
+separate UART lines.
+
+| Outcome | UART response |
+|---------|---------------|
+| Accepted | `[dispense] started grams=<g>` |
+| Dispense job active, motor busy, or event queue full | `[dispense] busy` |
+| Bad or missing `<G>` | `dispense usage: grams <5-150>` |
+| Job completed | `dispense done` |
+| Anti-jam exhausted | `dispense fault: stuck` |
+| Compensated underfill or empty hopper | `dispense fault: underfill` or `dispense fault: empty_hopper` |
+| Motor busy on compensation retry | `dispense fault: aborted` |
+
+### `dispense` / `dispense portions <N>` (continued)
 
 The CLI handler returns to the prompt **before** motion ends once the
 supervisor accepts the job (`[dispense] started portions=<n>`). Completion or
@@ -1073,6 +1099,31 @@ retained `.../config` and `.../timezone` snapshots when MQTT is configured.
 | Outcome | UART response |
 |---------|---------------|
 | Missing or unknown subcommand | `usage: time set tz_rule\|tz_label <value>` |
+
+## `feed` commands
+
+Bench helper for dispense compensation mode — see [dispense-cycle.md](dispense-cycle.md)
+and [config-store.md](config-store.md) (`feed/mode`). Mutations use the same
+`feed_config` APIs as MQTT `cmd/feed/mode`; retained `.../feed/mode` updates
+when MQTT is connected.
+
+Not a product interface. Remote telnet exposes the same commands.
+
+### `feed mode` / `feed mode <open_loop|compensated>`
+
+| Command | Action |
+|---------|--------|
+| `feed mode` | Print current mode |
+| `feed mode open_loop` | Persist `feed/mode = open_loop` |
+| `feed mode compensated` | Persist `feed/mode = compensated` |
+
+| Outcome | UART response |
+|---------|---------------|
+| Show | `feed mode: open_loop` or `feed mode: compensated` |
+| Set success | `feed mode ok` |
+| Unchanged value | `feed mode: unchanged` |
+| Missing/invalid args | `usage: feed mode [open_loop\|compensated]` |
+| NVDM write failure | `feed mode: nvdm write failed` |
 
 ## `schedule` commands
 

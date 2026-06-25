@@ -61,8 +61,11 @@ After every completed dispense cycle (regardless of outcome):
 
 1. Run one hopper sense cycle immediately.
 2. If beam clear, begin debounce countdown.
-3. Used by dispense give-up logic: if hopper IR is `low` and bowl delta is
-   zero, outcome = `empty_hopper` and published hopper level = `empty`.
+
+Dispense **event** outcomes and published **hopper** level are separate.
+`underfill` on `.../dispense/event` does not require IR `low` at completion;
+`.../hopper` = `empty` latches when the compositor decides the material path
+is exhausted (see below).
 
 ## Published hopper level (MQTT)
 
@@ -73,11 +76,12 @@ Updated on transition only.
 |-------|---------|
 | `normal` | IR beam blocked (food in path); hopper not latched empty |
 | `low` | IR beam clear (almost empty); hopper not latched empty |
-| `empty` | Dispense proved no food delivered with IR low, or compensated underfill after retry exhaustion |
+| `empty` | Material path exhausted: measured zero delivery with IR `low`, or `underfill` after compensated retry exhaustion |
 
 `low` is the **almost-empty** IR flag. It does **not** alone mean a dispense
-failed. `empty` is stronger: confirmed out-of-food via weight + IR (or
-compensated give-up).
+failed. `empty` is stronger: out-of-food for feeding purposes. A compensated
+`underfill` may latch `empty` even when the last few grams came from chute
+stragglers — the hopper is effectively empty after that job.
 
 ## Process module (`hopper_input`)
 

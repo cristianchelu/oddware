@@ -7,6 +7,7 @@
 
 #include "app_log.h"
 #include "dispense.h"
+#include "feed_config.h"
 #include "mqtt_dispense_event.h"
 #include "mqtt_outbox.h"
 #include "mqtt_port.h"
@@ -49,15 +50,59 @@ static const char *dispense_source_str(dispense_source_t source)
     }
 }
 
-static const char *dispense_mode_str(dispense_mode_t mode)
+static int mqtt_dispense_event_format_payload(const dispense_completion_t *completion,
+                                                char *payload,
+                                                size_t len)
 {
-    switch (mode) {
-    case DISPENSE_MODE_COMPENSATED:
-        return "compensated";
-    case DISPENSE_MODE_OPEN_LOOP:
-    default:
-        return "open_loop";
+    bool has_slot;
+    const char *mode;
+    int written;
+
+    has_slot = completion->has_slot &&
+               completion->source == DISPENSE_SOURCE_SCHEDULE;
+    mode = feed_config_mode_string(completion->mode);
+
+    if (has_slot) {
+        written = snprintf(payload,
+                           len,
+                           "{\"event_type\":\"%s\","
+                           "\"grams\":%ld,"
+                           "\"grams_estimated\":%s,"
+                           "\"target_g\":%u,"
+                           "\"source\":\"%s\","
+                           "\"mode\":\"%s\","
+                           "\"batch_count\":%u,"
+                           "\"slot_hour\":%u,"
+                           "\"slot_min\":%u}",
+                           dispense_outcome_str(completion->outcome),
+                           (long)completion->grams,
+                           completion->grams_estimated ? "true" : "false",
+                           (unsigned)completion->target_g,
+                           dispense_source_str(completion->source),
+                           mode,
+                           (unsigned)completion->batch_count,
+                           (unsigned)completion->slot_hour,
+                           (unsigned)completion->slot_min);
+    } else {
+        written = snprintf(payload,
+                           len,
+                           "{\"event_type\":\"%s\","
+                           "\"grams\":%ld,"
+                           "\"grams_estimated\":%s,"
+                           "\"target_g\":%u,"
+                           "\"source\":\"%s\","
+                           "\"mode\":\"%s\","
+                           "\"batch_count\":%u}",
+                           dispense_outcome_str(completion->outcome),
+                           (long)completion->grams,
+                           completion->grams_estimated ? "true" : "false",
+                           (unsigned)completion->target_g,
+                           dispense_source_str(completion->source),
+                           mode,
+                           (unsigned)completion->batch_count);
     }
+
+    return written;
 }
 
 void mqtt_dispense_event_set_device_id(const char *device_id)
@@ -90,45 +135,7 @@ bool mqtt_dispense_event_publish(const dispense_completion_t *completion)
         return false;
     }
 
-    if (completion->has_slot && completion->source == DISPENSE_SOURCE_SCHEDULE) {
-        written = snprintf(payload,
-                           sizeof(payload),
-                           "{\"event_type\":\"%s\","
-                           "\"grams\":%ld,"
-                           "\"grams_estimated\":%s,"
-                           "\"target_g\":%u,"
-                           "\"source\":\"%s\","
-                           "\"mode\":\"%s\","
-                           "\"batch_count\":%u,"
-                           "\"slot_hour\":%u,"
-                           "\"slot_min\":%u}",
-                           dispense_outcome_str(completion->outcome),
-                           (long)completion->grams,
-                           completion->grams_estimated ? "true" : "false",
-                           (unsigned)completion->target_g,
-                           dispense_source_str(completion->source),
-                           dispense_mode_str(completion->mode),
-                           (unsigned)completion->batch_count,
-                           (unsigned)completion->slot_hour,
-                           (unsigned)completion->slot_min);
-    } else {
-        written = snprintf(payload,
-                           sizeof(payload),
-                           "{\"event_type\":\"%s\","
-                           "\"grams\":%ld,"
-                           "\"grams_estimated\":%s,"
-                           "\"target_g\":%u,"
-                           "\"source\":\"%s\","
-                           "\"mode\":\"%s\","
-                           "\"batch_count\":%u}",
-                           dispense_outcome_str(completion->outcome),
-                           (long)completion->grams,
-                           completion->grams_estimated ? "true" : "false",
-                           (unsigned)completion->target_g,
-                           dispense_source_str(completion->source),
-                           dispense_mode_str(completion->mode),
-                           (unsigned)completion->batch_count);
-    }
+    written = mqtt_dispense_event_format_payload(completion, payload, sizeof(payload));
     if (written <= 0 || (size_t)written >= sizeof(payload)) {
         return false;
     }

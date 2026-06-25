@@ -8,14 +8,19 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "cli_test_assert.h"
+#include "feed_config.h"
 #include "dispense.h"
 #include "dispense_cli.h"
 #include "display_presentation.h"
+#include "fake_config_port.h"
 #include "fake_display_port.h"
 #include "fake_motor_port.h"
+#include "fake_mqtt_port.h"
 #include "fake_time.h"
 #include "fake_weight_port.h"
 #include "motor_jam.h"
+#include "mqtt_client_test.h"
+#include "mqtt_outbox.h"
 #include "port_err.h"
 #include "motor_port_provider_host.h"
 #include "tm1637.h"
@@ -46,6 +51,40 @@ static void dispense_test_advance_settle(uint32_t start_ms)
 static void dispense_test_seed_baseline(int32_t grams, uint32_t sample_ms)
 {
     app_bowl_grams_notify_read(grams, true, sample_ms);
+}
+
+static void dispense_test_setup_mqtt(void)
+{
+    fake_mqtt_port_reset();
+    mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
+    fake_mqtt_port_get()->connect(NULL);
+    mqtt_client_test_set_device_id("ddeeff");
+}
+
+static void dispense_test_drain_mqtt(void)
+{
+    const mqtt_port_t *mqtt = fake_mqtt_port_get();
+
+    while (mqtt_outbox_pending() > 0) {
+        if (!mqtt_outbox_drain_one(mqtt)) {
+            fake_time_advance_ms(101u);
+            (void)mqtt_outbox_drain_one(mqtt);
+        }
+    }
+}
+
+static void dispense_test_run_burst_and_settle(int32_t weight_grams, uint32_t *time_ms)
+{
+    app_event_t ev;
+
+    ev.type = EVT_BURST_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_step());
+    fake_weight_port_set_read_grams(weight_grams);
+    dispense_poll(*time_ms);
+    dispense_poll(*time_ms + DISPENSE_SETTLE_MS);
+    *time_ms += 20000u;
 }
 
 void test_dispense_submit_portions_posts_request_event(void)
@@ -274,4 +313,153 @@ void test_dispense_cli_parse_portions_rejects_invalid(void)
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_portions("16", &portions));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_portions("01", &portions));
     TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_portions("abc", &portions));
+}
+
+void test_dispense_cli_parse_grams_valid_range(void)
+{
+    uint8_t grams = 0u;
+
+    TEST_ASSERT_EQUAL(PORT_OK, dispense_cli_parse_grams("5", &grams));
+    TEST_ASSERT_EQUAL_UINT8(5u, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, dispense_cli_parse_grams("150", &grams));
+    TEST_ASSERT_EQUAL_UINT8(150u, grams);
+}
+
+void test_dispense_cli_parse_grams_rejects_invalid(void)
+{
+    uint8_t grams = 0u;
+
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_grams("4", &grams));
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_grams("151", &grams));
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG, dispense_cli_parse_grams("01", &grams));
+}
+
+void test_dispense_compensated_retries_until_tolerance_met(void)
+{
+    app_event_t ev;
+    const fake_mqtt_port_state_t *mqtt;
+
+    dispense_test_reset_all();
+    dispense_test_setup_mqtt();
+    TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    dispense_test_seed_baseline(100, 0u);
+    fake_weight_port_set_read_grams(100);
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK,
+                      dispense_submit_grams(30u, DISPENSE_SOURCE_SCHEDULE));
+    TEST_ASSERT_TRUE(app_step());
+
+    ev.type = EVT_BURST_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_step());
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_burst_calls());
+
+    fake_weight_port_set_read_grams(120);
+    {
+        uint32_t settle_base = 10000u;
+
+        dispense_poll(settle_base);
+        dispense_poll(settle_base + DISPENSE_SETTLE_MS);
+    }
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_EQUAL(2u, fake_motor_port_burst_calls());
+
+    fake_weight_port_set_read_grams(128);
+    ev.type = EVT_BURST_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_step());
+    dispense_test_advance_settle(5000u);
+    TEST_ASSERT_FALSE(dispense_is_active());
+    TEST_ASSERT_EQUAL(2u, fake_motor_port_burst_calls());
+
+    dispense_test_drain_mqtt();
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_type\":\"success\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"grams\":28"));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"mode\":\"compensated\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"batch_count\":2"));
+}
+
+void test_dispense_compensated_underfill_publishes_event(void)
+{
+    const fake_mqtt_port_state_t *mqtt;
+    uint32_t t = 10000u;
+
+    dispense_test_reset_all();
+    dispense_test_setup_mqtt();
+    TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    dispense_test_seed_baseline(100, 0u);
+    fake_weight_port_set_read_grams(100);
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK,
+                      dispense_submit_grams(30u, DISPENSE_SOURCE_MQTT));
+    TEST_ASSERT_TRUE(app_step());
+
+    dispense_test_run_burst_and_settle(110, &t);
+    TEST_ASSERT_TRUE(dispense_is_active());
+    dispense_test_run_burst_and_settle(115, &t);
+    TEST_ASSERT_TRUE(dispense_is_active());
+    dispense_test_run_burst_and_settle(118, &t);
+    TEST_ASSERT_FALSE(dispense_is_active());
+    TEST_ASSERT_EQUAL(3u, fake_motor_port_burst_calls());
+
+    dispense_test_drain_mqtt();
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_type\":\"underfill\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"grams\":18"));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"batch_count\":3"));
+    TEST_ASSERT_NULL(strstr(mqtt->last_publish_payload, "deficit_g"));
+}
+
+void test_dispense_compensation_retry_motor_busy_aborts(void)
+{
+    app_event_t ev;
+    const fake_mqtt_port_state_t *mqtt;
+
+    dispense_test_reset_all();
+    dispense_test_setup_mqtt();
+    TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    dispense_test_seed_baseline(100, 0u);
+    fake_weight_port_set_read_grams(100);
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK,
+                      dispense_submit_grams(30u, DISPENSE_SOURCE_MQTT));
+    TEST_ASSERT_TRUE(app_step());
+
+    ev.type = EVT_BURST_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_step());
+
+    fake_weight_port_set_read_grams(110);
+    fake_motor_port_set_burst_err(PORT_ERR_IO);
+    dispense_test_advance_settle(10000u);
+    TEST_ASSERT_FALSE(dispense_is_active());
+
+    dispense_test_drain_mqtt();
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_type\":\"aborted\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"grams\":10"));
+    TEST_ASSERT_NULL(strstr(mqtt->last_publish_payload, "deficit_g"));
+}
+
+void test_dispense_uart_portions_stays_open_loop_when_compensated(void)
+{
+    app_event_t ev;
+
+    dispense_test_reset_all();
+    TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
+    dispense_test_seed_baseline(100, 0u);
+    fake_weight_port_set_read_grams(105);
+    TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK,
+                      dispense_submit_portions(1u, DISPENSE_SOURCE_UART));
+    TEST_ASSERT_TRUE(app_step());
+
+    ev.type = EVT_BURST_DONE;
+    TEST_ASSERT_TRUE(app_event_post(&ev));
+    TEST_ASSERT_TRUE(app_step());
+    dispense_test_advance_settle(1000u);
+
+    TEST_ASSERT_FALSE(dispense_is_active());
+    TEST_ASSERT_EQUAL(1u, fake_motor_port_burst_calls());
 }

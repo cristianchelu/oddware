@@ -17,15 +17,22 @@
 #define TEST_DEVICE_ID "ddeeff"
 #define BUCHAREST_POSIX "EET-2EEST,M3.5.0/3,M10.5.0/4"
 
-static void drain_config_outbox(void)
+static void drain_one_outbox(void)
 {
     const mqtt_port_t *mqtt = fake_mqtt_port_get();
 
-    while (mqtt_outbox_pending() > 0) {
+    if (mqtt_outbox_pending() > 0) {
         if (!mqtt_outbox_drain_one(mqtt)) {
             fake_time_advance_ms(101u);
             (void)mqtt_outbox_drain_one(mqtt);
         }
+    }
+}
+
+static void drain_config_outbox(void)
+{
+    while (mqtt_outbox_pending() > 0) {
+        drain_one_outbox();
     }
 }
 
@@ -72,6 +79,14 @@ void test_mqtt_config_handle_sets_tz_rule(void)
     mqtt = fake_mqtt_port_state();
     TEST_ASSERT_EQUAL_UINT(2, mqtt->publish_calls);
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, BUCHAREST_POSIX));
+}
+
+void test_mqtt_config_handle_rejects_feed_mode_key(void)
+{
+    setup_mqtt_config();
+    TEST_ASSERT_EQUAL(PORT_ERR_INVALID_ARG,
+                      mqtt_config_handle("{\"feed_mode\":\"compensated\"}",
+                                         strlen("{\"feed_mode\":\"compensated\"}")));
 }
 
 void test_mqtt_config_handle_rejects_unknown_keys(void)

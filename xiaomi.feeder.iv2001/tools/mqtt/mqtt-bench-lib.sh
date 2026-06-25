@@ -92,6 +92,16 @@ mqtt_bench_ha_mains_payload() {
         | mqtt_bench_substitute_device_id
 }
 
+mqtt_bench_ha_weight_compensation_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-weight_compensation.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_weight_compensation_broken_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-weight_compensation-broken.json" \
+        | mqtt_bench_substitute_device_id
+}
+
 mqtt_bench_bowl_weight() {
     local mode="$1"
     local payload
@@ -157,6 +167,20 @@ mqtt_bench_mains() {
     esac
 
     mqtt_bench_pub "$(mqtt_bench_topic mains)" "$mode" --retain
+}
+
+mqtt_bench_feed_mode() {
+    local mode="$1"
+
+    case "$mode" in
+        open_loop|compensated) ;;
+        *)
+            echo "error: feed_mode expects open_loop|compensated" >&2
+            return 1
+            ;;
+    esac
+
+    mqtt_bench_pub "$(mqtt_bench_topic feed/mode)" "$mode" --retain
 }
 
 mqtt_bench_session_online() {
@@ -233,6 +257,14 @@ mqtt_bench_ha_discovery() {
             topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
             payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
             ;;
+        weight_compensation)
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
+            payload="$(mqtt_bench_ha_weight_compensation_payload)"
+            ;;
+        weight_compensation-broken)
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
+            payload="$(mqtt_bench_ha_weight_compensation_broken_payload)"
+            ;;
         *)
             echo "error: unknown HA entity: $entity" >&2
             return 1
@@ -290,6 +322,14 @@ mqtt_bench_clean() {
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
                 -t "homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/switch/petfeeder_${DEVICE_ID}/wc_test/config" \
                 -n -r -q 1 2>/dev/null || true
             ;;
     esac

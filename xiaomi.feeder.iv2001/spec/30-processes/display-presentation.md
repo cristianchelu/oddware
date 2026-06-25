@@ -106,9 +106,9 @@ the pictograph. On success it calls `display_presentation_refresh()` so the
 first on-phase is visible before the next `EVT_DISPLAY_TICK`.
 `display_dispense_indicator_idle()` also refreshes immediately.
 
-In future **compensated** gram dispense, the job (and blink) remain active
-through post-motor weigh settle until bowl grams are stabilized and the display
-is updated — see [weight-compensation.md](weight-compensation.md).
+In **compensated** gram dispense, the job (and blink) remain active through
+post-motor weigh settle until bowl grams are stabilized and the display is
+updated — see [weight-compensation.md](weight-compensation.md).
 
 ## MQTT indicator (status lightbar)
 

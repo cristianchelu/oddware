@@ -49,6 +49,8 @@ void test_route_remaining_command_topics(void)
                       mqtt_route_classify("petfeeder/a4cf12/cmd/display", "a4cf12"));
     TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_CONFIG,
                       mqtt_route_classify("petfeeder/a4cf12/cmd/config", "a4cf12"));
+    TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_FEED_MODE,
+                      mqtt_route_classify("petfeeder/a4cf12/cmd/feed/mode", "a4cf12"));
     TEST_ASSERT_EQUAL(MQTT_ROUTE_CMD_REBOOT,
                       mqtt_route_classify("petfeeder/a4cf12/cmd/reboot", "a4cf12"));
 }

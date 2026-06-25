@@ -23,6 +23,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/app_wifi_cli.c \
              ../src/app_time_cli.c \
              ../src/app_schedule_cli.c \
+             ../src/app_feed_cli.c \
              ../src/provision_form.c \
              ../src/provision_scan_list.c \
              ../src/provision_flow.c \
@@ -38,6 +39,8 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/time_sync.c \
              ../src/time_config.c \
              ../src/mqtt_config.c \
+             ../src/mqtt_json.c \
+             ../src/mqtt_feed_mode.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \

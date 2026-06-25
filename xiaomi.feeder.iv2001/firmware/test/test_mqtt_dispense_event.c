@@ -167,3 +167,32 @@ void test_mqtt_dispense_event_schedule_includes_slot_fields(void)
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"slot_hour\":8"));
     TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"slot_min\":0"));
 }
+
+void test_mqtt_dispense_event_compensated_underfill_json(void)
+{
+    dispense_completion_t completion;
+    const fake_mqtt_port_state_t *mqtt;
+
+    fake_mqtt_port_reset();
+    mqtt_outbox_reset();
+    mqtt_outbox_set_accepting(true);
+    fake_mqtt_port_get()->connect(NULL);
+    mqtt_dispense_event_set_device_id(TEST_DEVICE_ID);
+
+    memset(&completion, 0, sizeof(completion));
+    completion.grams = 18;
+    completion.grams_estimated = false;
+    completion.target_g = 30;
+    completion.outcome = DISPENSE_OUTCOME_UNDERFILL;
+    completion.source = DISPENSE_SOURCE_MQTT;
+    completion.mode = DISPENSE_MODE_COMPENSATED;
+    completion.batch_count = 3u;
+
+    TEST_ASSERT_TRUE(mqtt_dispense_event_publish(&completion));
+    drain_all_outbox();
+
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_type\":\"underfill\""));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"mode\":\"compensated\""));
+    TEST_ASSERT_NULL(strstr(mqtt->last_publish_payload, "deficit_g"));
+}

@@ -40,13 +40,17 @@ Track consecutive batches where bowl weight delta is zero or negative
 - Counter resets on any batch with `delta > 0`.
 - After `[tune]` 3 consecutive zero-change batches → give up.
 
-On give-up:
+On give-up or batch cap (same outcome rules as [dispense-cycle.md](dispense-cycle.md)):
 
-1. Check hopper IR (see `hopper-sensing.md`): if `level = low`, set outcome = `empty_hopper`.
-2. Otherwise set outcome = `underfill`.
-3. Publish completion event to MQTT `.../dispense/event`.
-4. Latch published hopper MQTT level `empty` via `hopper_level` (both
-   `empty_hopper` and `underfill` after retry exhaustion).
+1. Set dispense event outcome = `underfill`.
+2. Publish completion event to MQTT `.../dispense/event`.
+3. Latch published hopper MQTT level `empty` when the material path is
+   exhausted (see [hopper-sensing.md](hopper-sensing.md)).
+
+`underfill` means the bowl received less than the gram target after retries.
+It is independent of hopper IR at the instant of give-up — the last grams may
+be chute/auger stragglers. The hopper is often truly empty only after that
+final underfilled delivery.
 
 ## Batch cap
 
@@ -82,6 +86,3 @@ The dispense supervisor owns session state; the weigh driver does not (see
 | `last_dispense_actual` | Dispense supervisor | Final `grams_delivered` after all batches |
 | `eaten_today` | Monitoring | Updated from dispense history + bowl snapshots (not weigh driver) |
 | Published to | — | `.../dispense/event` and `.../bowl_weight` |
-
-Compensated events include `deficit_g = max(0, target_g − grams)` when
-`grams_estimated` is false. Open-loop events omit `deficit_g`.

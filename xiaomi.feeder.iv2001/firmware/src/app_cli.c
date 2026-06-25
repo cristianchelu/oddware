@@ -27,6 +27,7 @@
 #include "app_weigh_cli.h"
 #include "app_motor_cli.h"
 #include "app_dispense_cli.h"
+#include "app_feed_cli.h"
 #include "dispense_cli.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
@@ -132,6 +133,7 @@ static cmd_t app_cli_cmds[] = {
     { "wifi",   "wifi show|set|connect",      NULL, wifi_cli_subcmds },
     { "mqtt",   "mqtt show|set|connect",      NULL, mqtt_cli_subcmds },
     { "time",   "time show|sync|set",         NULL, time_cli_subcmds },
+    { "feed",   "feed mode ...",              NULL, feed_cli_subcmds },
     { "schedule", "schedule show|set|...",    NULL, schedule_cli_subcmds },
     { "display", "display test|fill|off",     NULL, display_cli_subcmds },
     { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },

@@ -1,0 +1,21 @@
+{
+  "name": "Weight compensation",
+  "unique_id": "petfeeder_DEVICE_ID_weight_compensation",
+  "state_topic": "petfeeder/DEVICE_ID/feed/mode",
+  "value_template": "{{ 'ON' if value == 'compensated' else 'OFF' }}",
+  "state_on": "ON",
+  "state_off": "OFF",
+  "command_topic": "petfeeder/DEVICE_ID/cmd/feed/mode",
+  "payload_on": "compensated",
+  "payload_off": "open_loop",
+  "optimistic": false,
+  "availability_topic": "petfeeder/DEVICE_ID/connection",
+  "payload_available": "online",
+  "payload_not_available": "offline",
+  "device": {
+    "identifiers": ["petfeeder_DEVICE_ID"],
+    "name": "Pet Feeder DEVICE_ID",
+    "manufacturer": "Xiaomi",
+    "model": "Smart Pet Food Feeder 2"
+  }
+}

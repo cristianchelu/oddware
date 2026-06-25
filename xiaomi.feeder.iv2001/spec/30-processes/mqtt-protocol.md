@@ -22,6 +22,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../schedule/state` | Schedule document JSON — see [Schedule](#schedule) | 1 |
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | Config snapshot JSON — see [Config snapshot](#config-snapshot) | 1 |
+| `.../feed/mode` | `open_loop` or `compensated` (plain text) — see [Feed mode](#feed-mode) | 1 |
 | `.../timezone` | Device timezone plain text — see [Device timezone](#device-timezone) | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
@@ -51,7 +52,8 @@ unchanged.
 | `.../cmd/schedule/today` | `{"enabled":true}` | 1 |
 | `.../cmd/calibrate` | `{"action": "zero"}` or `{"action": "span"}` | 1 |
 | `.../cmd/display` | `{"mode": "weight", "brightness": 4}` | 1 |
-| `.../cmd/config` | `{"key": "value", ...}` | 1 |
+| `.../cmd/feed/mode` | `open_loop` or `compensated` (plain text) — see [Feed mode](#feed-mode) | 1 |
+| `.../cmd/config` | `{"tz_rule":"...", "tz_label":"..."}` — **legacy** time slice only; see [Config snapshot](#config-snapshot) | 1 |
 | `.../cmd/reboot` | `{}` | 1 |
 | `.../cmd/ota` | `{"url": "http://...", "sha512": "<128 hex chars>"}` — `sha512` optional | 1 |
 
@@ -93,6 +95,7 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 | button | dispense | — | Triggers default portion |
 | event | dispense_completed | — | Fires on each dispense job completion |
 | number | dispense_custom | — | Range: 5–150 g |
+| switch | weight_compensation | — | On = compensated dispense mode |
 | switch | child_lock | — | On/off |
 | select | display_mode | — | Options: weight, eaten_today, off |
 | number | display_brightness | — | Range: 1–4 |
@@ -255,9 +258,29 @@ document including `schedule[]` and `today_enabled`.
 
 Bench payloads: `tools/mqtt/payloads/ha-feeding_schedule.json`.
 
-`cmd/dispense` accepts any payload; the handler ignores JSON and submits
-`[tune]` 1 portion (open-loop ≈ 10 g per portion until gram-based
-dispense lands). UART logs use tag `dispense` — see
+**Weight compensation** switch (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/switch/petfeeder_<device_id>/weight_compensation/config` |
+| `name` | `Weight compensation` |
+| `state_topic` | `petfeeder/<device_id>/feed/mode` |
+| `value_template` | `{{ 'ON' if value == 'compensated' else 'OFF' }}` |
+| `state_on` | `ON` |
+| `state_off` | `OFF` |
+| `command_topic` | `petfeeder/<device_id>/cmd/feed/mode` |
+| `payload_on` | `compensated` |
+| `payload_off` | `open_loop` |
+| `availability_topic` | `petfeeder/<device_id>/connection` |
+| `payload_available` | `online` |
+| `payload_not_available` | `offline` |
+| `unique_id` | `petfeeder_<device_id>_weight_compensation` |
+
+Bench payload: `tools/mqtt/payloads/ha-weight_compensation.json`.
+
+`cmd/dispense` accepts `{}` (one default portion) or `{"g": <5–150>}` for
+gram-targeted dispense. Invalid JSON or out-of-range `g` is rejected at info
+with no dispense. UART logs use tag `dispense` — see
 [app-logging.md](app-logging.md) § Dispense diagnostics. Entity availability
 follows retained `.../connection`
 (`online` / `offline`).
@@ -428,8 +451,7 @@ is deferred until those topics ship.
 
 ## Config snapshot
 
-Topic `.../config` (retained, QoS 1). Time/TZ fields in this slice; other
-keys ship with future `cmd/config` handlers.
+Topic `.../config` (retained, QoS 1). **Time/TZ fields only** in this slice.
 
 | Field | Type | Semantics |
 |-------|------|-----------|
@@ -445,12 +467,17 @@ Example:
 ```
 
 Publish on boot (after NVDM load), first NTP success, periodic NTP re-sync,
-`cmd/config` change, and MQTT connect snapshot.
+UART `time set`, and MQTT connect snapshot.
 
-### `cmd/config` (time slice)
+### `cmd/config` (legacy time slice)
 
-Writable keys: `tz_rule`, `tz_label`. Unknown keys are rejected. See
-[config-store.md](config-store.md).
+**Deprecated pattern.** `cmd/config` exists only for the early time/TZ
+provisioning slice (`tz_rule`, `tz_label`). New settings use **one retained
+state topic and one command topic per entity** (see `cmd/feed/mode`,
+`cmd/schedule/*`, `cmd/display`). Do not add new keys to `cmd/config`.
+
+Writable keys: `tz_rule`, `tz_label`. Unknown keys are rejected.
+See [config-store.md](config-store.md).
 
 | Key | Empty string |
 |-----|--------------|
@@ -458,6 +485,23 @@ Writable keys: `tz_rule`, `tz_label`. Unknown keys are rejected. See
 | `tz_rule` | Resets to default UTC0 (erases NVDM key; scheduler uses UTC) |
 
 Publishes updated retained `.../config` and `.../timezone` on success.
+
+## Feed mode
+
+Topic `.../feed/mode` (retained, QoS 1) reports the dispense compensation
+mode from NVDM `feed/mode` (see [config-store.md](config-store.md) and
+[dispense-cycle.md](dispense-cycle.md)).
+
+| Payload | Meaning |
+|---------|---------|
+| `open_loop` | Motor runs planned bursts without weight-based correction |
+| `compensated` | Closed-loop compensation after each batch |
+
+Command topic `.../cmd/feed/mode` accepts the same plain-text payloads.
+Invalid payloads are rejected at info with no NVDM change.
+
+Publish state on boot (MQTT connect snapshot), `cmd/feed/mode` change, and UART
+`feed mode` set when MQTT is configured.
 
 ## Device timezone
 
@@ -652,7 +696,6 @@ event type (e.g. **Dispense completed** → `stuck`). Automations trigger on
 | `source` | string | Always — `mqtt`, `uart`, `button`, `schedule` |
 | `mode` | string | Always — `open_loop` or `compensated` |
 | `batch_count` | int | Always — motor batches in job (1 in open-loop portion v1) |
-| `deficit_g` | int | Compensated mode only — `max(0, target_g − grams)` |
 | `slot_hour` | uint8 | When `source=schedule` — triggering slot hour |
 | `slot_min` | uint8 | When `source=schedule` — triggering slot minute |
 
@@ -705,6 +748,20 @@ Example (stuck):
 Negative raw bowl deltas are clamped to **0** in `grams`; the signed raw delta
 feeds internal hopper-empty detection (see [dispense-cycle.md](dispense-cycle.md)).
 
+Example (compensated underfill):
+
+```json
+{
+  "event_type": "underfill",
+  "grams": 18,
+  "grams_estimated": false,
+  "target_g": 30,
+  "source": "mqtt",
+  "mode": "compensated",
+  "batch_count": 3
+}
+```
+
 Example (scheduled feed):
 
 ```json
@@ -714,7 +771,7 @@ Example (scheduled feed):
   "grams_estimated": false,
   "target_g": 30,
   "source": "schedule",
-  "mode": "open_loop",
+  "mode": "compensated",
   "batch_count": 3,
   "slot_hour": 8,
   "slot_min": 0

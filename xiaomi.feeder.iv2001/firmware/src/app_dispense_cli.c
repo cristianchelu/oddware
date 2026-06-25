@@ -13,7 +13,13 @@ static uint8_t dispense_cli_portions_cmd(uint8_t argc, char *argv[])
     return dispense_cli_handle_portions(argc, argv);
 }
 
+static uint8_t dispense_cli_grams_cmd(uint8_t argc, char *argv[])
+{
+    return dispense_cli_handle_grams(argc, argv);
+}
+
 cmd_t dispense_cli_subcmds[] = {
     { "portions", "dispense portions <N>", dispense_cli_portions_cmd, NULL },
+    { "grams", "dispense grams <G>", dispense_cli_grams_cmd, NULL },
     { NULL, NULL, NULL, NULL },
 };

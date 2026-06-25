@@ -178,13 +178,14 @@ Every terminal job publishes one MQTT dispense event (when online):
 | Outcome | Condition |
 |---------|-----------|
 | `success` | Target met (compensated) or all bursts ran (open-loop) |
-| `underfill` | Compensated mode measured delivery below target after retries |
+| `underfill` | Measured delivery below gram target after compensated retries, or equivalent material exhaustion |
 | `stuck` | Anti-jam retries exhausted (see `jam-detection.md`) |
-| `empty_hopper` | Motor ran (not stuck), measured raw bowl delta ≤ 0, hopper IR low |
-| `aborted` | Queue overflow, policy rejection, or user cancel via MQTT (future) |
+| `empty_hopper` | Motor ran (not stuck), measured raw bowl delta ≤ 0, hopper IR low — open-loop and compensated |
+| `aborted` | Motor busy on compensation retry, queue overflow, policy rejection, or user cancel (future) |
 
-v1 open-loop firmware emits `success`, `stuck`, and `empty_hopper` (when IR
-low and measured zero/negative delta).
+Open-loop and compensated jobs use the same outcome rules. Compensation adds
+`underfill` when retries exhaust; open-loop portion jobs normally end
+`success` after all planned bursts unless `stuck` or `empty_hopper` applies.
 
 Completion is reported via `.../dispense/event` only — no retained
 `dispense/status` or in-progress `dispense/progress` topics.

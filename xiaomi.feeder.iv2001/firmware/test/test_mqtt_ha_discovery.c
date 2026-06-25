@@ -178,12 +178,29 @@ void test_mqtt_ha_format_dispense_completed_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"unique_id\":\"petfeeder_ddeeff_dispense_completed\""));
 }
 
+void test_mqtt_ha_format_weight_compensation_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_weight_compensation_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Weight compensation\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/feed/mode\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"value_template\":\"{{ 'ON' if value == 'compensated' else 'OFF' }}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_on\":\"ON\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_off\":\"OFF\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"optimistic\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"command_topic\":\"petfeeder/ddeeff/cmd/feed/mode\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":\"compensated\""));
+}
+
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
 {
     mqtt_outbox_reset();
     mqtt_outbox_set_accepting(true);
     mqtt_ha_discovery_schedule(TEST_DEVICE_ID);
-    TEST_ASSERT_EQUAL_UINT(10, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(11, mqtt_outbox_pending());
 }
 
 void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
@@ -200,8 +217,8 @@ void test_mqtt_ha_discovery_schedule_drain_publishes_retained(void)
     drain_all_outbox();
 
     mqtt = fake_mqtt_port_state();
-    TEST_ASSERT_EQUAL_UINT(10, mqtt->publish_calls);
-    TEST_ASSERT_EQUAL_STRING("homeassistant/event/petfeeder_ddeeff/dispense_completed/config",
+    TEST_ASSERT_EQUAL_UINT(11, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("homeassistant/switch/petfeeder_ddeeff/weight_compensation/config",
                              mqtt->last_publish_topic);
-    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"event_types\":[\"success\",\"underfill\",\"stuck\",\"empty_hopper\",\"aborted\"]"));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "\"name\":\"Weight compensation\""));
 }

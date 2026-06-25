@@ -24,6 +24,29 @@ static void mqtt_dispense_cmd_test_reset(void)
     app_log_test_reset();
 }
 
+void test_mqtt_dispense_cmd_submits_grams(void)
+{
+    const char *topic = "petfeeder/ddeeff/cmd/dispense";
+    const char *payload = "{\"g\":30}";
+
+    mqtt_dispense_cmd_test_reset();
+
+    mqtt_dispense_cmd_handle(topic, payload, strlen(payload), "ddeeff");
+
+    TEST_ASSERT_TRUE(dispense_is_active());
+    TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "[dispense]"));
+    TEST_ASSERT_NOT_NULL(strstr(app_log_test_last_line(), "started grams=30"));
+}
+
+void test_mqtt_dispense_cmd_rejects_invalid_grams(void)
+{
+    const char *topic = "petfeeder/ddeeff/cmd/dispense";
+
+    mqtt_dispense_cmd_test_reset();
+    mqtt_dispense_cmd_handle(topic, "{\"g\":4}", strlen("{\"g\":4}"), "ddeeff");
+    TEST_ASSERT_FALSE(dispense_is_active());
+}
+
 void test_mqtt_dispense_cmd_submits_portions(void)
 {
     const char *topic = "petfeeder/ddeeff/cmd/dispense";

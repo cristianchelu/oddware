@@ -12,11 +12,13 @@ motor and a bowl-mounted weight sensor.
   dispense button.
 - On the bench UART, `dispense` or `dispense portions <N>` (N = 1–15) runs
   open-loop portion dispense (~10 g design target per portion) without gram
-  targeting or weight compensation. Product paths use gram targets (5–150 g).
+  targeting or weight compensation. `dispense grams <G>` (5–150 g) follows the
+  persisted compensation mode. Product paths use gram targets (5–150 g).
 
 ## Dispense modes
 
-The user can choose between two modes (persistent setting):
+The user can choose between two modes (persistent setting) from Home Assistant
+or UART `feed mode`:
 
 | Mode | Behavior |
 |------|----------|

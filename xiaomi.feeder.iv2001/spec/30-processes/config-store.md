@@ -45,6 +45,7 @@ Firmware constants in `firmware/inc/config_keys.h`:
 | Constant | Value |
 |----------|-------|
 | `CONFIG_GROUP_FEED` | `feed` |
+| `CONFIG_KEY_FEED_MODE` | `mode` |
 | `CONFIG_KEY_CHILD_LOCK` | `child_lock` |
 | `CONFIG_GROUP_TIME` | `time` |
 | `CONFIG_KEY_TZ_RULE` | `tz_rule` |
@@ -64,8 +65,9 @@ Schedule runtime status (`state`, `skip_today`, `g_actual`, `fired_today`,
 | Phase | Behavior |
 |-------|----------|
 | Boot | Read all keys → populate runtime config struct (`tz_rule_init` parses POSIX `time/tz_rule` into RAM) |
-| Runtime | Write on change (from MQTT `cmd/config`, provisioning, calibration, schedule update) |
-| Runtime (`time/tz_rule`, `time/tz_label`) | UART `time set` and MQTT `cmd/config` both call `time_config_apply` |
+| Runtime | Write on change (from MQTT entity commands, provisioning, calibration, schedule update) |
+| Runtime (`time/tz_rule`, `time/tz_label`) | UART `time set` and legacy MQTT `cmd/config` both call `time_config_apply` |
+| Runtime (`feed/mode`) | UART `feed mode`, MQTT `cmd/feed/mode`, and `feed_config_mode_set` |
 | Clear `time/tz_label` | Empty string via UART or MQTT erases the key; load returns `""` |
 | Clear `time/tz_rule` | Empty string via UART or MQTT erases the key; load returns `UTC0`; RAM cache refreshed immediately |
 | Write discipline | Minimize write frequency — flash has limited erase cycles. Batch writes where possible. |
@@ -104,8 +106,10 @@ partition sizes defined in `../10-hardware/flash.md`. `[design]`
 
 | Topic | Direction | Content |
 |-------|-----------|---------|
-| `.../config` | State (retained) | Full config object after any change |
-| `.../cmd/config` | Command | Subset of writable settings (user-facing only) |
+| `.../config` | State (retained) | Time/TZ snapshot (`tz_rule`, `tz_label`, `time_synced`, `utc_epoch`) |
+| `.../feed/mode` | State (retained) | Dispense mode: `open_loop` or `compensated` |
+| `.../cmd/config` | Command | **Legacy** time slice only (`tz_rule`, `tz_label`) — see [mqtt-protocol.md](mqtt-protocol.md) |
+| `.../cmd/feed/mode` | Command | Same payloads as `.../feed/mode` state |
 
 Not writable via MQTT: `wifi/*` (requires reprovisioning), `calib/*` (requires
 calibration action), `power/batt_scale_x1000` (requires UART `adc cal`), `system/*`

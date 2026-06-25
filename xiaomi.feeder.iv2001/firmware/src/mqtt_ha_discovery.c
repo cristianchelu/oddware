@@ -601,6 +601,74 @@ int mqtt_ha_format_feeding_schedule_config(char *buf, size_t len, const char *de
     return written;
 }
 
+int mqtt_ha_format_weight_compensation_config(char *buf, size_t len, const char *device_id)
+{
+    char feed_mode_topic[96];
+    char feed_mode_cmd_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(feed_mode_topic,
+                          sizeof(feed_mode_topic),
+                          device_id,
+                          "feed/mode")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(feed_mode_cmd_topic,
+                          sizeof(feed_mode_cmd_topic),
+                          device_id,
+                          "cmd/feed/mode")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block,
+                                     sizeof(device_block),
+                                     device_id)
+            < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Weight compensation\","
+                       "\"unique_id\":\"petfeeder_%s_weight_compensation\","
+                       "\"state_topic\":\"%s\","
+                       "\"value_template\":\"{{ 'ON' if value == 'compensated' else 'OFF' }}\","
+                       "\"state_on\":\"ON\","
+                       "\"state_off\":\"OFF\","
+                       "\"command_topic\":\"%s\","
+                       "\"payload_on\":\"compensated\","
+                       "\"payload_off\":\"open_loop\","
+                       "\"optimistic\":false,"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       feed_mode_topic,
+                       feed_mode_cmd_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -651,6 +719,11 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "event",
         .object_id = "dispense_completed",
         .format_config = mqtt_ha_format_dispense_completed_config,
+    },
+    {
+        .component = "switch",
+        .object_id = "weight_compensation",
+        .format_config = mqtt_ha_format_weight_compensation_config,
     },
 };
 
