@@ -21,6 +21,10 @@ static void *s_mirror_ctx;
 
 #ifdef HOST_TEST
 static char s_last_line[APP_LOG_LINE_MAX];
+#define APP_LOG_TEST_HISTORY  8u
+static char s_log_history[APP_LOG_TEST_HISTORY][APP_LOG_LINE_MAX];
+static uint8_t s_log_history_depth;
+static uint8_t s_log_history_head;
 #endif
 
 static uint32_t app_log_now_ms(void)
@@ -65,6 +69,18 @@ static void app_log_write_raw(const char *buf, size_t len)
         copy_len--;
     }
     s_last_line[copy_len] = '\0';
+
+#ifdef HOST_TEST
+    {
+        uint8_t slot = s_log_history_head;
+
+        (void)memcpy(s_log_history[slot], s_last_line, copy_len + 1u);
+        s_log_history_head = (uint8_t)((slot + 1u) % APP_LOG_TEST_HISTORY);
+        if (s_log_history_depth < APP_LOG_TEST_HISTORY) {
+            s_log_history_depth++;
+        }
+    }
+#endif
 
     (void)fwrite(buf, 1, len, stdout);
     (void)fflush(stdout);
@@ -190,6 +206,8 @@ void app_log_error(const char *tag, const char *fmt, ...)
 void app_log_test_reset(void)
 {
     s_last_line[0] = '\0';
+    s_log_history_depth = 0u;
+    s_log_history_head = 0u;
     s_mirror_sink = NULL;
     s_mirror_ctx = NULL;
 }
@@ -197,5 +215,18 @@ void app_log_test_reset(void)
 const char *app_log_test_last_line(void)
 {
     return s_last_line;
+}
+
+const char *app_log_test_line_from_end(unsigned n)
+{
+    uint8_t idx;
+
+    if (n >= s_log_history_depth) {
+        return NULL;
+    }
+
+    idx = (uint8_t)((s_log_history_head + APP_LOG_TEST_HISTORY - 1u - n) %
+                    APP_LOG_TEST_HISTORY);
+    return s_log_history[idx];
 }
 #endif

@@ -35,7 +35,9 @@ cloud dependency and no phone-home telemetry.
 
 The feeder publishes the following retained state topics:
 
-- **Bowl weight** — food grams in the bowl now (plain integer on `.../bowl_weight`).
+- **Bowl weight** — presented food grams in the bowl now (plain integer on
+  `.../bowl_weight`; drift-stable between feeding events — see
+  [auto-tare.md](../30-processes/auto-tare.md)).
 - **Eaten today** — cumulative consumption since midnight (future `.../eaten_today`).
 - **Device condition** — faults and health (`bowl_error`, extensible).
 - **Hopper** — fill level (normal / low).

@@ -33,4 +33,6 @@ typedef struct {
 bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out);
 void app_bowl_grams_notify_read(int32_t grams, bool valid, uint32_t now_ms);
 
+void app_test_finish_weight_boot(void);
+
 #endif /* APP_H */

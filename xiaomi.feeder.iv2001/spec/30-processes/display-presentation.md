@@ -335,7 +335,7 @@ on** all three digit grids (`0x40` OR'd into each grid byte). Grids 3–4 are
 
 | Mode | Content | When | Update rate |
 |------|---------|------|-------------|
-| **Weight** | Bowl grams when calibrated and sampled (e.g. `  42g`); uncalibrated → `---g`; calibrated bowl missing → `-  g`; calibrated, no sample yet → blank digits + `g` | Default idle (hardcoded in `app` until `cmd/display` lands) | `[tune]` 500 ms (2 Hz) |
+| **Weight** | Presented bowl grams when calibrated and sampled (auto-tare drift compensation — see [auto-tare.md](auto-tare.md)); e.g. `  42g`; uncalibrated → `---g`; calibrated bowl missing → `-  g`; calibrated, no sample yet → blank digits + `g` | Default idle (hardcoded in `app` until `cmd/display` lands) | `[tune]` 500 ms (2 Hz) |
 | **Eaten today** | Cumulative grams consumed since midnight (e.g. `  85g`) | User-selected idle alternative | `[tune]` 500 ms (2 Hz) |
 | **Off** | All segments blank | Sleep or user preference | — |
 

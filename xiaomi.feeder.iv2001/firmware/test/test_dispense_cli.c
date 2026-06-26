@@ -7,6 +7,7 @@
 #include "app_event_port.h"
 #include "cli_test_assert.h"
 #include "dispense.h"
+#include "auto_tare.h"
 #include "dispense_cli.h"
 #include "fake_config_port.h"
 #include "fake_motor_port.h"
@@ -151,6 +152,7 @@ void test_dispense_cli_grams_underfill_fault(void)
     fake_weight_port_reset();
     TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    auto_tare_anchor(100);
     app_bowl_grams_notify_read(100, true, 0u);
     fake_weight_port_set_read_grams(100);
 

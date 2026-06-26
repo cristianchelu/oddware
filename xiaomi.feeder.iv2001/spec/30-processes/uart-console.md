@@ -70,6 +70,7 @@ weigh read
 weigh cal zero
 weigh cal span
 weigh cal status
+tare show
 index read
 hopper read
 power show
@@ -623,8 +624,8 @@ Bench helpers for CS1270 load-cell exercise (WFCI `WEIGH` bus loan after
 Wi-Fi init). Uses `weight_port`. Not a product interface. `[design]`
 
 `weigh read` returns **absolute** food grams now (stateless weigh driver
-except NVDM cal). There is no `weigh tare` — deltas belong in dispense/monitoring
-([weighing.md](weighing.md) **Weigh driver boundary**).
+except NVDM cal). There is no `weigh tare` — internal drift compensation lives
+in [auto-tare.md](auto-tare.md); inspect it with `tare show` below.
 
 Scale-off and missing-calibration cases use explicit messages (see below).
 Other `weight_port` failures include the `port_err_t` reason in parentheses,
@@ -687,6 +688,21 @@ Capture raw count with provided bowl installed (350 g reference); save
 | Outcome | UART response |
 |---------|---------------|
 | Success | `weigh cal: idle`, `capturing_span`, `success`, or `uncalibrated` |
+
+## `tare` commands
+
+Bench helper for auto-tare RAM state ([auto-tare.md](auto-tare.md)). Not a
+product interface — there is no operator tare command. `[design]`
+
+### `tare show`
+
+| Outcome | UART response |
+|---------|---------------|
+| Success | `tare stable: <g> g`, `tare drift: <g> g`, `tare pending: yes\|no` (three lines) |
+| Not anchored yet | `tare stable: (unset)` on the first line; drift is `0` |
+
+`weigh read` always reports **raw** grams; `tare show` reports the
+presentation-layer belief used for panel/MQTT bowl weight.
 
 ## `index` commands
 

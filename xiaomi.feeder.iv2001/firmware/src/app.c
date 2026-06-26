@@ -11,6 +11,7 @@
 #include "app_event.h"
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
+#include "auto_tare.h"
 #include "bowl_grams_present.h"
 #include "bowl_error.h"
 #include "button_gesture.h"
@@ -39,6 +40,7 @@
 #include "time_sync.h"
 #include "schedule.h"
 #include "dispense.h"
+#include "feeder_runtime.h"
 #include "dispense_cli.h"
 #include "feed_config.h"
 #include "hopper_input.h"
@@ -135,13 +137,17 @@ static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
 
     mqtt_state_sync(bowl_error_is_active(bowl_err));
 
-    grams_st = bowl_grams_present(cal, s_bowl_valid, s_bowl_g, &present_g);
-    mqtt_bowl_weight_sync(grams_st, present_g, force_mqtt_bowl_weight);
+    {
+        int32_t presented_g = auto_tare_present_grams(s_bowl_g, s_bowl_valid);
+
+        grams_st = bowl_grams_present(cal, s_bowl_valid, presented_g, &present_g);
+        mqtt_bowl_weight_sync(grams_st, present_g, force_mqtt_bowl_weight);
+
+        (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
+
+        digits = bowl_grams_display_digits(cal, s_bowl_valid, presented_g, &shown);
+    }
     app_weight_log_bowl_presence(bowl_err);
-
-    (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
-
-    digits = bowl_grams_display_digits(cal, s_bowl_valid, s_bowl_g, &shown);
     switch (digits) {
     case BOWL_DISPLAY_DASH:
         (void)display_presentation_set_digits_dash();
@@ -203,7 +209,18 @@ static void app_weight_boot_first_sample(void)
 
 static void app_weight_idle_tick(void)
 {
+    const weight_port_t *wp = weight_port_get();
+    weight_cal_status_t cal;
+    bowl_error_kind_t bowl_err;
+
     app_weight_sample(true);
+
+    cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
+                                                     : WEIGHT_CAL_UNCALIBRATED;
+    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
+    auto_tare_sync_bowl_error(bowl_err);
+
+    auto_tare_idle_sample(s_bowl_g, s_bowl_valid);
     app_weight_sync_display_scene(false);
 }
 
@@ -233,7 +250,7 @@ static void app_weight_idle_on_display_tick(uint32_t now_ms)
         return;
     }
 
-    if (dispense_is_active()) {
+    if (feeder_runtime_dispense_active()) {
         return;
     }
 
@@ -498,6 +515,8 @@ void app_dispatch(const app_event_t *ev)
         s_display_mode = APP_DISPLAY_MODE_WEIGHT;
         display_presentation_reset();
         app_child_lock_sync_display(feed_config_child_lock_is_active());
+        auto_tare_init();
+        feeder_runtime_init();
         app_weight_boot_arm();
         break;
 
@@ -694,6 +713,8 @@ void app_test_reset(void)
     s_weight_resample_after_dispense = false;
     s_bowl_missing_known = false;
     s_bowl_missing = false;
+    feeder_runtime_test_reset();
+    auto_tare_test_reset();
     button_input_init(button_port_get());
     hopper_input_init(hopper_ir_port_get());
     hopper_level_init();
@@ -708,6 +729,11 @@ void app_test_reset_bowl_presence_log(void)
 {
     s_bowl_missing_known = false;
     s_bowl_missing = false;
+}
+
+void app_test_finish_weight_boot(void)
+{
+    s_weight_boot = WEIGHT_BOOT_DONE;
 }
 
 bool app_step(void)

@@ -10,7 +10,10 @@ device is doing and whether it needs attention.
 - The feeder reports the current weight of food in the bowl (in grams).
 - The provided stainless bowl weighs 350 g; the weigh driver subtracts this
   so an empty installed bowl reads 0 g (`weight_port.read_grams`).
-- This is an **absolute** reading — not a relative zero from a prior tare.
+- The panel and MQTT show **presented** grams: raw `read_grams` plus an internal
+  RAM drift offset so slow temperature drift does not creep the displayed value
+  between feeding events (see [auto-tare.md](../30-processes/auto-tare.md)).
+- This is not a user tare command — there is no `weigh tare`.
 - Over MQTT the user sees bowl grams on `petfeeder/<device_id>/bowl_weight`
   (plain integer, retained). Home Assistant discovers a **Bowl weight** sensor
   (`device_class`: weight, unit g). Updates are change-driven — not every

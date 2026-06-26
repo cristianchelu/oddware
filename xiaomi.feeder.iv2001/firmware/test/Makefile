@@ -87,6 +87,9 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_bowl_error_indicator.c \
              ../src/bowl_error.c \
              ../src/bowl_grams_present.c \
+             ../src/feeder_runtime.c \
+             ../src/auto_tare.c \
+             ../src/app_tare_cli.c \
              ../src/display_dispense_indicator.c \
              ../src/display_child_lock_indicator.c \
              ../src/display_mqtt_indicator.c \

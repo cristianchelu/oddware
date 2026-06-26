@@ -7,10 +7,12 @@
 #include "app.h"
 #include "app_event.h"
 #include "app_log.h"
+#include "auto_tare.h"
 #include "bowl_error.h"
 #include "dispense_cli.h"
 #include "display_dispense_indicator.h"
 #include "feed_config.h"
+#include "feeder_runtime.h"
 #include "FreeRTOS.h"
 #include "hopper_input.h"
 #include "hopper_level.h"
@@ -45,8 +47,36 @@ static bool s_baseline_valid;
 static uint32_t s_settle_start_ms;
 static uint8_t s_zero_delta_streak;
 
+static void dispense_sync_runtime_active(void)
+{
+    feeder_runtime_set_dispense_active(s_job_pending || s_phase != DISPENSE_PHASE_NONE);
+}
+
 static bool dispense_capture_baseline(uint32_t now_ms)
 {
+    if (auto_tare_pending_calibration()) {
+        const weight_port_t *wp = weight_port_get();
+        int32_t grams;
+        port_err_t err;
+
+        if (wp == NULL || wp->read_grams == NULL) {
+            s_baseline_valid = false;
+            return false;
+        }
+
+        err = wp->read_grams(&grams);
+        if (err != PORT_OK) {
+            s_baseline_valid = false;
+            return false;
+        }
+
+        auto_tare_anchor(grams);
+        s_baseline_grams = grams;
+        s_baseline_valid = true;
+        app_bowl_grams_notify_read(grams, true, now_ms);
+        return true;
+    }
+
     app_bowl_grams_snapshot_t snap;
 
     if (app_bowl_grams_snapshot(now_ms, &snap) &&
@@ -202,6 +232,7 @@ static void dispense_publish_terminal(uint32_t now_ms,
 
     dispense_notify_cli_outcome(s_outcome);
     hopper_level_notify_dispense_complete();
+    dispense_sync_runtime_active();
 }
 
 static void dispense_begin_settle(dispense_outcome_t outcome)
@@ -209,6 +240,7 @@ static void dispense_begin_settle(dispense_outcome_t outcome)
     s_outcome = outcome;
     s_phase = DISPENSE_PHASE_SETTLE;
     s_settle_start_ms = 0u;
+    dispense_sync_runtime_active();
 }
 
 static port_err_t dispense_kick_motor(uint8_t pulse_target)
@@ -238,6 +270,7 @@ static void dispense_after_settle(uint32_t now_ms)
 
     post_valid = dispense_read_post_grams(&post_grams);
     if (post_valid) {
+        auto_tare_anchor(post_grams);
         app_bowl_grams_notify_read(post_grams, true, now_ms);
     }
 
@@ -328,6 +361,7 @@ static void dispense_after_settle(uint32_t now_ms)
         s_batch_count++;
         s_phase = DISPENSE_PHASE_MOTOR;
         s_settle_start_ms = 0u;
+        dispense_sync_runtime_active();
     }
 }
 
@@ -366,6 +400,7 @@ dispense_submit_result_t dispense_submit_portions(uint8_t portions,
     }
 
     s_job_pending = true;
+    dispense_sync_runtime_active();
     app_log_info("dispense", "started portions=%u", (unsigned)portions);
     return DISPENSE_SUBMIT_OK;
 }
@@ -405,6 +440,7 @@ dispense_submit_result_t dispense_submit_grams(uint8_t grams,
     }
 
     s_job_pending = true;
+    dispense_sync_runtime_active();
     app_log_info("dispense", "started grams=%u", (unsigned)grams);
     return DISPENSE_SUBMIT_OK;
 }
@@ -424,6 +460,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
+        dispense_sync_runtime_active();
         return;
     }
 
@@ -435,6 +472,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
             app_log_info("dispense", "busy");
             dispense_cli_cancel_wait();
             s_job_pending = false;
+            dispense_sync_runtime_active();
             return;
         }
 
@@ -457,6 +495,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         s_zero_delta_streak = 0u;
         s_job_pending = false;
         s_phase = DISPENSE_PHASE_MOTOR;
+        dispense_sync_runtime_active();
 
         now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
         (void)dispense_capture_baseline(now_ms);
@@ -473,6 +512,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
             display_dispense_indicator_idle();
             app_log_info("dispense", "busy");
             dispense_cli_cancel_wait();
+            dispense_sync_runtime_active();
             return;
         }
 
@@ -483,6 +523,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
+        dispense_sync_runtime_active();
         return;
     }
 
@@ -491,6 +532,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
         s_job_pending = false;
+        dispense_sync_runtime_active();
         return;
     }
 
@@ -504,6 +546,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     s_batch_count = 1u;
     s_zero_delta_streak = 0u;
     s_phase = DISPENSE_PHASE_MOTOR;
+    dispense_sync_runtime_active();
 
     now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
     (void)dispense_capture_baseline(now_ms);
@@ -519,6 +562,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         display_dispense_indicator_idle();
         app_log_info("dispense", "busy");
         dispense_cli_cancel_wait();
+        dispense_sync_runtime_active();
     }
 }
 
@@ -583,4 +627,5 @@ void dispense_test_reset(void)
     s_settle_start_ms = 0u;
     s_zero_delta_streak = 0u;
     display_dispense_indicator_idle();
+    dispense_sync_runtime_active();
 }

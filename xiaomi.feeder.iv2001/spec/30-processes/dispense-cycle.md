@@ -38,12 +38,19 @@ weigh driver ([weighing.md](weighing.md) **Weigh driver boundary**).
 
 Before the first motor EN assert:
 
-1. If the last idle bowl sample is **< `[tune]` 2 s** old, use it as
+1. If pending calibration is true (bowl washed / re-installed,
+   or `bowl_error` just cleared): **skip** the fresh-cache shortcut — perform a
+   blocking `read_grams`, anchor at that reading, and use it as
+   `weight_at_dispense_start` (see [auto-tare.md](auto-tare.md)).
+2. Else if the last idle bowl sample is **< `[tune]` 2 s** old, use it as
    `weight_at_dispense_start`.
-2. Otherwise perform a blocking `read_grams` before motor start.
+3. Otherwise perform a blocking `read_grams` before motor start.
 
 Idle sampling runs every `[tune]` 500 ms on `EVT_DISPLAY_TICK` while no dispense
 job is active ([app-event-loop.md](app-event-loop.md)).
+
+After post-settle `read_grams`, anchor auto-tare at `post_grams` when the
+read succeeds.
 
 ## Post-dispense weigh (open-loop and compensated)
 

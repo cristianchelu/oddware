@@ -9,6 +9,8 @@
 #include "app_event_port.h"
 #include "cli_test_assert.h"
 #include "feed_config.h"
+#include "auto_tare.h"
+#include "feeder_runtime.h"
 #include "dispense.h"
 #include "dispense_cli.h"
 #include "display_presentation.h"
@@ -40,6 +42,8 @@ static void dispense_test_reset_all(void)
     dispense_cli_test_reset();
     app_test_reset();
     app_event_port_init();
+    auto_tare_test_reset();
+    feeder_runtime_test_reset();
 }
 
 static void dispense_test_advance_settle(uint32_t start_ms)
@@ -50,6 +54,7 @@ static void dispense_test_advance_settle(uint32_t start_ms)
 
 static void dispense_test_seed_baseline(int32_t grams, uint32_t sample_ms)
 {
+    auto_tare_anchor(grams);
     app_bowl_grams_notify_read(grams, true, sample_ms);
 }
 

@@ -543,19 +543,22 @@ Bench templates: `tools/mqtt/payloads/state-ok.json`,
 
 ## Bowl weight
 
-Topic `.../bowl_weight` (retained, QoS 1) reports food grams in the bowl now.
-Plain integer string — not JSON. Separate from `.../state` (health) and from
-future `.../eaten_today` (cumulative consumption counter).
+Topic `.../bowl_weight` (retained, QoS 1) reports **presented** food grams in
+the bowl now (see [auto-tare.md](auto-tare.md) and [weighing.md](weighing.md) §
+Presented bowl weight). Plain integer string — not JSON. Separate from
+`.../state` (health) and from future `.../eaten_today` (cumulative consumption
+counter).
 
 | Payload | Meaning |
 |---------|---------|
-| `42` | Calibrated, bowl present, valid sample — 42 g food |
+| `42` | Calibrated, bowl present, valid sample — 42 g presented food |
 | `0` | Empty bowl or small negative drift clamped to zero |
 | `""` (empty) | Unknown — uncalibrated, bowl missing, no valid sample, or implausible reading |
 
 Presentation rules match panel **weight** mode ([display-presentation.md](display-presentation.md)
-§ Display modes) except MQTT publishes the **full** calibrated range (no 999 g
-display cap). See [weighing.md](weighing.md) § Bowl presence and data model.
+§ Display modes) except MQTT publishes the **full** presented range (no 999 g
+display cap). Raw `read_grams` is not published on this topic — use UART
+`weigh read` for driver-level grams.
 
 Publish triggers (not on every `[tune]` 500 ms weight sample):
 

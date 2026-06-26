@@ -28,6 +28,7 @@ void app_log_clear_sink(void);
 #ifdef HOST_TEST
 void app_log_test_reset(void);
 const char *app_log_test_last_line(void);
+const char *app_log_test_line_from_end(unsigned n);
 #endif
 
 #endif /* APP_LOG_H */

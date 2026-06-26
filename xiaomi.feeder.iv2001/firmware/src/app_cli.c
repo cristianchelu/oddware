@@ -28,6 +28,7 @@
 #include "app_motor_cli.h"
 #include "app_dispense_cli.h"
 #include "app_feed_cli.h"
+#include "app_tare_cli.h"
 #include "dispense_cli.h"
 #include "app_wifi_cli.h"
 #include "app_mqtt_cli.h"
@@ -137,6 +138,7 @@ static cmd_t app_cli_cmds[] = {
     { "schedule", "schedule show|set|...",    NULL, schedule_cli_subcmds },
     { "display", "display test|fill|off",     NULL, display_cli_subcmds },
     { "weigh",   "weigh power|read|cal",      NULL, weigh_cli_subcmds },
+    { "tare",    "tare show",                 NULL, tare_cli_subcmds },
     { "index",   "index read",                NULL, index_cli_subcmds },
     { "hopper",  "hopper read",               NULL, hopper_cli_subcmds },
     { "power",   "power show",                NULL, power_cli_subcmds },

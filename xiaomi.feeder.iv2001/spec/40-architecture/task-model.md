@@ -100,6 +100,18 @@ Canonical event-type dispatch table: [app-event-loop.md](../30-processes/app-eve
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | Defer expander read to `app`; see `button-handling.md` |
 | `EVT_BUTTON_GESTURE` | `app` after `button_gesture` classifies hold | Gesture routing (dispense, sleep, provisioning); bring-up drains synchronously on display tick |
 
+## Runtime snapshot
+
+Cross-cutting flags that many modules read without coupling to each other's
+headers. All updates run on the `app` task (single writer); readers use plain
+loads — no lock. `[design]`
+
+| Flag | Writer | Readers | Meaning |
+|------|--------|---------|---------|
+| Dispense active | `dispense.c` | `app.c` (idle weight sampling), `auto_tare.c` (drift suppression) | True while a dispense job is pending or in motor/settle phase |
+
+Canonical API: `feeder_runtime.h` (`feeder_runtime_dispense_active()`).
+
 ## ISR-to-task communication
 
 Two tiers of ISR response:

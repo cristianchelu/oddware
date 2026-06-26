@@ -139,7 +139,13 @@ time:
 
 | Value | Type | Unit | Description |
 |-------|------|------|-------------|
-| `bowl_weight` | int | grams | Food in bowl now (empty bowl = 0 g); direct `read_grams` result |
+| `bowl_weight` (raw) | int | grams | Food in bowl now (empty bowl = 0 g); direct `read_grams` result |
+
+### Presented bowl weight (auto-tare)
+
+Panel digits and MQTT `bowl_weight` publish **presented** food grams from
+[auto-tare.md](auto-tare.md), not raw `read_grams` when drift compensation is
+active. Dispense supervisors and calibration still use raw reads.
 
 ### Derived elsewhere (not stored in weigh driver)
 
