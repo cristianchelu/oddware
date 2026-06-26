@@ -12,7 +12,7 @@
 #include "app_event_port.h"
 #include "app_mqtt_dispatch.h"
 #include "auto_tare.h"
-#include "bowl_grams_present.h"
+#include "bowl_mass_present.h"
 #include "bowl_error.h"
 #include "button_gesture.h"
 #include "button_input.h"
@@ -69,7 +69,7 @@ typedef enum {
 
 static app_display_mode_t s_display_mode = APP_DISPLAY_MODE_WEIGHT;
 static weight_boot_phase_t s_weight_boot = WEIGHT_BOOT_PENDING;
-static int32_t s_bowl_g;
+static weight_dg_t s_bowl_dg;
 static bool s_bowl_valid;
 static uint32_t s_weight_last_sample_ms;
 static bool s_weight_resample_after_dispense;
@@ -120,8 +120,8 @@ static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
     const weight_port_t *wp = weight_port_get();
     weight_cal_status_t cal;
     bowl_error_kind_t bowl_err;
-    bowl_grams_status_t grams_st;
-    int32_t present_g;
+    bowl_mass_status_t mass_st;
+    weight_dg_t present_dg;
     uint16_t shown;
     bowl_display_digits_t digits;
 
@@ -132,20 +132,20 @@ static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
     cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
                                                      : WEIGHT_CAL_UNCALIBRATED;
 
-    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
+    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_dg);
     display_bowl_error_indicator_sync(bowl_err);
 
     mqtt_state_sync(bowl_error_is_active(bowl_err));
 
     {
-        int32_t presented_g = auto_tare_present_grams(s_bowl_g, s_bowl_valid);
+        weight_dg_t presented_dg = auto_tare_present_dg(s_bowl_dg, s_bowl_valid);
 
-        grams_st = bowl_grams_present(cal, s_bowl_valid, presented_g, &present_g);
-        mqtt_bowl_weight_sync(grams_st, present_g, force_mqtt_bowl_weight);
+        mass_st = bowl_mass_present_dg(cal, s_bowl_valid, presented_dg, &present_dg);
+        mqtt_bowl_weight_sync(mass_st, present_dg, force_mqtt_bowl_weight);
 
         (void)display_presentation_set_unit(DISPLAY_UNIT_GRAM);
 
-        digits = bowl_grams_display_digits(cal, s_bowl_valid, presented_g, &shown);
+        digits = bowl_mass_display_digits(cal, s_bowl_valid, presented_dg, &shown);
     }
     app_weight_log_bowl_presence(bowl_err);
     switch (digits) {
@@ -170,23 +170,23 @@ static void app_weight_sync_display_scene(bool force_mqtt_bowl_weight)
 static void app_weight_sample(bool idle_try)
 {
     const weight_port_t *wp = weight_port_get();
-    int32_t grams;
+    weight_dg_t dg;
     port_err_t err;
 
     if (wp == NULL) {
         return;
     }
 
-    if (idle_try && wp->try_read_grams != NULL) {
-        err = wp->try_read_grams(&grams);
-    } else if (wp->read_grams != NULL) {
-        err = wp->read_grams(&grams);
+    if (idle_try && wp->try_read_dg != NULL) {
+        err = wp->try_read_dg(&dg);
+    } else if (wp->read_dg != NULL) {
+        err = wp->read_dg(&dg);
     } else {
         return;
     }
 
     if (err == PORT_OK) {
-        s_bowl_g = grams;
+        s_bowl_dg = dg;
         s_bowl_valid = true;
         return;
     }
@@ -217,10 +217,10 @@ static void app_weight_idle_tick(void)
 
     cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
                                                      : WEIGHT_CAL_UNCALIBRATED;
-    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_g);
+    bowl_err = bowl_error_eval(cal, s_bowl_valid, s_bowl_dg);
     auto_tare_sync_bowl_error(bowl_err);
 
-    auto_tare_idle_sample(s_bowl_g, s_bowl_valid);
+    auto_tare_idle_sample(s_bowl_dg, s_bowl_valid);
     app_weight_sync_display_scene(false);
 }
 
@@ -283,14 +283,14 @@ static void app_hopper_mqtt_sync(void)
     }
 }
 
-bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out)
+bool app_bowl_dg_snapshot(uint32_t now_ms, app_bowl_dg_snapshot_t *out)
 {
     if (out == NULL || s_weight_boot != WEIGHT_BOOT_DONE) {
         return false;
     }
 
     out->valid = s_bowl_valid;
-    out->grams = s_bowl_g;
+    out->dg = s_bowl_dg;
     if (!s_bowl_valid || s_weight_last_sample_ms == 0u) {
         out->sample_age_ms = UINT32_MAX;
     } else if (now_ms >= s_weight_last_sample_ms) {
@@ -302,9 +302,9 @@ bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out)
     return true;
 }
 
-void app_bowl_grams_notify_read(int32_t grams, bool valid, uint32_t now_ms)
+void app_bowl_dg_notify_read(weight_dg_t dg, bool valid, uint32_t now_ms)
 {
-    s_bowl_g = grams;
+    s_bowl_dg = dg;
     s_bowl_valid = valid;
     s_weight_last_sample_ms = now_ms;
     app_weight_sync_display_scene(true);
@@ -707,7 +707,7 @@ void app_test_reset(void)
 {
     s_display_mode = APP_DISPLAY_MODE_WEIGHT;
     s_weight_boot = WEIGHT_BOOT_PENDING;
-    s_bowl_g = 0;
+    s_bowl_dg = 0;
     s_bowl_valid = false;
     s_weight_last_sample_ms = 0u;
     s_weight_resample_after_dispense = false;

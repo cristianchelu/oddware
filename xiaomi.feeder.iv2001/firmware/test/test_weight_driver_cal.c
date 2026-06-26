@@ -165,18 +165,19 @@ void test_weight_boot_settle_runs_once(void)
 
 void test_weight_driver_read_requires_host_cal(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
+    int32_t raw;
 
     driver_reset();
     set_weight_rsp(100);
-    TEST_ASSERT_EQUAL(PORT_ERR_NOT_SUPPORTED, weight_read_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(PORT_OK, weight_read_raw_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(100, grams);
+    TEST_ASSERT_EQUAL(PORT_ERR_NOT_SUPPORTED, weight_read_dg(&s_state, &dg));
+    TEST_ASSERT_EQUAL(PORT_OK, weight_read_raw_grams(&s_state, &raw));
+    TEST_ASSERT_EQUAL(100, raw);
 }
 
 void test_weight_driver_read_requires_boot(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
     weigh_cal_model_t model = {
         .zero_raw = 1000,
         .span_g = WEIGH_BOWL_MASS_G,
@@ -189,12 +190,12 @@ void test_weight_driver_read_requires_boot(void)
     s_state.boot_done = false;
     s_state.cal = model;
     set_weight_rsp(1500);
-    TEST_ASSERT_EQUAL(PORT_ERR_IO, weight_read_grams(&s_state, &grams));
+    TEST_ASSERT_EQUAL(PORT_ERR_IO, weight_read_dg(&s_state, &dg));
 }
 
 void test_weight_driver_cal_span_then_read_empty_bowl(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
 
     driver_reset();
     set_weight_rsp(1000);
@@ -204,13 +205,13 @@ void test_weight_driver_cal_span_then_read_empty_bowl(void)
     TEST_ASSERT_EQUAL(PORT_OK, weight_calibrate_span(&s_state));
 
     set_weight_rsp(1500);
-    TEST_ASSERT_EQUAL(PORT_OK, weight_read_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(0, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weight_read_dg(&s_state, &dg));
+    TEST_ASSERT_EQUAL(0, dg);
 }
 
 void test_weight_driver_read_food_with_bowl_and_contents(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
 
     driver_reset();
     set_weight_rsp(1000);
@@ -219,8 +220,8 @@ void test_weight_driver_read_food_with_bowl_and_contents(void)
     TEST_ASSERT_EQUAL(PORT_OK, weight_calibrate_span(&s_state));
 
     set_weight_rsp(1650);
-    TEST_ASSERT_EQUAL(PORT_OK, weight_read_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(105, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weight_read_dg(&s_state, &dg));
+    TEST_ASSERT_EQUAL(1050, dg);
 }
 
 void test_weight_driver_cal_status(void)
@@ -259,7 +260,7 @@ void test_weight_driver_calibrate_span_without_zero(void)
 
 void test_weight_driver_polls_through_boot_warming(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
     weigh_cal_model_t model = {
         .zero_raw = 1000,
         .span_g = WEIGH_BOWL_MASS_G,
@@ -276,15 +277,15 @@ void test_weight_driver_polls_through_boot_warming(void)
     s_weight_after_warm = 1500;
     s_use_weight_after_warm = true;
 
-    TEST_ASSERT_EQUAL(PORT_OK, weight_read_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(0, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weight_read_dg(&s_state, &dg));
+    TEST_ASSERT_EQUAL(0, dg);
     TEST_ASSERT_EQUAL(3u, s_exchange_count);
     TEST_ASSERT_TRUE(s_delay_total >= 2u * CS1270_POLL_MS);
 }
 
 void test_weight_driver_uart_retry_succeeds_after_failures(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
     weigh_cal_model_t model = {
         .zero_raw = 1000,
         .span_g = WEIGH_BOWL_MASS_G,
@@ -300,15 +301,15 @@ void test_weight_driver_uart_retry_succeeds_after_failures(void)
     s_fail_remaining = 2u;
     set_weight_rsp(1500);
 
-    TEST_ASSERT_EQUAL(PORT_OK, weight_read_grams(&s_state, &grams));
-    TEST_ASSERT_EQUAL(0, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weight_read_dg(&s_state, &dg));
+    TEST_ASSERT_EQUAL(0, dg);
     TEST_ASSERT_EQUAL(3u, s_exchange_count);
     TEST_ASSERT_TRUE(s_delay_total >= 2u * CS1270_UART_RETRY_MS);
 }
 
 void test_weight_driver_read_rejects_stuck_warming(void)
 {
-    int32_t grams;
+    weight_dg_t dg;
     weigh_cal_model_t model = {
         .zero_raw = 1000,
         .span_g = WEIGH_BOWL_MASS_G,
@@ -322,5 +323,5 @@ void test_weight_driver_read_rejects_stuck_warming(void)
     set_warming_rsp();
     s_warm_remaining = CS1270_WARM_POLL_MAX;
 
-    TEST_ASSERT_EQUAL(PORT_ERR_IO, weight_read_grams(&s_state, &grams));
+    TEST_ASSERT_EQUAL(PORT_ERR_IO, weight_read_dg(&s_state, &dg));
 }

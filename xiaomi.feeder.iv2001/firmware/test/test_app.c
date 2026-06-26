@@ -267,7 +267,7 @@ void test_app_timer_tick_weight_boot_fsm(void)
 
     ops = fake_weight_port_ops(&count);
     TEST_ASSERT_TRUE(count >= 2u);
-    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_READ_GRAMS, ops[count - 1u].kind);
+    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_READ_DG, ops[count - 1u].kind);
 }
 
 void test_app_calibrated_no_sample_shows_blank_not_dash(void)
@@ -324,15 +324,15 @@ void test_app_idle_loop_samples_every_tick(void)
 
     ops = fake_weight_port_ops(&count);
     for (i = 0u; i < count; i++) {
-        if (ops[i].kind == FAKE_WEIGHT_OP_READ_GRAMS
-            || ops[i].kind == FAKE_WEIGHT_OP_TRY_READ_GRAMS) {
+        if (ops[i].kind == FAKE_WEIGHT_OP_READ_DG
+            || ops[i].kind == FAKE_WEIGHT_OP_TRY_READ_DG) {
             reads++;
         }
     }
 
     TEST_ASSERT_EQUAL_UINT(4u, reads);
-    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_READ_GRAMS, ops[1].kind);
-    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_TRY_READ_GRAMS, ops[count - 1u].kind);
+    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_READ_DG, ops[1].kind);
+    TEST_ASSERT_EQUAL(FAKE_WEIGHT_OP_TRY_READ_DG, ops[count - 1u].kind);
 }
 
 void test_app_read_fail_clears_stale_weight_scene(void)
@@ -342,7 +342,7 @@ void test_app_read_fail_clears_stale_weight_scene(void)
     app_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(42);
+    fake_weight_port_set_read_dg(420);
     fake_display_port_reset();
     display_presentation_reset();
 
@@ -371,7 +371,7 @@ void test_app_read_busy_keeps_stale_weight_scene(void)
     app_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(42);
+    fake_weight_port_set_read_dg(420);
     fake_display_port_reset();
     display_presentation_reset();
 
@@ -756,7 +756,7 @@ void test_app_child_lock_blocked_keeps_digits_blank_during_feedback(void)
     app_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(42);
+    fake_weight_port_set_read_dg(420);
     fake_display_port_reset();
     fake_button_port_reset();
     fake_config_port_reset();
@@ -882,7 +882,7 @@ void test_app_weight_updates_during_mqtt_connecting(void)
     app_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(55);
+    fake_weight_port_set_read_dg(550);
     fake_display_port_reset();
     display_presentation_reset();
 
@@ -973,7 +973,7 @@ void test_app_calibrated_small_negative_clamps_zero_icon_off(void)
     app_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(-1);
+    fake_weight_port_set_read_dg(-10);
     fake_display_port_reset();
     display_presentation_reset();
 
@@ -995,7 +995,7 @@ void test_app_calibrated_bowl_missing_shows_underflow_and_icon(void)
     mqtt_bowl_weight_test_reset();
     fake_weight_port_reset();
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    fake_weight_port_set_read_grams(-100);
+    fake_weight_port_set_read_dg(-1000);
     fake_display_port_reset();
     display_presentation_reset();
 

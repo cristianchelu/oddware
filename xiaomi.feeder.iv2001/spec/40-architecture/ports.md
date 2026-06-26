@@ -204,10 +204,11 @@ Adapter: `adc_adapter.c` — `gpio_expander_port` + `adc_driver.c` + `adc_bus_ad
 ### `weight_port.h`
 
 **Weigh driver boundary** ([weighing.md](../30-processes/weighing.md)): the
-driver is stateless except NVDM cal. `read_grams` returns absolute food in the
-bowl now. Deltas (`eaten_today`, dispense delivered grams) are computed by
-dispense/monitoring tasks that snapshot `read_grams` before and after events —
-not by offsets inside this port.
+driver is stateless except NVDM cal. `read_dg` returns absolute food mass in
+**tenth-grams** (`weight_dg_t`: 1 unit = 0.1 g; empty bowl = 0). Deltas
+(`eaten_today`, dispense delivered mass) are computed by dispense/monitoring
+tasks that snapshot `read_dg` before and after events — not by offsets inside
+this port.
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
@@ -215,8 +216,8 @@ not by offsets inside this port.
 | `boot_poll` | `() -> err` | `PORT_ERR_BUSY` until settle elapses; then `boot_done` |
 | `power_on` | `() -> err` | `boot_begin` + blocking `boot_poll` loop (CLI / `weigh power on`) |
 | `power_off` | `() -> err` | Disable CS1270 |
-| `read_grams` | `(int32_t *grams) -> err` | Absolute food grams now (requires host cal; empty bowl = 0) |
-| `try_read_grams` | `(int32_t *grams) -> err` | Same as `read_grams` but `try_acquire` on WFCI `WEIGH` — `PORT_ERR_BUSY` when Wi-Fi holds the bus (idle loop; CLI uses blocking `read_grams`) |
+| `read_dg` | `(weight_dg_t *dg) -> err` | Absolute food dg now (requires host cal; empty bowl = 0) |
+| `try_read_dg` | `(weight_dg_t *dg) -> err` | Same as `read_dg` but `try_acquire` on WFCI `WEIGH` — `PORT_ERR_BUSY` when Wi-Fi holds the bus (idle loop; CLI uses blocking `read_dg`) |
 | `read_raw_grams` | `(int32_t *grams) -> err` | Uncorrected CS1270 count (bench) |
 | `calibrate_zero` | `() -> err` | Capture raw with bowl removed → NVDM `calib/zero` |
 | `calibrate_span` | `() -> err` | Capture raw with bowl installed → NVDM `calib/span_*` (350 g) |

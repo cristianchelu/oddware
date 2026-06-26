@@ -16,6 +16,7 @@
 #include "motor_cli.h"
 #include "motor_port_provider_host.h"
 #include "motor_jam.h"
+#include "weight_units.h"
 
 extern void fake_app_event_q_reset(void);
 
@@ -152,9 +153,9 @@ void test_dispense_cli_grams_underfill_fault(void)
     fake_weight_port_reset();
     TEST_ASSERT_TRUE(feed_config_mode_set(DISPENSE_MODE_COMPENSATED));
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
-    auto_tare_anchor(100);
-    app_bowl_grams_notify_read(100, true, 0u);
-    fake_weight_port_set_read_grams(100);
+    auto_tare_anchor(WEIGHT_G_TO_DG(100));
+    app_bowl_dg_notify_read(WEIGHT_G_TO_DG(100), true, 0u);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(100));
 
     cli_test_reset();
     TEST_ASSERT_EQUAL(0u, dispense_cli_handle_grams(1u, argv));
@@ -163,21 +164,21 @@ void test_dispense_cli_grams_underfill_fault(void)
     ev.type = EVT_BURST_DONE;
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_TRUE(app_step());
-    fake_weight_port_set_read_grams(110);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(110));
     dispense_cli_advance_settle(t);
     t += 20000u;
 
     ev.type = EVT_BURST_DONE;
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_TRUE(app_step());
-    fake_weight_port_set_read_grams(115);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(115));
     dispense_cli_advance_settle(t);
     t += 20000u;
 
     ev.type = EVT_BURST_DONE;
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_TRUE(app_step());
-    fake_weight_port_set_read_grams(118);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(118));
     cli_test_reset();
     dispense_cli_advance_settle(t);
 

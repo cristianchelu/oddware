@@ -7,7 +7,7 @@
 
 static fake_weight_op_t s_ops[FAKE_WEIGHT_OP_MAX];
 static size_t s_op_count;
-static int32_t s_read_grams = 100;
+static weight_dg_t s_read_dg = 1000;
 static port_err_t s_read_err = PORT_OK;
 static weight_cal_status_t s_cal_status = WEIGHT_CAL_IDLE;
 static bool s_scale_off;
@@ -19,7 +19,7 @@ static void record(fake_weight_op_kind_t kind)
     }
 
     s_ops[s_op_count].kind = kind;
-    s_ops[s_op_count].grams = s_read_grams;
+    s_ops[s_op_count].dg = s_read_dg;
     s_op_count++;
 }
 
@@ -27,7 +27,7 @@ void fake_weight_port_reset(void)
 {
     memset(s_ops, 0, sizeof(s_ops));
     s_op_count = 0u;
-    s_read_grams = 100;
+    s_read_dg = 1000;
     s_read_err = PORT_OK;
     s_cal_status = WEIGHT_CAL_IDLE;
     s_scale_off = false;
@@ -38,9 +38,9 @@ void fake_weight_port_set_scale_off(bool off)
     s_scale_off = off;
 }
 
-void fake_weight_port_set_read_grams(int32_t grams)
+void fake_weight_port_set_read_dg(weight_dg_t dg)
 {
-    s_read_grams = grams;
+    s_read_dg = dg;
 }
 
 void fake_weight_port_set_read_err(port_err_t err)
@@ -75,7 +75,7 @@ static port_err_t fake_power_off(void)
     return PORT_OK;
 }
 
-static port_err_t fake_read_grams_impl(int32_t *grams, fake_weight_op_kind_t kind)
+static port_err_t fake_read_dg_impl(weight_dg_t *dg, fake_weight_op_kind_t kind)
 {
     if (s_scale_off) {
         return PORT_ERR_NOT_FOUND;
@@ -85,25 +85,37 @@ static port_err_t fake_read_grams_impl(int32_t *grams, fake_weight_op_kind_t kin
     if (s_read_err != PORT_OK) {
         return s_read_err;
     }
-    if (grams != NULL) {
-        *grams = s_read_grams;
+    if (dg != NULL) {
+        *dg = s_read_dg;
     }
     return PORT_OK;
 }
 
-static port_err_t fake_read_grams(int32_t *grams)
+static port_err_t fake_read_dg(weight_dg_t *dg)
 {
-    return fake_read_grams_impl(grams, FAKE_WEIGHT_OP_READ_GRAMS);
+    return fake_read_dg_impl(dg, FAKE_WEIGHT_OP_READ_DG);
 }
 
-static port_err_t fake_try_read_grams(int32_t *grams)
+static port_err_t fake_try_read_dg(weight_dg_t *dg)
 {
-    return fake_read_grams_impl(grams, FAKE_WEIGHT_OP_TRY_READ_GRAMS);
+    return fake_read_dg_impl(dg, FAKE_WEIGHT_OP_TRY_READ_DG);
 }
 
 static port_err_t fake_read_raw_grams(int32_t *grams)
 {
-    return fake_read_grams(grams);
+    if (s_scale_off) {
+        return PORT_ERR_NOT_FOUND;
+    }
+
+    if (s_read_err != PORT_OK) {
+        return s_read_err;
+    }
+
+    if (grams != NULL) {
+        *grams = (int32_t)s_read_dg;
+    }
+
+    return PORT_OK;
 }
 
 static port_err_t fake_cal_zero(void)
@@ -142,8 +154,8 @@ static const weight_port_t s_fake_weight_port = {
     .boot_poll = fake_boot_poll,
     .power_on = fake_power_on,
     .power_off = fake_power_off,
-    .read_grams = fake_read_grams,
-    .try_read_grams = fake_try_read_grams,
+    .read_dg = fake_read_dg,
+    .try_read_dg = fake_try_read_dg,
     .read_raw_grams = fake_read_raw_grams,
     .calibrate_zero = fake_cal_zero,
     .calibrate_span = fake_cal_span,

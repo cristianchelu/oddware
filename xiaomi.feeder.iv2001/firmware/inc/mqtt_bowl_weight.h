@@ -8,14 +8,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "bowl_grams_present.h"
+#include "bowl_mass_present.h"
+#include "weight_units.h"
 
-#define MQTT_BOWL_WEIGHT_CHANGE_THRESHOLD_G  2
-#define MQTT_BOWL_WEIGHT_COALESCE_MS         2000u
+#define MQTT_BOWL_WEIGHT_CHANGE_THRESHOLD_G   2
+#define MQTT_BOWL_WEIGHT_CHANGE_THRESHOLD_DG  WEIGHT_G_TO_DG(MQTT_BOWL_WEIGHT_CHANGE_THRESHOLD_G)
+#define MQTT_BOWL_WEIGHT_COALESCE_MS            2000u
 
 void mqtt_bowl_weight_set_device_id(const char *device_id);
-void mqtt_bowl_weight_sync(bowl_grams_status_t status,
-                           int32_t grams,
+void mqtt_bowl_weight_sync(bowl_mass_status_t status,
+                           weight_dg_t dg,
                            bool force);
 void mqtt_bowl_weight_on_mqtt_connected(void);
 void mqtt_bowl_weight_on_outbox_reset(void);

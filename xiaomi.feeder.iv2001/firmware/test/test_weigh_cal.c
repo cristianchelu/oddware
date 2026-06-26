@@ -8,6 +8,7 @@
 #include "fake_config_port.h"
 #include "weigh_cal.h"
 #include "weigh_product.h"
+#include "weight_units.h"
 
 void test_weigh_cal_apply_linear(void)
 {
@@ -18,19 +19,19 @@ void test_weigh_cal_apply_linear(void)
         .zero_set = true,
         .span_set = true,
     };
-    int32_t grams;
+    weight_dg_t total_dg;
 
-    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply(&model, 100, &grams));
-    TEST_ASSERT_EQUAL(0, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply_dg(&model, 100, &total_dg));
+    TEST_ASSERT_EQUAL(0, total_dg);
 
-    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply(&model, 600, &grams));
-    TEST_ASSERT_EQUAL(500, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply_dg(&model, 600, &total_dg));
+    TEST_ASSERT_EQUAL(5000, total_dg);
 
-    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply(&model, 350, &grams));
-    TEST_ASSERT_EQUAL(250, grams);
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_apply_dg(&model, 350, &total_dg));
+    TEST_ASSERT_EQUAL(2500, total_dg);
 }
 
-void test_weigh_cal_food_grams_subtracts_bowl(void)
+void test_weigh_cal_food_dg_subtracts_bowl(void)
 {
     weigh_cal_model_t model = {
         .zero_raw = 1000,
@@ -39,13 +40,28 @@ void test_weigh_cal_food_grams_subtracts_bowl(void)
         .zero_set = true,
         .span_set = true,
     };
-    int32_t food;
+    weight_dg_t food_dg;
 
-    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_food_grams(&model, 1500, &food));
-    TEST_ASSERT_EQUAL(0, food);
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_food_dg(&model, 1500, &food_dg));
+    TEST_ASSERT_EQUAL(0, food_dg);
 
-    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_food_grams(&model, 1650, &food));
-    TEST_ASSERT_EQUAL(105, food);
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_food_dg(&model, 1650, &food_dg));
+    TEST_ASSERT_EQUAL(1050, food_dg);
+}
+
+void test_weigh_cal_food_dg_sub_gram_resolution(void)
+{
+    weigh_cal_model_t model = {
+        .zero_raw = 0,
+        .span_g = WEIGH_BOWL_MASS_G,
+        .span_raw = 1000,
+        .zero_set = true,
+        .span_set = true,
+    };
+    weight_dg_t food_dg;
+
+    TEST_ASSERT_EQUAL(PORT_OK, weigh_cal_food_dg(&model, 1121, &food_dg));
+    TEST_ASSERT_EQUAL(423, food_dg);
 }
 
 void test_weigh_cal_save_zero_clears_span(void)

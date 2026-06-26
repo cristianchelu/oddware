@@ -30,9 +30,11 @@ A portion request carries **N** portions (`1 ≤ N ≤ 15`). `[design]`
 | **Open-loop** | Run all planned bursts, measure bowl delta, publish completion event | Default (`feed/mode = open_loop`) |
 | **Compensated** | After each batch, compare bowl delta to target; compute extra bursts if under | Opt-in via MQTT (`feed/mode = compensated`) |
 
-Bowl **deltas** (`bowl_after − bowl_before`) are computed by the dispense
-supervisor using two `read_grams` calls — not by runtime tare or offsets in the
-weigh driver ([weighing.md](weighing.md) **Weigh driver boundary**).
+Bowl **deltas** (`bowl_after_dg − bowl_before_dg`) are computed by the dispense
+supervisor using two `read_dg` calls — not by runtime tare or offsets in the
+weigh driver ([weighing.md](weighing.md) **Weigh driver boundary**). MQTT
+`dispense/event` `grams` and command `target_grams` remain **whole grams**;
+internal math uses tenth-grams (`weight_dg_t`).
 
 ## Pre-dispense baseline
 
@@ -40,16 +42,16 @@ Before the first motor EN assert:
 
 1. If pending calibration is true (bowl washed / re-installed,
    or `bowl_error` just cleared): **skip** the fresh-cache shortcut — perform a
-   blocking `read_grams`, anchor at that reading, and use it as
+   blocking `read_dg`, anchor at that reading, and use it as
    `weight_at_dispense_start` (see [auto-tare.md](auto-tare.md)).
 2. Else if the last idle bowl sample is **< `[tune]` 2 s** old, use it as
    `weight_at_dispense_start`.
-3. Otherwise perform a blocking `read_grams` before motor start.
+3. Otherwise perform a blocking `read_dg` before motor start.
 
 Idle sampling runs every `[tune]` 500 ms on `EVT_DISPLAY_TICK` while no dispense
 job is active ([app-event-loop.md](app-event-loop.md)).
 
-After post-settle `read_grams`, anchor auto-tare at `post_grams` when the
+After post-settle `read_dg`, anchor auto-tare at `post_dg` when the
 read succeeds.
 
 ## Post-dispense weigh (open-loop and compensated)
@@ -60,8 +62,8 @@ After motor completion (success or stuck), before the job ends:
 |------|--------|--------|
 | 1 | De-assert motor EN | Immediate (motor_ctrl) |
 | 2 | Wait for mechanical settle | `[tune]` 3 s |
-| 3 | Blocking `read_grams` | — |
-| 4 | `grams_delivered = post − baseline`; clamp event `grams` ≥ 0 | — |
+| 3 | Blocking `read_dg` | — |
+| 4 | `dg_delivered = post_dg − baseline_dg`; event `grams` = rounded whole g; clamp ≥ 0 | — |
 | 5 | Publish MQTT `.../dispense/event`; refresh `.../bowl_weight` | — |
 
 While settling, `dispense_is_active()` remains true (dispensing pictograph

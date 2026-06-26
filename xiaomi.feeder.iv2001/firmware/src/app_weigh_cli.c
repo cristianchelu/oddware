@@ -10,6 +10,7 @@
 #include "cli.h"
 #include "weigh_cli.h"
 #include "app_weigh_cli.h"
+#include "weight_units.h"
 
 static uint8_t weigh_cli_power_cmd(uint8_t argc, char *argv[])
 {
@@ -46,22 +47,26 @@ static uint8_t weigh_cli_power_cmd(uint8_t argc, char *argv[])
 
 static uint8_t weigh_cli_read_cmd(uint8_t argc, char *argv[])
 {
-    int32_t grams;
+    weight_dg_t dg;
+    char formatted[16];
     port_err_t err;
 
     (void)argc;
     (void)argv;
 
-    err = weigh_cli_run_read(&grams);
+    err = weigh_cli_run_read(&dg);
     if (err == PORT_OK) {
-        app_log_info("cli", "weight: %ld g", (long)grams);
+        (void)weight_format_cli_g(dg, formatted, sizeof(formatted));
+        app_log_info("cli", "weight: %s g", formatted);
         return 0;
     }
 
     if (weigh_cli_print_read_fail(err)) {
-        err = weigh_cli_run_read_raw(&grams);
+        int32_t raw;
+
+        err = weigh_cli_run_read_raw(&raw);
         if (err == PORT_OK) {
-            app_log_info("cli", "weight: %ld g (raw, no calibration)", (long)grams);
+            app_log_info("cli", "weight: %ld g (raw, no calibration)", (long)raw);
             return 0;
         }
         return 1;

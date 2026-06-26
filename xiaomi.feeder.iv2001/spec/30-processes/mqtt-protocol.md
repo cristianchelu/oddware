@@ -14,7 +14,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 |-------|---------|-----|
 | `.../connection` | `online` or `offline` (plain text) | 1 |
 | `.../state` | `{"bowl_error": false}` — device condition (faults / health); see [Device condition](#device-condition) | 1 |
-| `.../bowl_weight` | `42` — plain integer grams; empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
+| `.../bowl_weight` | `42.3` — plain string, one decimal (0.1 g); empty string when unknown; see [Bowl weight](#bowl-weight) | 1 |
 | `.../hopper` | `normal` \| `low` \| `empty` (plain text) | 1 |
 | `.../battery` | `75` — plain integer 0–100; `unknown` when absent; see [Battery](#battery) | 1 |
 | `.../battery_voltage` | `5200` — plain integer pack mV; see [Battery pack voltage](#battery-pack-voltage) | 1 |
@@ -543,22 +543,22 @@ Bench templates: `tools/mqtt/payloads/state-ok.json`,
 
 ## Bowl weight
 
-Topic `.../bowl_weight` (retained, QoS 1) reports **presented** food grams in
+Topic `.../bowl_weight` (retained, QoS 1) reports **presented** food mass in
 the bowl now (see [auto-tare.md](auto-tare.md) and [weighing.md](weighing.md) §
-Presented bowl weight). Plain integer string — not JSON. Separate from
-`.../state` (health) and from future `.../eaten_today` (cumulative consumption
-counter).
+Presented bowl weight). Plain string with **one decimal place** (0.1 g
+precision) — not JSON. Separate from `.../state` (health) and from future
+`.../eaten_today` (cumulative consumption counter).
 
 | Payload | Meaning |
 |---------|---------|
-| `42` | Calibrated, bowl present, valid sample — 42 g presented food |
-| `0` | Empty bowl or small negative drift clamped to zero |
+| `42.3` | Calibrated, bowl present, valid sample — 42.3 g presented food |
+| `0.0` | Empty bowl or small negative drift clamped to zero |
 | `""` (empty) | Unknown — uncalibrated, bowl missing, no valid sample, or implausible reading |
 
 Presentation rules match panel **weight** mode ([display-presentation.md](display-presentation.md)
 § Display modes) except MQTT publishes the **full** presented range (no 999 g
-display cap). Raw `read_grams` is not published on this topic — use UART
-`weigh read` for driver-level grams.
+display cap) at 0.1 g precision. Raw `read_dg` is not published on this topic —
+use UART `weigh read` for driver-level mass.
 
 Publish triggers (not on every `[tune]` 500 ms weight sample):
 

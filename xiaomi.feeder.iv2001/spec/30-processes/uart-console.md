@@ -656,7 +656,7 @@ After `weigh power off`, does **not** re-power the rail — operator must run
 
 | Outcome | UART response |
 |---------|---------------|
-| Success | `weight: <signed grams> g` |
+| Success | `weight: <signed one-decimal> g` (e.g. `weight: 42.3 g`) |
 | Rail off (after `weigh power off`) | `weigh read: scale off (weigh power on first)` |
 | No calibration | `weigh read: no calibration (weigh cal zero, then weigh cal span)` then, if the chip returns a weight frame, `weight: <n> g (raw, no calibration)` |
 | Zero only (span pending) | `weigh read: calibration incomplete (install bowl, weigh cal span)` then optional raw line as above |
@@ -698,10 +698,10 @@ product interface — there is no operator tare command. `[design]`
 
 | Outcome | UART response |
 |---------|---------------|
-| Success | `tare stable: <g> g`, `tare drift: <g> g`, `tare pending: yes\|no` (three lines) |
-| Not anchored yet | `tare stable: (unset)` on the first line; drift is `0` |
+| Success | `tare stable: <one-decimal> g`, `tare drift: <one-decimal> g`, `tare pending: yes\|no` (three lines) |
+| Not anchored yet | `tare stable: (unset)` on the first line; drift is `0.0` |
 
-`weigh read` always reports **raw** grams; `tare show` reports the
+`weigh read` always reports **raw** driver mass (one decimal); `tare show` reports the
 presentation-layer belief used for panel/MQTT bowl weight.
 
 ## `index` commands

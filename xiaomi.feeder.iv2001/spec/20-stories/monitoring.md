@@ -7,15 +7,16 @@ device is doing and whether it needs attention.
 
 ## Bowl weight
 
-- The feeder reports the current weight of food in the bowl (in grams).
+- The feeder reports the current weight of food in the bowl.
 - The provided stainless bowl weighs 350 g; the weigh driver subtracts this
-  so an empty installed bowl reads 0 g (`weight_port.read_grams`).
-- The panel and MQTT show **presented** grams: raw `read_grams` plus an internal
-  RAM drift offset so slow temperature drift does not creep the displayed value
-  between feeding events (see [auto-tare.md](../30-processes/auto-tare.md)).
+  so an empty installed bowl reads 0 (`weight_port.read_dg`, internal
+  tenth-grams).
+- The panel shows **rounded whole grams**; MQTT `bowl_weight` reports
+  **presented** mass at 0.1 g precision (raw `read_dg` plus internal RAM drift
+  offset — see [auto-tare.md](../30-processes/auto-tare.md)).
 - This is not a user tare command — there is no `weigh tare`.
-- Over MQTT the user sees bowl grams on `petfeeder/<device_id>/bowl_weight`
-  (plain integer, retained). Home Assistant discovers a **Bowl weight** sensor
+- Over MQTT the user sees bowl mass on `petfeeder/<device_id>/bowl_weight`
+  (plain string with one decimal, retained). Home Assistant discovers a **Bowl weight** sensor
   (`device_class`: weight, unit g). Updates are change-driven — not every
   local display refresh — see [mqtt-protocol.md](../30-processes/mqtt-protocol.md)
   § Bowl weight.
@@ -23,7 +24,7 @@ device is doing and whether it needs attention.
 ## Eaten-today tracking
 
 - **Not** computed inside the weigh driver. The monitoring task derives
-  consumption from dispense history and/or `read_grams` snapshots before and
+  consumption from dispense history and/or `read_dg` snapshots before and
   after feeding (see [weighing.md](../30-processes/weighing.md) **Weigh driver
   boundary**).
 - Cumulative food consumed since midnight (local time); resets at midnight.

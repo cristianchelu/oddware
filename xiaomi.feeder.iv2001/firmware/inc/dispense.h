@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "weight_units.h"
+
 #define DISPENSE_PORTIONS_MIN         1u
 #define DISPENSE_PORTIONS_MAX         15u
 #define DISPENSE_BASELINE_FRESH_MS    2000u
@@ -16,6 +18,8 @@
 #define DISPENSE_COMP_TOLERANCE_G     5u
 #define DISPENSE_COMP_MAX_BATCHES     3u
 #define DISPENSE_COMP_ZERO_DELTA_GIVEUP 3u
+#define DISPENSE_COMP_TOLERANCE_DG      WEIGHT_G_TO_DG(DISPENSE_COMP_TOLERANCE_G)
+#define DISPENSE_GRAMS_PER_PORTION_DG   WEIGHT_G_TO_DG(DISPENSE_GRAMS_PER_PORTION)
 
 typedef enum {
     DISPENSE_KIND_PORTIONS = 0,

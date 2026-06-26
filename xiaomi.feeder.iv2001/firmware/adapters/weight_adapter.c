@@ -15,6 +15,7 @@
 #include "config_port.h"
 #include "weight_driver.h"
 #include "weight_port.h"
+#include "weight_port_read_staging.h"
 #include "wfci_bus_port.h"
 
 static weight_driver_state_t s_state;
@@ -173,16 +174,16 @@ static port_err_t weight_ensure_booted(void)
     return weight_boot_sequence_blocking();
 }
 
-static int32_t s_read_grams;
+static weight_port_read_staging_t s_read_staging;
 
-static port_err_t body_read_grams(void)
+static port_err_t body_read_dg(void)
 {
-    return weight_read_grams(&s_state, &s_read_grams);
+    return weight_read_dg(&s_state, &s_read_staging.dg);
 }
 
 static port_err_t body_read_raw_grams(void)
 {
-    return weight_read_raw_grams(&s_state, &s_read_grams);
+    return weight_read_raw_grams(&s_state, &s_read_staging.raw_grams);
 }
 
 static port_err_t body_cal_zero(void)
@@ -258,11 +259,11 @@ static port_err_t port_power_off(void)
     return weight_with_expander_loan(body_power_off);
 }
 
-static port_err_t port_read_grams_impl(int32_t *grams, bool try_only)
+static port_err_t port_read_dg_impl(weight_dg_t *dg, bool try_only)
 {
     port_err_t err;
 
-    if (grams == NULL) {
+    if (dg == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -271,22 +272,22 @@ static port_err_t port_read_grams_impl(int32_t *grams, bool try_only)
         return err;
     }
 
-    err = try_only ? weight_try_with_uart(body_read_grams)
-                   : weight_with_uart(body_read_grams);
+    err = try_only ? weight_try_with_uart(body_read_dg)
+                   : weight_with_uart(body_read_dg);
     if (err == PORT_OK) {
-        *grams = s_read_grams;
+        *dg = s_read_staging.dg;
     }
     return err;
 }
 
-static port_err_t port_read_grams(int32_t *grams)
+static port_err_t port_read_dg(weight_dg_t *dg)
 {
-    return port_read_grams_impl(grams, false);
+    return port_read_dg_impl(dg, false);
 }
 
-static port_err_t port_try_read_grams(int32_t *grams)
+static port_err_t port_try_read_dg(weight_dg_t *dg)
 {
-    return port_read_grams_impl(grams, true);
+    return port_read_dg_impl(dg, true);
 }
 
 static port_err_t port_read_raw_grams(int32_t *grams)
@@ -304,7 +305,7 @@ static port_err_t port_read_raw_grams(int32_t *grams)
 
     err = weight_with_uart(body_read_raw_grams);
     if (err == PORT_OK) {
-        *grams = s_read_grams;
+        *grams = s_read_staging.raw_grams;
     }
     return err;
 }
@@ -344,8 +345,8 @@ static const weight_port_t s_weight_port = {
     .boot_poll = port_boot_poll,
     .power_on = port_power_on,
     .power_off = port_power_off,
-    .read_grams = port_read_grams,
-    .try_read_grams = port_try_read_grams,
+    .read_dg = port_read_dg,
+    .try_read_dg = port_try_read_dg,
     .read_raw_grams = port_read_raw_grams,
     .calibrate_zero = port_calibrate_zero,
     .calibrate_span = port_calibrate_span,

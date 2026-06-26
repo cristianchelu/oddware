@@ -19,7 +19,7 @@ typedef enum {
 
 bowl_error_kind_t bowl_error_eval(weight_cal_status_t cal,
                                   bool sample_valid,
-                                  int32_t food_g);
+                                  weight_dg_t food_dg);
 bool bowl_error_is_active(bowl_error_kind_t kind);
 
 #endif /* BOWL_ERROR_H */

@@ -165,13 +165,13 @@ static port_err_t weight_query_raw(weight_driver_state_t *state,
     return PORT_ERR_IO;
 }
 
-port_err_t weight_read_grams(weight_driver_state_t *state, int32_t *grams)
+port_err_t weight_read_dg(weight_driver_state_t *state, weight_dg_t *dg)
 {
     int32_t raw;
     cs1270_status_t st;
     port_err_t err;
 
-    if (state == NULL || grams == NULL) {
+    if (state == NULL || dg == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -198,7 +198,7 @@ port_err_t weight_read_grams(weight_driver_state_t *state, int32_t *grams)
         return PORT_ERR_IO;
     }
 
-    return weigh_cal_food_grams(&state->cal, raw, grams);
+    return weigh_cal_food_dg(&state->cal, raw, dg);
 }
 
 port_err_t weight_read_raw_grams(weight_driver_state_t *state, int32_t *grams)

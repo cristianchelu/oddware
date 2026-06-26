@@ -39,7 +39,7 @@ port_err_t weight_rail_enable(weight_driver_state_t *state);
 port_err_t weight_boot_settle(weight_driver_state_t *state);
 port_err_t weight_power_off(weight_driver_state_t *state);
 bool weight_scale_off(const weight_driver_state_t *state);
-port_err_t weight_read_grams(weight_driver_state_t *state, int32_t *grams);
+port_err_t weight_read_dg(weight_driver_state_t *state, weight_dg_t *dg);
 port_err_t weight_read_raw_grams(weight_driver_state_t *state, int32_t *grams);
 port_err_t weight_calibrate_zero(weight_driver_state_t *state);
 port_err_t weight_calibrate_span(weight_driver_state_t *state);

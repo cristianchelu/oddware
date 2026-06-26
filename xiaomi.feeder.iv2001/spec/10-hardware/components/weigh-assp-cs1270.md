@@ -16,8 +16,8 @@ Firmware uses this mass as the span-calibration reference and subtracts it
 from corrected readings so an empty installed bowl reports 0 g food.
 
 Application logic treats the weigh driver as stateless (NVDM cal only):
-`read_grams` → absolute food grams now; event deltas live in dispense and
-monitoring tasks. See [weighing.md](../../30-processes/weighing.md)
+`read_dg` → absolute food mass in tenth-grams; event deltas live in dispense
+and monitoring tasks. See [weighing.md](../../30-processes/weighing.md)
 **Weigh driver boundary**.
 
 ## Interface to host

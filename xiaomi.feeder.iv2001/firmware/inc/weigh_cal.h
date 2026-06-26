@@ -10,6 +10,7 @@
 
 #include "config_port.h"
 #include "port_err.h"
+#include "weight_units.h"
 
 #include "weigh_product.h"
 
@@ -34,7 +35,7 @@ port_err_t weigh_cal_save_span(const config_port_t *cfg,
 port_err_t weigh_cal_clear(const config_port_t *cfg, weigh_cal_model_t *model);
 bool weigh_cal_is_complete(const weigh_cal_model_t *model);
 bool weigh_cal_zero_pending_span(const weigh_cal_model_t *model);
-port_err_t weigh_cal_apply(const weigh_cal_model_t *model, int32_t raw, int32_t *grams);
-port_err_t weigh_cal_food_grams(const weigh_cal_model_t *model, int32_t raw, int32_t *food_g);
+port_err_t weigh_cal_apply_dg(const weigh_cal_model_t *model, int32_t raw, weight_dg_t *total_dg);
+port_err_t weigh_cal_food_dg(const weigh_cal_model_t *model, int32_t raw, weight_dg_t *food_dg);
 
 #endif /* WEIGH_CAL_H */

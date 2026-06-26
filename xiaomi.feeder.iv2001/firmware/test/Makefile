@@ -86,7 +86,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_wifi_indicator.c \
              ../src/display_bowl_error_indicator.c \
              ../src/bowl_error.c \
-             ../src/bowl_grams_present.c \
+             ../src/bowl_mass_present.c \
              ../src/feeder_runtime.c \
              ../src/auto_tare.c \
              ../src/app_tare_cli.c \
@@ -98,6 +98,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/display_boot.c \
              ../src/display_cli.c \
              ../src/weigh_cli.c \
+             ../src/app_weigh_cli.c \
              ../src/motor_cli.c \
              ../src/dispense_cli.c \
              ../src/dispense.c \
@@ -113,6 +114,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/power_cli.c \
              ../src/app_power_cli.c \
              ../src/weigh_cal.c \
+             ../src/weight_units.c \
              ../src/gpio_expander_loan.c \
              ../src/wfci_bus_state.c \
              ../adapters/motor_index_port_adapter.c \

@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "app_event.h"
+#include "weight_units.h"
 
 void app_start(void);
 void app_dispatch(const app_event_t *ev);
@@ -26,12 +27,12 @@ void app_weight_notify_dispense_complete(void);
 
 typedef struct {
     bool valid;
-    int32_t grams;
+    weight_dg_t dg;
     uint32_t sample_age_ms;
-} app_bowl_grams_snapshot_t;
+} app_bowl_dg_snapshot_t;
 
-bool app_bowl_grams_snapshot(uint32_t now_ms, app_bowl_grams_snapshot_t *out);
-void app_bowl_grams_notify_read(int32_t grams, bool valid, uint32_t now_ms);
+bool app_bowl_dg_snapshot(uint32_t now_ms, app_bowl_dg_snapshot_t *out);
+void app_bowl_dg_notify_read(weight_dg_t dg, bool valid, uint32_t now_ms);
 
 void app_test_finish_weight_boot(void);
 

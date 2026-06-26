@@ -18,7 +18,7 @@ const char *weigh_cli_cal_status_name(weight_cal_status_t st);
 
 port_err_t weigh_cli_run_power_on(void);
 port_err_t weigh_cli_run_power_off(void);
-port_err_t weigh_cli_run_read(int32_t *grams);
+port_err_t weigh_cli_run_read(weight_dg_t *dg);
 port_err_t weigh_cli_run_read_raw(int32_t *grams);
 port_err_t weigh_cli_run_cal_zero(void);
 port_err_t weigh_cli_run_cal_span(void);

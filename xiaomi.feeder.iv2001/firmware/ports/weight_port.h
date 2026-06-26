@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "port_err.h"
+#include "weight_units.h"
 
 typedef enum {
     WEIGHT_CAL_IDLE = 0,
@@ -21,8 +22,8 @@ typedef struct weight_port {
     port_err_t (*boot_poll)(void);
     port_err_t (*power_on)(void);
     port_err_t (*power_off)(void);
-    port_err_t (*read_grams)(int32_t *grams);
-    port_err_t (*try_read_grams)(int32_t *grams);
+    port_err_t (*read_dg)(weight_dg_t *dg);
+    port_err_t (*try_read_dg)(weight_dg_t *dg);
     port_err_t (*read_raw_grams)(int32_t *grams);
     port_err_t (*calibrate_zero)(void);
     port_err_t (*calibrate_span)(void);

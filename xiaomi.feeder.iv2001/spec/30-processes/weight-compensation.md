@@ -17,16 +17,18 @@ After all planned bursts in a batch complete:
 | 2 | Wait for mechanical settle (bowl vibration dampens) | `[tune]` 3 s |
 | 3 | Power on CS1270 if not already on (P0.2 high) | — |
 | 4 | Read bowl weight via UART2 (dispense-rate sampling ~500 ms) | — |
-| 5 | Compute `grams_delivered = current_weight − weight_at_dispense_start` | — |
+| 5 | Compute `dg_delivered = current_dg − weight_at_dispense_start_dg` | — |
 
 ## Extra burst calculation
 
-If `grams_delivered < target_grams`:
+If `dg_delivered < target_dg` (`target_dg = target_grams × 10`):
 
 ```
-deficit = target_grams − grams_delivered
-extra_bursts = max(1, deficit / 10)
+deficit_dg = target_dg − dg_delivered
+extra_bursts = max(1, deficit_dg / 100)
 ```
+
+(`100` dg = 10 g per burst.)
 
 Run `extra_bursts` using the same motor sequence as the initial batch
 (see `dispense-cycle.md`), then re-measure.
@@ -60,8 +62,8 @@ and published hopper level `empty`.
 
 ## Accuracy tolerance
 
-- If `grams_delivered ≥ target_grams − [tune] 5 g`, treat as `success`.
-- If `grams_delivered ≥ target_grams`, stop immediately — do not over-dispense.
+- If `dg_delivered ≥ target_dg − [tune] 50 dg` (5 g), treat as `success`.
+- If `dg_delivered ≥ target_dg`, stop immediately — do not over-dispense.
 
 ## Interaction with weighing subsystem
 
@@ -70,11 +72,11 @@ The dispense supervisor owns session state; the weigh driver does not (see
 
 | Dispense supervisor | `weight_port` |
 |---------------------|---------------|
-| `weight_at_dispense_start` = fresh idle sample or `read_grams()` before motor | Stateless; no remembered zero |
-| `grams_delivered` = current `read_grams()` − start | Each read is absolute food g |
+| `weight_at_dispense_start_dg` = fresh idle sample or `read_dg()` before motor | Stateless; no remembered zero |
+| `dg_delivered` = current `read_dg()` − start | Each read is absolute food dg |
 | Extra bursts, give-up counters | Power rail + UART only |
 
-- Compensation loop uses **dispense-rate** sampling (~500 ms) via `read_grams`.
+- Compensation loop uses **dispense-rate** sampling (~500 ms) via `read_dg`.
 - UART2 is serialized: idle weight sampling must not overlap with compensation reads.
 - CS1270 must remain powered throughout the dispense + compensation cycle;
   power-off only after final outcome determined.
@@ -83,6 +85,6 @@ The dispense supervisor owns session state; the weigh driver does not (see
 
 | Field | Owner | Value |
 |-------|-------|-------|
-| `last_dispense_actual` | Dispense supervisor | Final `grams_delivered` after all batches |
+| `last_dispense_actual` | Dispense supervisor | Final `dg_delivered`, rounded to whole g in event |
 | `eaten_today` | Monitoring | Updated from dispense history + bowl snapshots (not weigh driver) |
-| Published to | — | `.../dispense/event` (grams delivered, raw delta) and `.../bowl_weight` (presented grams — see [auto-tare.md](auto-tare.md)) |
+| Published to | — | `.../dispense/event` (whole-gram `grams`) and `.../bowl_weight` (0.1 g presented — see [auto-tare.md](auto-tare.md)) |

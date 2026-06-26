@@ -24,6 +24,7 @@
 #include "schedule.h"
 #include "task.h"
 #include "weight_port.h"
+#include "weight_units.h"
 
 typedef enum {
     DISPENSE_PHASE_NONE = 0,
@@ -38,11 +39,12 @@ static dispense_source_t s_source;
 static uint8_t s_portions;
 static uint8_t s_total_portions;
 static uint16_t s_target_grams;
+static weight_dg_t s_target_dg;
 static bool s_gram_job;
 static dispense_mode_t s_mode;
 static uint8_t s_batch_count;
-static int32_t s_baseline_grams;
-static int32_t s_last_settle_grams;
+static weight_dg_t s_baseline_dg;
+static weight_dg_t s_last_settle_dg;
 static bool s_baseline_valid;
 static uint32_t s_settle_start_ms;
 static uint8_t s_zero_delta_streak;
@@ -56,74 +58,74 @@ static bool dispense_capture_baseline(uint32_t now_ms)
 {
     if (auto_tare_pending_calibration()) {
         const weight_port_t *wp = weight_port_get();
-        int32_t grams;
+        weight_dg_t dg;
         port_err_t err;
 
-        if (wp == NULL || wp->read_grams == NULL) {
+        if (wp == NULL || wp->read_dg == NULL) {
             s_baseline_valid = false;
             return false;
         }
 
-        err = wp->read_grams(&grams);
+        err = wp->read_dg(&dg);
         if (err != PORT_OK) {
             s_baseline_valid = false;
             return false;
         }
 
-        auto_tare_anchor(grams);
-        s_baseline_grams = grams;
+        auto_tare_anchor(dg);
+        s_baseline_dg = dg;
         s_baseline_valid = true;
-        app_bowl_grams_notify_read(grams, true, now_ms);
+        app_bowl_dg_notify_read(dg, true, now_ms);
         return true;
     }
 
-    app_bowl_grams_snapshot_t snap;
+    app_bowl_dg_snapshot_t snap;
 
-    if (app_bowl_grams_snapshot(now_ms, &snap) &&
+    if (app_bowl_dg_snapshot(now_ms, &snap) &&
         snap.valid &&
         snap.sample_age_ms < DISPENSE_BASELINE_FRESH_MS) {
-        s_baseline_grams = snap.grams;
+        s_baseline_dg = snap.dg;
         s_baseline_valid = true;
         return true;
     }
 
     {
         const weight_port_t *wp = weight_port_get();
-        int32_t grams;
+        weight_dg_t dg;
         port_err_t err;
 
-        if (wp == NULL || wp->read_grams == NULL) {
+        if (wp == NULL || wp->read_dg == NULL) {
             s_baseline_valid = false;
             return false;
         }
 
-        err = wp->read_grams(&grams);
+        err = wp->read_dg(&dg);
         if (err != PORT_OK) {
             s_baseline_valid = false;
             return false;
         }
 
-        s_baseline_grams = grams;
+        s_baseline_dg = dg;
         s_baseline_valid = true;
-        app_bowl_grams_notify_read(grams, true, now_ms);
+        app_bowl_dg_notify_read(dg, true, now_ms);
         return true;
     }
 }
 
-static bool dispense_read_post_grams(int32_t *grams_out)
+static bool dispense_read_post_dg(weight_dg_t *dg_out)
 {
     const weight_port_t *wp = weight_port_get();
     port_err_t err;
 
-    if (wp == NULL || wp->read_grams == NULL || grams_out == NULL) {
+    if (wp == NULL || wp->read_dg == NULL || dg_out == NULL) {
         return false;
     }
 
-    err = wp->read_grams(grams_out);
+    err = wp->read_dg(dg_out);
     return err == PORT_OK;
 }
 
-static bool dispense_scale_trusted(int32_t grams, bool valid)
+static bool dispense_scale_trusted(weight_dg_t dg, bool valid)
 {
     const weight_port_t *wp = weight_port_get();
     weight_cal_status_t cal;
@@ -135,11 +137,11 @@ static bool dispense_scale_trusted(int32_t grams, bool valid)
 
     cal = (wp != NULL && wp->get_cal_status != NULL) ? wp->get_cal_status()
                                                    : WEIGHT_CAL_UNCALIBRATED;
-    bowl_err = bowl_error_eval(cal, true, grams);
+    bowl_err = bowl_error_eval(cal, true, dg);
     return !bowl_error_is_active(bowl_err);
 }
 
-static void dispense_update_zero_delta_streak(int32_t raw_delta)
+static void dispense_update_zero_delta_streak(weight_dg_t raw_delta)
 {
     if (raw_delta <= 0) {
         if (s_zero_delta_streak < 255u) {
@@ -256,11 +258,11 @@ static port_err_t dispense_kick_motor(uint8_t pulse_target)
 
 static void dispense_after_settle(uint32_t now_ms)
 {
-    int32_t post_grams = 0;
+    weight_dg_t post_dg = 0;
     bool post_valid;
-    int32_t raw_delta;
-    int32_t batch_delta;
-    int32_t grams_delivered;
+    weight_dg_t raw_delta_dg;
+    weight_dg_t batch_delta_dg;
+    weight_dg_t dg_delivered;
     int32_t event_grams;
     bool measured;
 
@@ -268,81 +270,82 @@ static void dispense_after_settle(uint32_t now_ms)
         return;
     }
 
-    post_valid = dispense_read_post_grams(&post_grams);
+    post_valid = dispense_read_post_dg(&post_dg);
     if (post_valid) {
-        auto_tare_anchor(post_grams);
-        app_bowl_grams_notify_read(post_grams, true, now_ms);
+        auto_tare_anchor(post_dg);
+        app_bowl_dg_notify_read(post_dg, true, now_ms);
     }
 
     measured = s_baseline_valid && post_valid &&
-               dispense_scale_trusted(s_baseline_grams, s_baseline_valid) &&
-               dispense_scale_trusted(post_grams, post_valid);
+               dispense_scale_trusted(s_baseline_dg, s_baseline_valid) &&
+               dispense_scale_trusted(post_dg, post_valid);
 
     if (measured) {
-        grams_delivered = post_grams - s_baseline_grams;
-        batch_delta = post_grams - s_last_settle_grams;
-        dispense_update_zero_delta_streak(batch_delta);
-        s_last_settle_grams = post_grams;
-        raw_delta = grams_delivered;
-        event_grams = grams_delivered;
+        dg_delivered = post_dg - s_baseline_dg;
+        batch_delta_dg = post_dg - s_last_settle_dg;
+        dispense_update_zero_delta_streak(batch_delta_dg);
+        s_last_settle_dg = post_dg;
+        raw_delta_dg = dg_delivered;
+        event_grams = WEIGHT_DG_TO_G_ROUND(dg_delivered);
         if (event_grams < 0) {
-            app_log_info("dispense", "negative delta clamped raw=%ld", (long)raw_delta);
+            app_log_info("dispense", "negative delta clamped raw=%ld",
+                         (long)WEIGHT_DG_TO_G_ROUND(raw_delta_dg));
             event_grams = 0;
         }
     } else {
         if (s_baseline_valid && post_valid) {
-            raw_delta = post_grams - s_baseline_grams;
-            batch_delta = post_grams - s_last_settle_grams;
-            dispense_update_zero_delta_streak(batch_delta);
-            s_last_settle_grams = post_grams;
+            raw_delta_dg = post_dg - s_baseline_dg;
+            batch_delta_dg = post_dg - s_last_settle_dg;
+            dispense_update_zero_delta_streak(batch_delta_dg);
+            s_last_settle_dg = post_dg;
         } else {
-            raw_delta = 0;
-            batch_delta = 0;
+            raw_delta_dg = 0;
+            batch_delta_dg = 0;
         }
-        grams_delivered = (int32_t)s_total_portions * (int32_t)DISPENSE_GRAMS_PER_PORTION;
-        event_grams = grams_delivered;
+        dg_delivered = (weight_dg_t)s_total_portions * (weight_dg_t)DISPENSE_GRAMS_PER_PORTION_DG;
+        event_grams = (int32_t)s_total_portions * (int32_t)DISPENSE_GRAMS_PER_PORTION;
     }
 
     if (s_outcome == DISPENSE_OUTCOME_STUCK) {
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
     if (s_mode == DISPENSE_MODE_OPEN_LOOP || !measured) {
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
-    if (grams_delivered >= (int32_t)s_target_grams) {
+    if (dg_delivered >= s_target_dg) {
         s_outcome = DISPENSE_OUTCOME_SUCCESS;
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
-    if (grams_delivered >= (int32_t)s_target_grams - (int32_t)DISPENSE_COMP_TOLERANCE_G) {
+    if (dg_delivered >= s_target_dg - DISPENSE_COMP_TOLERANCE_DG) {
         s_outcome = DISPENSE_OUTCOME_SUCCESS;
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
     if (s_batch_count >= DISPENSE_COMP_MAX_BATCHES) {
         s_outcome = DISPENSE_OUTCOME_UNDERFILL;
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
     if (s_zero_delta_streak >= DISPENSE_COMP_ZERO_DELTA_GIVEUP) {
         s_outcome = DISPENSE_OUTCOME_UNDERFILL;
-        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+        dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
         return;
     }
 
     {
-        int32_t deficit = (int32_t)s_target_grams - grams_delivered;
+        weight_dg_t deficit_dg = s_target_dg - dg_delivered;
         uint8_t extra;
         port_err_t err;
 
-        extra = (uint8_t)(deficit / (int32_t)DISPENSE_GRAMS_PER_PORTION);
+        extra = (uint8_t)(deficit_dg / (weight_dg_t)DISPENSE_GRAMS_PER_PORTION_DG);
         if (extra < 1u) {
             extra = 1u;
         }
@@ -353,7 +356,7 @@ static void dispense_after_settle(uint32_t now_ms)
         err = dispense_kick_motor(extra);
         if (err != PORT_OK) {
             s_outcome = DISPENSE_OUTCOME_ABORTED;
-            dispense_publish_terminal(now_ms, event_grams, measured, raw_delta);
+            dispense_publish_terminal(now_ms, event_grams, measured, raw_delta_dg);
             return;
         }
 
@@ -486,6 +489,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
         }
 
         s_target_grams = grams;
+        s_target_dg = WEIGHT_G_TO_DG(grams);
         s_gram_job = true;
         s_portions = portions;
         s_total_portions = portions;
@@ -499,7 +503,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
 
         now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
         (void)dispense_capture_baseline(now_ms);
-        s_last_settle_grams = s_baseline_valid ? s_baseline_grams : 0;
+        s_last_settle_dg = s_baseline_valid ? s_baseline_dg : 0;
 
         if (display_dispense_indicator_active() != PORT_OK) {
             app_log_info("dispense", "indicator unavailable");
@@ -541,6 +545,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
     s_portions = portions;
     s_total_portions = portions;
     s_target_grams = (uint16_t)portions * DISPENSE_GRAMS_PER_PORTION;
+    s_target_dg = WEIGHT_G_TO_DG(s_target_grams);
     s_source = req->source;
     s_mode = dispense_resolve_mode(req);
     s_batch_count = 1u;
@@ -550,7 +555,7 @@ void dispense_start_from_request(const app_dispense_request_t *req)
 
     now_ms = (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
     (void)dispense_capture_baseline(now_ms);
-    s_last_settle_grams = s_baseline_valid ? s_baseline_grams : 0;
+    s_last_settle_dg = s_baseline_valid ? s_baseline_dg : 0;
 
     if (display_dispense_indicator_active() != PORT_OK) {
         app_log_info("dispense", "indicator unavailable");
@@ -621,8 +626,9 @@ void dispense_test_reset(void)
     s_mode = DISPENSE_MODE_OPEN_LOOP;
     s_batch_count = 0u;
     s_target_grams = 0u;
-    s_baseline_grams = 0;
-    s_last_settle_grams = 0;
+    s_target_dg = 0;
+    s_baseline_dg = 0;
+    s_last_settle_dg = 0;
     s_baseline_valid = false;
     s_settle_start_ms = 0u;
     s_zero_delta_streak = 0u;

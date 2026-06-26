@@ -84,15 +84,15 @@ port_err_t weigh_cli_run_power_off(void)
     return wp->power_off();
 }
 
-port_err_t weigh_cli_run_read(int32_t *grams)
+port_err_t weigh_cli_run_read(weight_dg_t *dg)
 {
     const weight_port_t *wp = weight_port_get();
 
-    if (wp == NULL || wp->read_grams == NULL || grams == NULL) {
+    if (wp == NULL || wp->read_dg == NULL || dg == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    return wp->read_grams(grams);
+    return wp->read_dg(dg);
 }
 
 port_err_t weigh_cli_run_read_raw(int32_t *grams)

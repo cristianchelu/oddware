@@ -19,6 +19,7 @@
 #include "mqtt_dispense_event.h"
 #include "mqtt_outbox.h"
 #include "mqtt_client_test.h"
+#include "weight_units.h"
 
 #define TEST_DEVICE_ID "ddeeff"
 
@@ -57,7 +58,7 @@ static void pending_cal_test_reset(void)
     fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
 }
 
-static size_t pending_cal_read_grams_op_count(void)
+static size_t pending_cal_read_dg_op_count(void)
 {
     size_t count = 0u;
     size_t total = 0u;
@@ -65,7 +66,7 @@ static size_t pending_cal_read_grams_op_count(void)
     size_t i;
 
     for (i = 0u; i < total; i++) {
-        if (ops[i].kind == FAKE_WEIGHT_OP_READ_GRAMS) {
+        if (ops[i].kind == FAKE_WEIGHT_OP_READ_DG) {
             count++;
         }
     }
@@ -78,16 +79,16 @@ void test_dispense_pending_calibration_skips_fresh_cache(void)
     pending_cal_test_reset();
     TEST_ASSERT_TRUE(auto_tare_pending_calibration());
 
-    app_bowl_grams_notify_read(50, true, 1u);
-    fake_weight_port_set_read_grams(0);
+    app_bowl_dg_notify_read(WEIGHT_G_TO_DG(50), true, 1u);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(0));
 
     TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(1u, DISPENSE_SOURCE_MQTT));
     TEST_ASSERT_TRUE(app_step());
 
-    TEST_ASSERT_EQUAL(1u, pending_cal_read_grams_op_count());
+    TEST_ASSERT_EQUAL(1u, pending_cal_read_dg_op_count());
     TEST_ASSERT_FALSE(auto_tare_pending_calibration());
     TEST_ASSERT_TRUE(auto_tare_stable_valid());
-    TEST_ASSERT_EQUAL_INT32(0, auto_tare_stable_grams());
+    TEST_ASSERT_EQUAL_INT32(0, auto_tare_stable_dg());
 }
 
 void test_dispense_wash_reinstall_quick_dispense_measures_delta(void)
@@ -99,7 +100,7 @@ void test_dispense_wash_reinstall_quick_dispense_measures_delta(void)
     pending_cal_setup_mqtt();
     TEST_ASSERT_TRUE(auto_tare_pending_calibration());
 
-    fake_weight_port_set_read_grams(0);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(0));
     TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(3u, DISPENSE_SOURCE_MQTT));
     TEST_ASSERT_TRUE(app_step());
     TEST_ASSERT_FALSE(auto_tare_pending_calibration());
@@ -108,12 +109,12 @@ void test_dispense_wash_reinstall_quick_dispense_measures_delta(void)
     TEST_ASSERT_TRUE(app_event_post(&ev));
     TEST_ASSERT_TRUE(app_step());
 
-    fake_weight_port_set_read_grams(30);
+    fake_weight_port_set_read_dg(WEIGHT_G_TO_DG(30));
     dispense_poll(1000u);
     dispense_poll(1000u + DISPENSE_SETTLE_MS);
 
     TEST_ASSERT_FALSE(dispense_is_active());
-    TEST_ASSERT_EQUAL_INT32(30, auto_tare_stable_grams());
+    TEST_ASSERT_EQUAL_INT32(WEIGHT_G_TO_DG(30), auto_tare_stable_dg());
 
     pending_cal_drain_mqtt();
     mqtt = fake_mqtt_port_state();
@@ -123,20 +124,20 @@ void test_dispense_wash_reinstall_quick_dispense_measures_delta(void)
 
 void test_dispense_calibrated_uses_fresh_cache_without_blocking_read(void)
 {
-    app_bowl_grams_snapshot_t snap;
+    app_bowl_dg_snapshot_t snap;
 
     pending_cal_test_reset();
     app_test_finish_weight_boot();
-    auto_tare_anchor(100);
-    app_bowl_grams_notify_read(100, true, 1u);
+    auto_tare_anchor(WEIGHT_G_TO_DG(100));
+    app_bowl_dg_notify_read(WEIGHT_G_TO_DG(100), true, 1u);
     TEST_ASSERT_FALSE(auto_tare_pending_calibration());
-    TEST_ASSERT_TRUE(app_bowl_grams_snapshot(1u, &snap));
+    TEST_ASSERT_TRUE(app_bowl_dg_snapshot(1u, &snap));
     TEST_ASSERT_TRUE(snap.valid);
     TEST_ASSERT_EQUAL_UINT32(0u, snap.sample_age_ms);
-    TEST_ASSERT_EQUAL_INT32(100, snap.grams);
+    TEST_ASSERT_EQUAL_INT32(WEIGHT_G_TO_DG(100), snap.dg);
 
     TEST_ASSERT_EQUAL(DISPENSE_SUBMIT_OK, dispense_submit_portions(1u, DISPENSE_SOURCE_MQTT));
     TEST_ASSERT_TRUE(app_step());
 
-    TEST_ASSERT_EQUAL(0u, pending_cal_read_grams_op_count());
+    TEST_ASSERT_EQUAL(0u, pending_cal_read_dg_op_count());
 }

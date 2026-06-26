@@ -25,8 +25,8 @@ or UART `feed mode`:
 | **Open-loop** | Run the planned motor sequence, measure bowl delta, publish completion event. No weight-based adjustment. |
 | **Compensated** | After each batch, compare delivered weight to the target and add more if under. |
 
-Delivered grams come from `read_grams` before and after each batch (dispense
-supervisor), not from a zero offset inside the weigh driver — see
+Delivered grams come from `read_dg` before and after each batch (dispense
+supervisor), rounded to whole grams at the MQTT event boundary — see
 [weighing.md](../30-processes/weighing.md) **Weigh driver boundary**.
 
 ## Completion reporting

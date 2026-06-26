@@ -194,12 +194,12 @@ bool weigh_cal_zero_pending_span(const weigh_cal_model_t *model)
     return model != NULL && model->zero_set && !model->span_set;
 }
 
-port_err_t weigh_cal_apply(const weigh_cal_model_t *model, int32_t raw, int32_t *grams)
+port_err_t weigh_cal_apply_dg(const weigh_cal_model_t *model, int32_t raw, weight_dg_t *total_dg)
 {
     int64_t num;
     int64_t den;
 
-    if (model == NULL || grams == NULL || !weigh_cal_is_complete(model)) {
+    if (model == NULL || total_dg == NULL || !weigh_cal_is_complete(model)) {
         return PORT_ERR_INVALID_ARG;
     }
 
@@ -208,25 +208,25 @@ port_err_t weigh_cal_apply(const weigh_cal_model_t *model, int32_t raw, int32_t 
         return PORT_ERR_INVALID_ARG;
     }
 
-    num = (int64_t)(raw - model->zero_raw) * (int64_t)model->span_g;
-    *grams = (int32_t)(num / den);
+    num = (int64_t)(raw - model->zero_raw) * (int64_t)model->span_g * 10;
+    *total_dg = (weight_dg_t)(num / den);
     return PORT_OK;
 }
 
-port_err_t weigh_cal_food_grams(const weigh_cal_model_t *model, int32_t raw, int32_t *food_g)
+port_err_t weigh_cal_food_dg(const weigh_cal_model_t *model, int32_t raw, weight_dg_t *food_dg)
 {
-    int32_t total;
+    weight_dg_t total;
     port_err_t err;
 
-    if (food_g == NULL) {
+    if (food_dg == NULL) {
         return PORT_ERR_INVALID_ARG;
     }
 
-    err = weigh_cal_apply(model, raw, &total);
+    err = weigh_cal_apply_dg(model, raw, &total);
     if (err != PORT_OK) {
         return err;
     }
 
-    *food_g = total - WEIGH_BOWL_MASS_G;
+    *food_dg = total - WEIGH_BOWL_MASS_DG;
     return PORT_OK;
 }

@@ -10,12 +10,12 @@
 #include "auto_tare.h"
 #include "fake_display_port.h"
 #include "fake_mqtt_port.h"
-#include "fake_mqtt_port.h"
 #include "fake_weight_port.h"
 #include "mqtt_bowl_weight.h"
 #include "mqtt_client_test.h"
 #include "mqtt_outbox.h"
 #include "tm1637.h"
+#include "weight_units.h"
 
 #define TEST_DEVICE_ID "ddeeff"
 
@@ -54,14 +54,14 @@ static void app_auto_tare_test_boot_idle(void)
     post_timer_tick();
 }
 
-static void app_auto_tare_test_anchor_quiet(int32_t grams, uint32_t base_ms)
+static void app_auto_tare_test_anchor_quiet(weight_dg_t dg, uint32_t base_ms)
 {
-    fake_weight_port_set_read_grams(grams);
+    fake_weight_port_set_read_dg(dg);
     for (uint32_t i = 0u; i < 4u; i++) {
         post_display_tick(base_ms + i * 500u);
     }
     TEST_ASSERT_FALSE(auto_tare_pending_calibration());
-    TEST_ASSERT_EQUAL_INT32(grams, auto_tare_stable_grams());
+    TEST_ASSERT_EQUAL_INT32(dg, auto_tare_stable_dg());
 }
 
 static void app_auto_tare_test_setup_mqtt(void)
@@ -101,29 +101,29 @@ void test_app_presented_weight_holds_during_drift(void)
     uint8_t grids_after[TM1637_GRID_COUNT];
 
     app_auto_tare_test_reset();
-    fake_weight_port_set_read_grams(12);
+    fake_weight_port_set_read_dg(120);
     app_auto_tare_test_boot_idle();
-    app_auto_tare_test_anchor_quiet(12, 500u);
+    app_auto_tare_test_anchor_quiet(120, 500u);
 
     post_display_tick(2500u);
     fake_display_port_last_grids(grids_before);
 
-    fake_weight_port_set_read_grams(11);
+    fake_weight_port_set_read_dg(119);
     post_display_tick(3000u);
     fake_display_port_last_grids(grids_after);
 
-    TEST_ASSERT_EQUAL_INT32(12, auto_tare_present_grams(11, true));
+    TEST_ASSERT_EQUAL_INT32(120, auto_tare_present_dg(119, true));
     TEST_ASSERT_EQUAL_UINT8_ARRAY(grids_before, grids_after, TM1637_GRID_COUNT);
 }
 
 void test_app_bowl_missing_invalidates_auto_tare(void)
 {
     app_auto_tare_test_reset();
-    fake_weight_port_set_read_grams(20);
+    fake_weight_port_set_read_dg(200);
     app_auto_tare_test_boot_idle();
-    app_auto_tare_test_anchor_quiet(20, 500u);
+    app_auto_tare_test_anchor_quiet(200, 500u);
 
-    fake_weight_port_set_read_grams(-100);
+    fake_weight_port_set_read_dg(-1000);
     post_display_tick(3000u);
 
     TEST_ASSERT_TRUE(auto_tare_pending_calibration());
@@ -138,22 +138,22 @@ void test_app_mqtt_bowl_weight_holds_presented_during_drift(void)
 
     app_auto_tare_test_reset();
     app_auto_tare_test_setup_mqtt();
-    fake_weight_port_set_read_grams(12);
+    fake_weight_port_set_read_dg(120);
     app_auto_tare_test_boot_idle();
-    app_auto_tare_test_anchor_quiet(12, 500u);
+    app_auto_tare_test_anchor_quiet(120, 500u);
 
     post_display_tick(2500u);
     app_auto_tare_test_drain_mqtt();
     mqtt = fake_mqtt_port_state();
     publishes_before = mqtt->publish_calls;
-    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "12"));
+    TEST_ASSERT_NOT_NULL(strstr(mqtt->last_publish_payload, "12.0"));
 
-    fake_weight_port_set_read_grams(11);
+    fake_weight_port_set_read_dg(119);
     post_display_tick(3000u);
     app_auto_tare_test_drain_mqtt();
     mqtt = fake_mqtt_port_state();
     publishes_after = mqtt->publish_calls;
 
-    TEST_ASSERT_EQUAL_INT32(12, auto_tare_present_grams(11, true));
+    TEST_ASSERT_EQUAL_INT32(120, auto_tare_present_dg(119, true));
     TEST_ASSERT_EQUAL_UINT(publishes_before, publishes_after);
 }

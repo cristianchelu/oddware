@@ -209,7 +209,7 @@ evaluation: [weighing.md](weighing.md) § Bowl presence.
 
 | Event | Level | Line |
 |-------|-------|------|
-| Retained publish with known grams | `info` | `bowl g <N>` |
+| Retained publish with known grams | `info` | `bowl g <one-decimal>` (e.g. `bowl g 42.3`) |
 | Retained publish when unknown | `info` | `bowl g unknown` |
 
 Logged when a publish is enqueued to `.../bowl_weight` (not on suppressed

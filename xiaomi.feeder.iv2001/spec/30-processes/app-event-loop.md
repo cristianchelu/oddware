@@ -26,7 +26,7 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 
 | Event | Producer | Consumer action |
 |-------|----------|-----------------|
-| `EVT_APP_BOOT` | `app_start()` once after queue + timers exist | Enter default display mode **weight**; start weight boot FSM (rail on → `[tune]` 1100 ms settle → first `read_grams`) |
+| `EVT_APP_BOOT` | `app_start()` once after queue + timers exist | Enter default display mode **weight**; start weight boot FSM (rail on → `[tune]` 1100 ms settle → first `read_dg`) |
 | `EVT_WIFI_STA_CONNECTING` | `wifi_sta_request_connect()` | `display_wifi_indicator_connecting()` |
 | `EVT_WIFI_STA_READY` | `wifi_sta.c` on DHCP OK | `display_wifi_indicator_connected()`; `time_sync_on_wifi_ready()`; if MQTT broker config stored → `mqtt_client_request_connect()` |
 | `EVT_WIFI_STA_FAILED` | STA connect or IP failure | `display_wifi_indicator_off()` |
@@ -34,7 +34,7 @@ Host tests call `app_step()` with the same dispatcher and a FIFO fake queue
 | `EVT_MQTT_SESSION` | `mqtt_client_request_connect()` and `mqtt_client_step()` when derived session phase changes | Map phase → `display_mqtt_indicator_*` (see [mqtt-protocol.md](mqtt-protocol.md) § Session display) |
 | `EVT_MQTT_CONNECTED` | `mqtt_client_do_connect()` success | `app_mqtt_on_connected()` — enqueue idle `ota/status`, retained telemetry snapshots (mains, hopper, battery, config), schedule HA discovery, `mqtt_schedule_connect_snapshot()`; no display side effect |
 | `EVT_MQTT_MESSAGE` | MQTT message callback | Heap-copy topic + payload; `mqtt_route_classify` → dispatch (`cmd/ota`, `cmd/dispense`, `cmd/schedule/*`, other routes stub) |
-| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_grams` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) + `hopper_input_poll(now_ms, background_enabled)` (mains-only 60 s background) + `hopper_level_poll()` + drain `hopper_level_pop_transition` → `mqtt_hopper_sync` in one handler |
+| `EVT_DISPLAY_TICK` | `[tune]` 50 ms soft timer | Idle `try_read_dg` (2 Hz, rate-limited) + scene sync + `display_presentation_tick(now_ms)` + `button_input_poll(now_ms)` + `button_gesture_step(now_ms)` + drain transitions/gestures (includes P0.4 reset sampling) + `hopper_input_poll(now_ms, background_enabled)` (mains-only 60 s background) + `hopper_level_poll()` + drain `hopper_level_pop_transition` → `mqtt_hopper_sync` in one handler |
 | `EVT_TIMER_TICK` | `[tune]` 500 ms soft timer | `time_sync_poll(now_ms)`; `schedule_poll(now_ms)`; `ota_slot_health_poll_ms()`; weight boot FSM only (coalesced when queue busy) |
 | `EVT_BUTTON_IRQ` | GPIO4 ISR (AW9523B INT) | `button_input_notify_irq(now_ms)` then `button_input_poll(now_ms)`; IRQ-backed buttons ignore samples until `now_ms` ≥ IRQ time + `[tune]` 50 ms |
 
@@ -61,7 +61,7 @@ handshake runs.
 | Broker TCP + MQTT CONNECT | `mqtt_cn` worker (ephemeral) | Blocking network calls stay off `mqtt_io` and off `app` |
 | Session phase → lightbar scene | `app` on `EVT_MQTT_SESSION` | Indicator helpers update scene only — no `display_presentation_refresh()` |
 | TM1637 physical refresh | `app` on `EVT_DISPLAY_TICK` (timer or local heartbeat) | `try_show_grids`; skip frame on `PORT_ERR_BUSY`, retry next tick |
-| Idle bowl grams | `app` on same `EVT_DISPLAY_TICK` turn | `try_read_grams` at `[tune]` 500 ms; `PORT_ERR_BUSY` keeps last sample; I/O errors clear it |
+| Idle bowl grams | `app` on same `EVT_DISPLAY_TICK` turn | `try_read_dg` at `[tune]` 500 ms; `PORT_ERR_BUSY` keeps last sample; I/O errors clear it |
 | Bowl error pictograph + weight digits | `app` on same `EVT_DISPLAY_TICK` turn | `app_weight_sync_display_scene()` — `bowl_error_eval` → `display_bowl_error_indicator_sync` + digit mode (`---`, `-  `, or clamped grams) |
 | MQTT bowl weight | `app` on same weight sync turn | `mqtt_bowl_weight_sync()` — change-driven publish to `.../bowl_weight`; not on every 500 ms sample |
 | Weight boot settle | `app` on `EVT_TIMER_TICK` | `boot_begin` / `boot_poll` — no multi-second `vTaskDelay` in `app` |
@@ -127,8 +127,8 @@ Non-blocking state across `EVT_TIMER_TICK` (`[tune]` 500 ms / 2 Hz):
    `EVT_TIMER_TICK` so WFCI / Wi-Fi SPI is not contended during `main()` bring-up.
 2. First `EVT_TIMER_TICK`: `boot_begin()` (rail on only). Further ticks call `boot_poll()` until
    `[tune]` 1100 ms CS1270 settle elapses (non-blocking — see [weighing.md](weighing.md)); then
-   first blocking `read_grams()` and digit scene sync.
-3. Idle: `try_read_grams()` on `EVT_DISPLAY_TICK` at `[tune]` 500 ms (2 Hz), immediately
+   first blocking `read_dg()` and digit scene sync.
+3. Idle: `try_read_dg()` on `EVT_DISPLAY_TICK` at `[tune]` 500 ms (2 Hz), immediately
    followed by `display_presentation_tick` so sample + `try_show_grids` share one app
    handler turn. `PORT_ERR_BUSY` keeps the last good sample (WFCI contended during MQTT
    connect); I/O errors clear it. `[tune]` starting value for bench characterization.
