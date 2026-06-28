@@ -1,0 +1,785 @@
+substitutions:
+  name: "pet-bowl-monitor"
+  friendly_name: "Pet Bowl Monitor"
+
+  # Drinking detection
+  drinking_rate_threshold: "10" # ml/min threshold for detecting drinking
+  drinking_rate_interval: "2" # seconds, interval for calculating drinking rate
+  drinking_timeout: "15" # seconds, how long to stay on after last drinking activity
+  start_level_offset_s: "5" # seconds, how far back to look for start water level
+
+  # Drinking event thresholds
+  min_drink_event_amount: "1" # ml
+  min_drink_event_duration: "1" # seconds
+
+  # Vibration/stability detection
+  stability_threshold: "1" # g, threshold for detecting vibration
+  stability_timeout: "5" # seconds, how long to wait before declaring stable
+
+  # Relative weight change between two consecutive readings to treat as a spurious
+  # sample (same logic as litterbox hx711_value). In grams here (1000 = 1 kg).
+  spike_threshold: "1000"
+
+  # IR LED safety
+  ir_led_max_brightness: "0.30" # 30% max duty cycle for 1 W LED. DO NOT INCREASE!
+  ir_aec_threshold: "20" # AEC average (register 0x2F) below which IR activates
+
+  # Water change detection
+  water_change_min_duration: "10" # seconds, min vibration event duration to detect water change
+  bowl_removed_threshold: "5" # g, below this we consider the bowl removed
+  empty_threshold: "10" # g/ml, below this water level is considered empty
+
+  # Brightness mode labels (select options; lambdas compare mode to these strings)
+  brightness_label_off: "Off"
+  brightness_label_low: "Low"
+  brightness_label_medium: "Medium"
+  brightness_label_high: "High"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  project:
+    name: "CristianChelu.PetBowlMonitor"
+    version: "0.0.7"
+
+globals:
+  - id: scale_tare
+    type: int
+    restore_value: True
+    initial_value: "-326800"
+
+  - id: scale_tare_temp
+    type: int
+    restore_value: False
+    initial_value: "0"
+
+  - id: scale_raw_value_temp
+    type: int
+    restore_value: False
+    initial_value: "0"
+
+  - id: scale_coefficient
+    type: float
+    restore_value: True
+    initial_value: "318.7"
+
+  - id: water_last_changed
+    type: time_t
+    restore_value: True
+    initial_value: "0"
+
+  - id: calibration_timestamp
+    type: time_t
+    restore_value: True
+    initial_value: "0"
+
+  - id: water_level_history
+    type: std::vector<float>
+    restore_value: False
+
+  - id: water_level_start
+    type: float
+    restore_value: False
+    initial_value: "NAN"
+
+  - id: activity_start_time
+    type: time_t
+    restore_value: False
+    initial_value: "0"
+
+  - id: vibration_start_time
+    type: time_t
+    restore_value: False
+    initial_value: "0"
+
+  - id: ir_led_state
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  - id: bowl_weight
+    type: float
+    restore_value: True
+    initial_value: "0"
+
+  - id: bowl_capacity_ml
+    type: float
+    restore_value: True
+    initial_value: "200"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+psram:
+  mode: quad
+  speed: 80MHz
+
+i2c:
+  - id: camera_i2c
+    sda: GPIO26
+    scl: GPIO27
+
+esp32_camera:
+  id: bowl_camera
+  external_clock:
+    pin: GPIO0
+    frequency: 20MHz
+  i2c_id: camera_i2c
+  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+  vsync_pin: GPIO25
+  href_pin: GPIO23
+  pixel_clock_pin: GPIO22
+  power_down_pin: GPIO32
+  resolution: 640x480
+  agc_gain_ceiling: 2X
+  name: esp_cam02
+  max_framerate: 10fps
+  idle_framerate: 1fps
+  vertical_flip: False
+  horizontal_mirror: False
+  jpeg_quality: 10
+
+output:
+  - platform: ledc
+    pin: GPIO4
+    id: gpio_4
+    channel: 2
+    min_power: 0%
+    max_power: 40%
+    zero_means_zero: true
+  - platform: ledc
+    pin: GPIO3
+    id: gpio_3
+    channel: 3
+  - platform: ledc
+    pin: GPIO33
+    id: gpio_33
+    channel: 4
+    inverted: true
+
+light:
+  - platform: monochromatic
+    output: gpio_4
+    name: White Light
+    id: white_light
+    internal: true
+    default_transition_length: 0s
+    effects:
+      - pulse:
+          name: "Water Overdue Low"
+          transition_length: 1s
+          update_interval: 1s
+          min_brightness: 0%
+          max_brightness: 37.5%
+      - pulse:
+          name: "Water Overdue Medium"
+          transition_length: 1s
+          update_interval: 1s
+          min_brightness: 0%
+          max_brightness: 62.5%
+      - pulse:
+          name: "Water Overdue High"
+          transition_length: 1s
+          update_interval: 1s
+          min_brightness: 0%
+          max_brightness: 100%
+      - pulse:
+          name: "Bowl Alert Low"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 33%
+      - pulse:
+          name: "Bowl Alert Medium"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 66%
+      - pulse:
+          name: "Bowl Alert High"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+  - platform: monochromatic
+    output: gpio_33
+    name: Red LED
+
+sensor:
+  - platform: template
+    name: "Light Level"
+    id: light_level
+    update_interval: 1s
+    accuracy_decimals: 0
+    internal: True
+    lambda: !lambda |-
+      const uint8_t OV2640_ADDR = 0x30;
+
+      uint8_t bank_select[2] = {0xFF, 0x01};
+      auto err = id(camera_i2c)->write(OV2640_ADDR, bank_select, 2);
+      if (err != esphome::i2c::ERROR_OK) return NAN;
+
+      uint8_t reg_addr = 0x2F;
+      uint8_t aec_avg = 0;
+      err = id(camera_i2c)->write(OV2640_ADDR, &reg_addr, 1);
+      if (err == esphome::i2c::ERROR_OK) {
+        id(camera_i2c)->read(OV2640_ADDR, &aec_avg, 1);
+      } else {
+        return NAN;
+      }
+
+      ESP_LOGV("light", "AEC Average (0x2F): %u", aec_avg);
+      return aec_avg;
+
+  - platform: hx711
+    name: "Scale"
+    entity_category: diagnostic
+    dout_pin:
+      number: GPIO15
+      mode:
+        pullup: True
+        input: True
+    clk_pin:
+      number: GPIO13
+      mode:
+        pullup: True
+        output: True
+    gain: 128
+    update_interval: 100ms
+    id: scale_sensor
+    icon: mdi:scale
+    accuracy_decimals: 0
+    unit_of_measurement: "g"
+    state_class: measurement
+    internal: True
+    filters:
+      - lambda: !lambda |-
+          return (x - id(scale_tare)) / id(scale_coefficient);
+      - lambda: !lambda |-
+          static float prev_value = 0.0;
+          if (abs(x - prev_value) < ${spike_threshold}) {
+            prev_value = x;
+            return x;
+          } else {
+            prev_value = x;
+            return {};
+          }
+
+  - platform: copy
+    id: scale_stable
+    source_id: scale_sensor
+    internal: True
+    filters:
+      - median:
+          window_size: 5
+          send_every: 1
+    on_value:
+      then:
+        - lambda: !lambda |-
+            static float prev_value = 0.0;
+            static bool bowl_removed = false;
+            if (abs(x - prev_value) < ${stability_threshold}) {
+              id(vibration_detected).publish_state(false);
+            } else {
+              id(vibration_detected).publish_state(true);
+            }
+            prev_value = x;
+
+            float threshold = id(bowl_weight) + ${bowl_removed_threshold};
+            if (bowl_removed && x >= threshold) {
+              id(water_last_changed) = id(ha_time).now().timestamp;
+              id(water_last_changed_sensor).update();
+              id(control_reminder_led).execute();
+            }
+            bowl_removed = x < threshold;
+
+  - platform: copy
+    id: scale_unfiltered
+    name: "Unfiltered Weight"
+    icon: mdi:scale-unbalanced
+    entity_category: diagnostic
+    source_id: scale_sensor
+    unit_of_measurement: "g"
+    accuracy_decimals: 0
+    internal: False
+    disabled_by_default: True
+    filters:
+      - lambda: !lambda |-
+          if (id(activity).state) {
+            return x;
+          } else {
+            return {};
+          }
+
+  - platform: template
+    name: "Calibration Last Performed"
+    id: calibration_last_performed
+    icon: mdi:scale-unbalanced
+    device_class: timestamp
+    entity_category: diagnostic
+    lambda: !lambda |-
+      time_t time = id(calibration_timestamp);
+      return time == 0 ? NAN : time;
+
+  - platform: template
+    name: "Water Last Changed"
+    id: water_last_changed_sensor
+    icon: mdi:water-sync
+    device_class: timestamp
+    lambda: !lambda |-
+      time_t time = id(water_last_changed);
+      return time == 0 ? NAN : time;
+
+  - platform: template
+    name: "Water Amount"
+    id: water_amount
+    icon: mdi:water
+    unit_of_measurement: "mL"
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: volume_storage
+    update_interval: 1s
+    lambda: !lambda |-
+      auto value = id(scale_stable).state - id(bowl_weight);
+      if (value < 0) return NAN;
+      if (value < ${empty_threshold}) return 0;
+      return value;
+    on_value:
+      - lambda: !lambda |-
+          if (!isnan(x)) {
+            id(water_level_history).push_back(x);
+            if (id(water_level_history).size() > ${start_level_offset_s}) {
+              id(water_level_history).erase(id(water_level_history).begin());
+            }
+          }
+
+  - platform: template
+    name: "Water Level"
+    id: water_level
+    icon: mdi:water-percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+    update_interval: 1s
+    lambda: !lambda |-
+      float capacity = id(bowl_capacity_ml);
+      if (capacity <= 0) return NAN;
+      float amount = id(water_amount).state;
+      if (isnan(amount) || amount < 0) return NAN;
+      float pct = 100.0f * amount / capacity;
+      if (pct > 100.0f) return 100.0f;
+      if (pct < 0.0f) return 0.0f;
+      return pct;
+
+  - platform: template
+    name: "Water Rate of Change"
+    id: water_rate_change
+    unit_of_measurement: "ml/min"
+    entity_category: diagnostic
+    icon: mdi:delta
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: ${drinking_rate_interval}s
+    lambda: !lambda |-
+      static float prev_amount = NAN;
+      static unsigned long prev_time = 0;
+
+      float current_amount = id(scale_stable).state - id(bowl_weight);
+      if (isnan(current_amount) || current_amount < 0) {
+        return NAN;
+      }
+
+      unsigned long current_time = millis();
+
+      if (isnan(prev_amount) || prev_time == 0) {
+        prev_amount = current_amount;
+        prev_time = current_time;
+        return 0.0;
+      }
+
+      float time_diff = (current_time - prev_time) / 1000.0 / 60.0;
+      float amount_diff = prev_amount - current_amount;
+
+      prev_amount = current_amount;
+      prev_time = current_time;
+
+      if (time_diff > 0) {
+        return amount_diff / time_diff;
+      }
+      return 0.0;
+
+  - platform: template
+    name: "Last Drink Amount"
+    id: last_drink_amount
+    unit_of_measurement: "mL"
+    state_class: measurement
+    device_class: volume
+    icon: mdi:cup-water
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    name: "Last Drink Duration"
+    id: last_drink_duration
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    icon: mdi:timer
+    accuracy_decimals: 0
+    update_interval: never
+
+number:
+  - id: calibration_known_weight
+    platform: template
+    name: "Calibration Known Weight"
+    optimistic: true
+    min_value: 10
+    max_value: 1000
+    step: 1
+    mode: box
+    initial_value: "500"
+    unit_of_measurement: "g"
+    entity_category: diagnostic
+    disabled_by_default: False
+
+  - platform: template
+    name: "Bowl Weight"
+    id: bowl_weight_number
+    min_value: 0
+    max_value: 1000
+    step: 1
+    mode: box
+    unit_of_measurement: "g"
+    entity_category: diagnostic
+    lambda: !lambda return id(bowl_weight);
+    set_action:
+      then:
+        - lambda: "id(bowl_weight) = x;"
+
+  - platform: template
+    name: "Bowl Capacity"
+    id: bowl_capacity_number
+    min_value: 50
+    max_value: 5000
+    step: 25
+    mode: box
+    unit_of_measurement: "mL"
+    device_class: volume
+    entity_category: config
+    lambda: !lambda return id(bowl_capacity_ml);
+    set_action:
+      then:
+        - lambda: "id(bowl_capacity_ml) = x;"
+
+  - platform: template
+    name: "Water Reminder Interval"
+    id: water_reminder_interval
+    icon: mdi:timer-water
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    min_value: 1
+    max_value: 24
+    step: 1
+    initial_value: 8
+    mode: box
+    unit_of_measurement: "h"
+    set_action:
+      then:
+        - script.execute: control_reminder_led
+
+select:
+  - platform: template
+    name: "Brightness"
+    id: brightness_mode
+    icon: mdi:brightness-6
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    options:
+      - "${brightness_label_off}"
+      - "${brightness_label_low}"
+      - "${brightness_label_medium}"
+      - "${brightness_label_high}"
+    initial_option: "${brightness_label_medium}"
+    set_action:
+      then:
+        - script.execute: control_reminder_led
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+switch:
+  - platform: template
+    name: "IR LED"
+    id: ir_led_manual
+    icon: mdi:lightbulb-ir
+    entity_category: diagnostic
+    disabled_by_default: true
+    optimistic: true
+    turn_on_action:
+      - output.turn_on: gpio_3
+      - output.set_level:
+          id: gpio_3
+          level: ${ir_led_max_brightness}
+      - lambda: !lambda |-
+          id(ir_led_state) = true;
+          id(bowl_camera).set_special_effect(esphome::esp32_camera::ESP32SpecialEffect::ESP32_SPECIAL_EFFECT_GRAYSCALE);
+          id(bowl_camera).update_camera_parameters();
+    turn_off_action:
+      - output.turn_off: gpio_3
+      - lambda: "id(ir_led_state) = false;"
+      - lambda: !lambda |-
+          id(bowl_camera).set_special_effect(esphome::esp32_camera::ESP32SpecialEffect::ESP32_SPECIAL_EFFECT_NONE);
+          id(bowl_camera).update_camera_parameters();
+
+button:
+  - platform: template
+    name: "Set Zero (Tare)"
+    id: set_zero_button
+    icon: mdi:scale-balance
+    entity_category: diagnostic
+    on_press:
+      then:
+        - lambda: !lambda |-
+            auto raw_value = id(scale_sensor).get_raw_state();
+            id(scale_tare) = raw_value;
+            ESP_LOGI("calibration", "Tare set to: %d", id(scale_tare));
+        - component.update: scale_sensor
+
+  - platform: template
+    name: "Calibrate with Known Weight"
+    id: calibrate_button
+    icon: mdi:scale-unbalanced
+    entity_category: diagnostic
+    on_press:
+      then:
+        - lambda: !lambda |-
+            auto raw_value = id(scale_sensor).get_raw_state();
+            float known_weight = id(calibration_known_weight).state;
+
+            id(scale_coefficient) = (raw_value - id(scale_tare)) / known_weight;
+            id(calibration_timestamp) = id(ha_time).now().timestamp;
+
+            ESP_LOGI("calibration", "Coefficient set to: %.2f", id(scale_coefficient));
+            ESP_LOGI("calibration", "Raw reading: %d, Tare: %d, Known weight: %.1fg",
+                     (int)raw_value, id(scale_tare), known_weight);
+        - component.update: scale_sensor
+        - component.update: calibration_last_performed
+
+binary_sensor:
+  - platform: template
+    name: "Bowl Missing"
+    id: bowl_missing
+    icon: mdi:bowl-mix-outline
+    device_class: problem
+    lambda: !lambda |-
+      float threshold = id(bowl_weight) + ${bowl_removed_threshold};
+      return id(scale_stable).state < threshold;
+    on_state:
+      then:
+        - script.execute: control_reminder_led
+
+  - platform: template
+    name: "Bowl Empty"
+    id: bowl_empty
+    icon: mdi:cup-off-outline
+    device_class: problem
+    lambda: !lambda |-
+      if (isnan(id(water_amount).state)) return false;
+      return id(water_amount).state <= 0;
+    on_state:
+      then:
+        - script.execute: control_reminder_led
+
+  - platform: template
+    name: "Water Change Overdue"
+    id: water_change_overdue
+    icon: mdi:water-alert
+    device_class: problem
+    lambda: !lambda |-
+      if (!id(ha_time).now().is_valid()) return false;
+      if (id(water_last_changed) == 0) return false;
+      time_t elapsed = id(ha_time).now().timestamp - id(water_last_changed);
+      return elapsed >= (time_t)((int)id(water_reminder_interval).state * 3600);
+    on_state:
+      then:
+        - script.execute: control_reminder_led
+
+  - id: vibration_detected
+    platform: template
+    name: "Vibration Detected"
+    icon: mdi:vibrate
+    device_class: vibration
+    entity_category: diagnostic
+    filters:
+      delayed_off: ${stability_timeout}s
+    on_press:
+      then:
+        - lambda: !lambda |-
+            id(vibration_start_time) = id(ha_time).now().timestamp;
+    on_release:
+      then:
+        - lambda: !lambda |-
+            id(vibration_start_time) = 0;
+
+  - platform: template
+    name: "IR LED Active"
+    id: ir_led_active
+    icon: mdi:led-on
+    entity_category: diagnostic
+    lambda: "return id(ir_led_state);"
+
+  - platform: template
+    name: "Activity"
+    id: activity
+    icon: mdi:cat
+    device_class: motion
+    lambda: !lambda |-
+      bool drinking = id(water_rate_change).state > ${drinking_rate_threshold};
+      return drinking;
+    filters:
+      delayed_off: ${drinking_timeout}s
+    on_press:
+      then:
+        - script.execute: control_ir_led
+        - lambda: !lambda |-
+            id(activity_start_time) = id(ha_time).now().timestamp - ${drinking_rate_interval};
+            float current_water = id(scale_stable).state - id(bowl_weight);
+            if (!isnan(current_water) && current_water >= 0 && !id(water_level_history).empty()) {
+              id(water_level_start) = *(id(water_level_history).begin());
+            }
+    on_release:
+      then:
+        - script.execute: control_ir_led
+        - lambda: !lambda |-
+            if (isnan(id(water_level_start))) {
+              return;
+            }
+            auto activity_end_time = id(ha_time).now().timestamp - ${drinking_timeout};
+            float event_duration = activity_end_time - id(activity_start_time);
+            float current_water = id(scale_stable).state - id(bowl_weight);
+
+            if (current_water < 0) {
+              id(water_level_start) = NAN;
+              id(activity_start_time) = 0;
+              return;
+            }
+
+            float water_used = id(water_level_start) - current_water;
+
+            if (water_used > ${min_drink_event_amount} && event_duration > ${min_drink_event_duration}) {
+              id(last_drink_amount).publish_state(water_used);
+              id(last_drink_duration).publish_state(event_duration);
+              id(pet_drinking_event).trigger("pet_drinking");
+            }
+
+            id(water_level_start) = NAN;
+            id(activity_start_time) = 0;
+
+interval:
+  - interval: 60s
+    then:
+      - script.execute: control_reminder_led
+
+event:
+  - platform: template
+    name: Pet Drinking
+    id: pet_drinking_event
+    event_types:
+      - pet_drinking
+
+script:
+  - id: control_reminder_led
+    mode: restart
+    then:
+      - if:
+          condition:
+            or:
+              - binary_sensor.is_on: bowl_missing
+              - binary_sensor.is_on: bowl_empty
+          then:
+            - lambda: !lambda |-
+                const auto mode = id(brightness_mode).current_option();
+                if (mode == "${brightness_label_off}") {
+                  id(white_light).turn_off().perform();
+                  return;
+                }
+
+                auto call = id(white_light).turn_on();
+                if (mode == "${brightness_label_low}") {
+                  call.set_effect("Bowl Alert Low");
+                } else if (mode == "${brightness_label_high}") {
+                  call.set_effect("Bowl Alert High");
+                } else {
+                  call.set_effect("Bowl Alert Medium");
+                }
+                call.perform();
+          else:
+            - if:
+                condition:
+                  binary_sensor.is_on: water_change_overdue
+                then:
+                  - lambda: !lambda |-
+                      const auto mode = id(brightness_mode).current_option();
+                      if (mode == "${brightness_label_off}") {
+                        id(white_light).turn_off().perform();
+                        return;
+                      }
+
+                      auto call = id(white_light).turn_on();
+                      if (mode == "${brightness_label_low}") {
+                        call.set_effect("Water Overdue Low");
+                      } else if (mode == "${brightness_label_high}") {
+                        call.set_effect("Water Overdue High");
+                      } else {
+                        call.set_effect("Water Overdue Medium");
+                      }
+                      call.perform();
+                else:
+                  - light.turn_off: white_light
+
+  - id: control_ir_led
+    mode: restart
+    then:
+      - if:
+          condition:
+            binary_sensor.is_on: activity
+          then:
+            - output.turn_on: gpio_3
+            - output.set_level:
+                id: gpio_3
+                level: ${ir_led_max_brightness}
+            - lambda: !lambda |-
+                id(ir_led_state) = true;
+                id(bowl_camera).set_special_effect(esphome::esp32_camera::ESP32SpecialEffect::ESP32_SPECIAL_EFFECT_GRAYSCALE);
+                id(bowl_camera).update_camera_parameters();
+          else:
+            - output.turn_off: gpio_3
+            - lambda: "id(ir_led_state) = false;"
+            - lambda: !lambda |-
+                id(bowl_camera).set_special_effect(esphome::esp32_camera::ESP32SpecialEffect::ESP32_SPECIAL_EFFECT_NONE);
+                id(bowl_camera).update_camera_parameters();
