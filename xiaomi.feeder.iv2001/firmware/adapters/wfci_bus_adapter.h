@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+void wfci_bus_sync_init(void);
 void wfci_bus_wifi_spi_active(bool active);
 bool wfci_bus_wifi_spi_active_get(void);
 

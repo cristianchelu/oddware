@@ -70,8 +70,13 @@ Application code uses profiles only — not raw GPIO numbers.
 | Display presentation | NORMAL | `DISPLAY` < 5 ms |
 | Sleep entry / wake | NORMAL | `FULL` or `EXPANDER` ~200 ms |
 
-Higher priority `acquire` waits up to `timeout_ms`. Lower priority `try_acquire`
-fails and retries (display may skip a frame).
+`[design]` Blocking `acquire` serializes all profiles through a binary loan
+semaphore: if another micro-loan is in flight, the caller blocks in the kernel
+until `release` or `timeout_ms` elapses (whichever comes first). When Wi-Fi SPI
+is active, the loan wait and the Wi-Fi arbiter wait share one `timeout_ms`
+budget (remaining time after the loan semaphore is granted). `try_acquire`
+remains fail-fast (`timeout_ms` 0) — display may skip a frame; idle weight
+keeps the last good sample on `PORT_ERR_BUSY`.
 
 ## Coexistence with MQTT TCP connect
 

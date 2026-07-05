@@ -234,7 +234,7 @@ association up. See [wfci-bus-arbitration.md](../30-processes/wfci-bus-arbitrati
 
 | Function | Signature | Behavior |
 |----------|-----------|----------|
-| `acquire` | `(profile, priority, timeout_ms) -> err` | Block until WFCI SPI is idle; `wfcm_if_deinit()`; remux pins per profile; init HAL peripheral (I2C1 / UART2 / GPIO / AUXADC) |
+| `acquire` | `(profile, priority, timeout_ms) -> err` | Block until no in-flight loan and WFCI SPI is idle (shared `timeout_ms` budget); `wfcm_if_deinit()`; remux pins per profile; init HAL peripheral (I2C1 / UART2 / GPIO / AUXADC) |
 | `try_acquire` | `(profile, priority) -> err` | Non-blocking variant; returns `PORT_ERR_BUSY` when loan unavailable |
 | `release` | `(profile) -> void` | Deinit peripheral HAL; `wfcm_if_reinit()`; release SDK bus mutex |
 

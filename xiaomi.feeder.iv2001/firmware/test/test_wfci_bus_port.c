@@ -43,6 +43,45 @@ void test_wfci_bus_try_acquire_fails_when_busy(void)
     wfci_bus_port_get()->release(WFCI_BUS_PROFILE_DISPLAY);
 }
 
+void test_wfci_bus_acquire_waits_for_release(void)
+{
+    fake_wfci_bus_reset();
+    fake_time_reset();
+
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_DISPLAY,
+                                                   WFCI_BUS_PRIORITY_NORMAL,
+                                                   100u));
+    fake_wfci_bus_arm_release_after_ms(3u);
+    fake_time_advance_ms(1u);
+
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_EXPANDER,
+                                                   WFCI_BUS_PRIORITY_NORMAL,
+                                                   100u));
+    TEST_ASSERT_EQUAL(1u, fake_wfci_bus_release_count());
+    wfci_bus_port_get()->release(WFCI_BUS_PROFILE_EXPANDER);
+    TEST_ASSERT_EQUAL(2u, fake_wfci_bus_release_count());
+}
+
+void test_wfci_bus_acquire_times_out_when_held_too_long(void)
+{
+    fake_wfci_bus_reset();
+    fake_time_reset();
+
+    TEST_ASSERT_EQUAL(PORT_OK,
+                      wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_DISPLAY,
+                                                   WFCI_BUS_PRIORITY_NORMAL,
+                                                   0u));
+    fake_wfci_bus_arm_release_after_ms(200u);
+
+    TEST_ASSERT_EQUAL(PORT_ERR_BUSY,
+                      wfci_bus_port_get()->acquire(WFCI_BUS_PROFILE_EXPANDER,
+                                                   WFCI_BUS_PRIORITY_NORMAL,
+                                                   50u));
+    wfci_bus_port_get()->release(WFCI_BUS_PROFILE_DISPLAY);
+}
+
 void test_wfci_bus_hold_duration_tracked(void)
 {
     fake_wfci_bus_reset();

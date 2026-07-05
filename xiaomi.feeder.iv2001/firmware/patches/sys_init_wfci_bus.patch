@@ -10,10 +10,11 @@ index a8f3e21b..c4b8e12a 100644
  #include "display_boot.h"
  
  
-@@ -344,6 +345,7 @@ void system_init(void)
+@@ -344,6 +345,8 @@ void system_init(void)
  
      /* Connsys init will download FW, MT5932 need download N9 FW before any task created, to init ucHeap early */
      connsys_init(NULL);
++    wfci_bus_sync_init();
 +    wfci_bus_wifi_spi_active(true);
  
  #ifndef MTK_DEBUG_LEVEL_NONE

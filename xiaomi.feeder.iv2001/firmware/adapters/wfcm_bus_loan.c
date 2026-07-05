@@ -24,7 +24,7 @@
 static SemaphoreHandle_t s_bus_mutex;
 static volatile bool s_bus_loaned;
 
-static void wfcm_bus_mutex_ensure(void)
+void wfcm_bus_sync_init(void)
 {
     if (s_bus_mutex == NULL) {
         s_bus_mutex = xSemaphoreCreateRecursiveMutex();
@@ -72,7 +72,9 @@ static void wfcm_spi_pins_reinit(void)
 
 bool wfcm_bus_try_loan_begin(void)
 {
-    wfcm_bus_mutex_ensure();
+    if (s_bus_mutex == NULL) {
+        return false;
+    }
     if (xSemaphoreTakeRecursive(s_bus_mutex, 0) != pdPASS) {
         return false;
     }
@@ -85,16 +87,27 @@ bool wfcm_bus_try_loan_begin(void)
     return true;
 }
 
-void wfcm_bus_loan_begin(void)
+bool wfcm_bus_loan_begin(void)
 {
-    wfcm_bus_mutex_ensure();
-    (void)xSemaphoreTakeRecursive(s_bus_mutex, portMAX_DELAY);
+    if (s_bus_mutex == NULL) {
+        return false;
+    }
+
+    if (xSemaphoreTakeRecursive(s_bus_mutex, portMAX_DELAY) != pdPASS) {
+        return false;
+    }
+
     s_bus_loaned = true;
     wfcm_spi_pins_deinit();
+    return true;
 }
 
 void wfcm_bus_loan_end(void)
 {
+    if (!s_bus_loaned || s_bus_mutex == NULL) {
+        return;
+    }
+
     wfcm_spi_pins_reinit();
     s_bus_loaned = false;
     (void)xSemaphoreGiveRecursive(s_bus_mutex);

@@ -18,6 +18,7 @@ size_t fake_wfci_bus_release_count(void);
 uint32_t fake_wfci_bus_max_hold_ms(void);
 void fake_wfci_bus_set_acquire_err(port_err_t err);
 void fake_wfci_bus_set_try_acquire_err(port_err_t err);
+void fake_wfci_bus_arm_release_after_ms(uint32_t ms_from_hold_start);
 
 const wfci_bus_port_t *fake_wfci_bus_port_get(void);
 

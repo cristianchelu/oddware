@@ -24,6 +24,13 @@ static bool s_wifi_spi_active;
 static bool s_loan_held;
 static wfci_bus_profile_t s_held_profile;
 static SemaphoreHandle_t s_arbiter;
+static SemaphoreHandle_t s_loan_sem;
+
+static struct {
+    bool loan_sem;
+    bool arbiter;
+    bool wfcm;
+} s_taken;
 
 static void tm1637_clk_pin_init(void)
 {
@@ -82,11 +89,75 @@ static void profile_hw_teardown(wfci_bus_profile_t profile)
     }
 }
 
-static void arbiter_ensure(void)
+static TickType_t wfci_acquire_ticks(uint32_t timeout_ms, bool try_only)
 {
-    if (s_arbiter == NULL) {
-        s_arbiter = xSemaphoreCreateMutex();
+    if (try_only || timeout_ms == 0u) {
+        return 0;
     }
+
+    return pdMS_TO_TICKS(timeout_ms);
+}
+
+static TickType_t wfci_remaining_ticks(TickType_t start, TickType_t budget)
+{
+    TickType_t elapsed = xTaskGetTickCount() - start;
+
+    if (elapsed >= budget) {
+        return 0;
+    }
+
+    return budget - elapsed;
+}
+
+static void wfci_sync_release_partial(void)
+{
+    if (s_taken.wfcm) {
+        wfcm_bus_loan_end();
+        s_taken.wfcm = false;
+    }
+
+    if (s_taken.arbiter) {
+        (void)xSemaphoreGive(s_arbiter);
+        s_taken.arbiter = false;
+    }
+
+    if (s_taken.loan_sem) {
+        (void)xSemaphoreGive(s_loan_sem);
+        s_taken.loan_sem = false;
+    }
+}
+
+static port_err_t wfci_wifi_begin(bool try_only, TickType_t arbiter_ticks, bool take_arbiter)
+{
+    if (!s_wifi_spi_active) {
+        return PORT_OK;
+    }
+
+    if (take_arbiter) {
+        if (s_arbiter == NULL || xSemaphoreTake(s_arbiter, arbiter_ticks) != pdPASS) {
+            return PORT_ERR_BUSY;
+        }
+        s_taken.arbiter = true;
+    }
+
+    if (try_only) {
+        if (!wfcm_bus_try_loan_begin()) {
+            if (s_taken.arbiter) {
+                (void)xSemaphoreGive(s_arbiter);
+                s_taken.arbiter = false;
+            }
+            return PORT_ERR_BUSY;
+        }
+    } else if (!wfcm_bus_loan_begin()) {
+        if (s_taken.arbiter) {
+            (void)xSemaphoreGive(s_arbiter);
+            s_taken.arbiter = false;
+        }
+        return PORT_ERR_IO;
+    }
+
+    s_taken.wfcm = true;
+    return PORT_OK;
 }
 
 static port_err_t wfci_acquire(wfci_bus_profile_t profile,
@@ -94,43 +165,49 @@ static port_err_t wfci_acquire(wfci_bus_profile_t profile,
                                uint32_t timeout_ms,
                                bool try_only)
 {
-    TickType_t ticks;
-    port_err_t err = PORT_OK;
+    TickType_t start;
+    TickType_t budget_ticks;
+    port_err_t err;
 
     (void)priority;
 
-    if (s_loan_held) {
-        return PORT_ERR_BUSY;
-    }
-
-    if (!s_wifi_spi_active) {
-        profile_hw_setup(profile);
-        s_held_profile = profile;
-        s_loan_held = true;
-        wfci_bus_state_set_held(profile, true);
-        return PORT_OK;
-    }
-
-    arbiter_ensure();
-    ticks = (timeout_ms == 0u) ? 0 : pdMS_TO_TICKS(timeout_ms);
-    if (xSemaphoreTake(s_arbiter, ticks) != pdPASS) {
-        return PORT_ERR_BUSY;
-    }
-
-    if (try_only) {
-        if (!wfcm_bus_try_loan_begin()) {
-            (void)xSemaphoreGive(s_arbiter);
+    if (xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED) {
+        if (s_loan_held) {
             return PORT_ERR_BUSY;
         }
-    } else {
-        wfcm_bus_loan_begin();
+
+        err = wfci_wifi_begin(try_only, 0, false);
+        if (err != PORT_OK) {
+            return err;
+        }
+        goto grant;
     }
 
+    if (s_loan_sem == NULL) {
+        return PORT_ERR_IO;
+    }
+
+    budget_ticks = wfci_acquire_ticks(timeout_ms, try_only);
+    start = xTaskGetTickCount();
+    if (xSemaphoreTake(s_loan_sem, budget_ticks) != pdPASS) {
+        return PORT_ERR_BUSY;
+    }
+    s_taken.loan_sem = true;
+
+    err = wfci_wifi_begin(try_only,
+                          try_only ? 0 : wfci_remaining_ticks(start, budget_ticks),
+                          true);
+    if (err != PORT_OK) {
+        wfci_sync_release_partial();
+        return err;
+    }
+
+grant:
     profile_hw_setup(profile);
     s_held_profile = profile;
     s_loan_held = true;
     wfci_bus_state_set_held(profile, true);
-    return err;
+    return PORT_OK;
 }
 
 static port_err_t wfci_port_acquire(wfci_bus_profile_t profile,
@@ -155,13 +232,7 @@ static void wfci_port_release(wfci_bus_profile_t profile)
     profile_hw_teardown(profile);
     s_loan_held = false;
     wfci_bus_state_set_held(profile, false);
-
-    if (s_wifi_spi_active) {
-        wfcm_bus_loan_end();
-        if (s_arbiter != NULL) {
-            (void)xSemaphoreGive(s_arbiter);
-        }
-    }
+    wfci_sync_release_partial();
 }
 
 static const wfci_bus_port_t s_wfci_bus = {
@@ -169,6 +240,22 @@ static const wfci_bus_port_t s_wfci_bus = {
     .try_acquire = wfci_port_try_acquire,
     .release = wfci_port_release,
 };
+
+void wfci_bus_sync_init(void)
+{
+    if (s_loan_sem == NULL) {
+        s_loan_sem = xSemaphoreCreateBinary();
+        if (s_loan_sem != NULL) {
+            (void)xSemaphoreGive(s_loan_sem);
+        }
+    }
+
+    if (s_arbiter == NULL) {
+        s_arbiter = xSemaphoreCreateMutex();
+    }
+
+    wfcm_bus_sync_init();
+}
 
 void wfci_bus_wifi_spi_active(bool active)
 {
