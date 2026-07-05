@@ -2,6 +2,7 @@
 
 #include "hal_flash.h"
 #include "mqtt_adapter.h"
+#include "provision.h"
 #include "wifi_api.h"
 
 hal_flash_status_t hal_flash_read(uint32_t address, uint8_t *buffer, uint32_t length)
@@ -29,4 +30,9 @@ int wifi_config_get_mac_address(wifi_hal_port_t port, uint8_t mac[6])
 
     memcpy(mac, k_mac, sizeof(k_mac));
     return 0;
+}
+
+bool provision_is_active(void)
+{
+    return false;
 }

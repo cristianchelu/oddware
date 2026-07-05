@@ -98,6 +98,21 @@ APP_FILES      += $(APP_PATH_SRC)/remote_cli.c
 else
 CFLAGS += -DREMOTE_CLI_ENABLE=0
 endif
+ifeq ($(WEB_UI_ENABLE),y)
+CFLAGS += -DWEB_UI_ENABLE=1
+FIRMWARE_DIR := $(abspath $(PWD)/../src/..)
+REPO_ROOT := $(abspath $(FIRMWARE_DIR)/..)
+WEB_UI_GZ := $(FIRMWARE_DIR)/src/web_ui_gz.c
+APP_FILES      += $(APP_PATH_SRC)/web_api.c
+APP_FILES      += $(APP_PATH_SRC)/web_ui.c
+APP_FILES      += $(APP_PATH_SRC)/web_ui_gz.c
+APP_FILES      += $(APP_PATH_ADAPT)/web_api_cgi.c
+
+$(WEB_UI_GZ): $(REPO_ROOT)/tools/web/index.html $(REPO_ROOT)/tools/web/build.sh
+	$(REPO_ROOT)/tools/web/build.sh
+else
+CFLAGS += -DWEB_UI_ENABLE=0
+endif
 APP_FILES      += $(APP_PATH_SRC)/wifi_cred.c
 APP_FILES      += $(APP_PATH_SRC)/app_wifi_cli.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_sta.c
@@ -131,7 +146,9 @@ APP_FILES      += $(APP_PATH_SRC)/mqtt_mains.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_hopper.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_timezone.c
 APP_FILES      += $(APP_PATH_SRC)/schedule.c
+APP_FILES      += $(APP_PATH_SRC)/schedule_cmd.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_schedule.c
+APP_FILES      += $(APP_PATH_SRC)/app_cmd_dispatch.c
 APP_FILES      += $(APP_PATH_SRC)/battery_pct.c
 APP_FILES      += $(APP_PATH_SRC)/battery_monitor.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_dispense_event.c
@@ -317,6 +334,10 @@ $(MODULE_PATH):
 	@+make -C $@ $(MOD_EXTRA) $($@_EXTRA)
 
 proj: $(OUTPATH)/$(PROJ_NAME).elf
+
+ifeq ($(WEB_UI_ENABLE),y)
+$(OUTPATH)/$(PROJ_NAME).elf: $(WEB_UI_GZ)
+endif
 
 $(OUTPATH)/$(PROJ_NAME).elf: $(C_OBJS) $(S_OBJS) $(LIBS) $(WIFI_ROM_SYM)
 	@echo Linking...

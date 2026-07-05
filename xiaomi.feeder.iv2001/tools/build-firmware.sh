@@ -28,6 +28,11 @@ BUILD_OUT="${LINKIT_SDK_OUT:-$SDK_PARENT/LinkitSDK_OUT}"
 echo "Cleaning SDK build objects after patch sync ..."
 rm -rf "$BUILD_OUT/mt7682_hdk/petfeeder/obj"
 
+web_ui_enable="$(sed -n 's/^WEB_UI_ENABLE[[:space:]]*=[[:space:]]*//p' "$REPO_ROOT/firmware/GCC/feature.mk" | head -1)"
+if [ "$web_ui_enable" = "y" ]; then
+    "$REPO_ROOT/tools/web/build.sh"
+fi
+
 cd "$SDK_ROOT"
 ./build.sh mt7682_hdk petfeeder bl
 

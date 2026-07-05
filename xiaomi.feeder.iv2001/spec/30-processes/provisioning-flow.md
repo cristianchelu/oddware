@@ -31,6 +31,9 @@ Device enters Wi-Fi AP mode on:
 Minimal HTTP server at 192.168.4.1 serving a single-page form. No HTTP
 authentication — the open AP is the only access control during setup.
 
+The same SDK `httpd` task serves either the captive portal (AP mode) or the
+admin LAN UI on STA — never both. See [web-ui.md](web-ui.md).
+
 | Field | Type | Required | Default |
 |-------|------|----------|---------|
 | Nearby Wi-Fi networks | select (`wifi_ssid_pick`) | no | — (empty = manual entry) |

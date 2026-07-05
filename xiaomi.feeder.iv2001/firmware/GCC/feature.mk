@@ -52,5 +52,8 @@ FLASH_BANK_OTA_SELFTEST             = n
 # Dev-only TCP console on port 2323 (bare TCP, single client). Flip to n before prod release.
 REMOTE_CLI_ENABLE                   = y
 
+# LAN admin web UI on STA (schedule, dispense, settings). Flip to n before prod release.
+WEB_UI_ENABLE                       = y
+
 # AW9523B GPIO expander on I2C1 (display rail, motor, sensors)
 MTK_HAL_I2C_MASTER_ENABLE           = y

@@ -18,5 +18,9 @@ bool mqtt_json_find_uint(const char *json,
                           size_t len,
                           const char *key,
                           unsigned *out);
+bool mqtt_json_find_bool(const char *json,
+                          size_t len,
+                          const char *key,
+                          bool *out);
 
 #endif /* MQTT_JSON_H */

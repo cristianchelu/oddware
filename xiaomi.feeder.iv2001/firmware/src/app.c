@@ -33,6 +33,9 @@
 #if REMOTE_CLI_ENABLE
 #include "remote_cli.h"
 #endif
+#if WEB_UI_ENABLE
+#include "web_ui.h"
+#endif
 #include "mqtt_cred.h"
 #include "ota_client.h"
 #include "ota_slot_health.h"
@@ -530,6 +533,9 @@ void app_dispatch(const app_event_t *ev)
         mqtt_client_notify_wifi_ready();
 #if REMOTE_CLI_ENABLE
         remote_cli_start();
+#endif
+#if WEB_UI_ENABLE
+        web_ui_start();
 #endif
         if (mqtt_cred_is_stored(config_port_get())) {
             (void)mqtt_client_request_connect();

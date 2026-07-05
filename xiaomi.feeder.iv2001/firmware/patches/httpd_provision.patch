@@ -67,10 +67,10 @@ index ff669f6d..20c19d97 100644
          freeconns->next = tp;
      }
 diff --git a/middleware/third_party/httpd/src/cgi.c b/middleware/third_party/httpd/src/cgi.c
-index ee25b07a..b20eceb4 100644
+index ee25b07a..2eae13ee 100644
 --- a/middleware/third_party/httpd/src/cgi.c
 +++ b/middleware/third_party/httpd/src/cgi.c
-@@ -39,13 +39,11 @@
+@@ -39,13 +39,12 @@
  #include <stdio.h>
  #include <string.h>
  
@@ -82,16 +82,18 @@ index ee25b07a..b20eceb4 100644
  #include "axhttp.h"
  #include "cgi.h"
 +#include "provision_cgi.h"
++#include "web_api_cgi.h"
  
  // FreeRTOS
  #include "hal_sys.h"
-@@ -70,13 +68,11 @@
+@@ -70,13 +69,12 @@
  //==============================================================================
  //                          LOCAL FUNCTION PROTOTYPES
  //==============================================================================
 -static int apConfig(struct cgi_para *para);
 -static int test2(struct cgi_para *para);
 +static int provision_cgi(struct cgi_para *para);
++static int web_api_cgi_entry(struct cgi_para *para);
  
  const struct cgi cgi_cmds[]=
  {
@@ -101,12 +103,25 @@ index ee25b07a..b20eceb4 100644
  };
  
  //==============================================================================
-@@ -99,55 +95,8 @@ CGI_FUNC cgi_filename_match(char *path_info)
+@@ -86,6 +84,11 @@ CGI_FUNC cgi_filename_match(char *path_info)
+ {
+     int i;
+ 
++    if (path_info != NULL && strncmp(path_info, "/api/", 5) == 0) {
++        web_api_cgi_bind_path(path_info);
++        return web_api_cgi_entry;
++    }
++
+     HTTPD_DEBUGF((httpd, "[HTTPD] cgi_filename_match() - path_info = %s\n", path_info));
+ 
+     for (i=0; i< (sizeof(cgi_cmds)/sizeof(struct cgi)) ; i++)
+@@ -99,55 +102,13 @@ CGI_FUNC cgi_filename_match(char *path_info)
      return NULL;
  }
  
 -static int apConfig(struct cgi_para *para)
--{
++static int provision_cgi(struct cgi_para *para)
+ {
 -    char buf[MAXREQUESTLENGTH];
 -
 -    HTTPD_DEBUGF((httpd, "[HTTPD] apConfig() - sd = %d, cmd = %s, cmd_len = %d\n", para->sd, para->cmd, para->cmd_len));
@@ -118,10 +133,11 @@ index ee25b07a..b20eceb4 100644
 -    para->func(para->sd, buf, strlen(buf));
 -
 -    return 0;
--}
--
++    return provision_cgi_handler(para);
+ }
+ 
 -static int test2(struct cgi_para *para)
-+static int provision_cgi(struct cgi_para *para)
++static int web_api_cgi_entry(struct cgi_para *para)
  {
 -    char buf[MAXREQUESTLENGTH];
 -    struct tm gt;
@@ -155,20 +171,78 @@ index ee25b07a..b20eceb4 100644
 -    para->func(para->sd, buf, strlen(buf));
 -
 -    return 0;
-+    return provision_cgi_handler(para);
++    return web_api_cgi_handler(para);
  }
  
 -
+diff --git a/middleware/third_party/httpd/src/proc.c b/middleware/third_party/httpd/src/proc.c
+index 1ad4cd80..80905730 100644
+--- a/middleware/third_party/httpd/src/proc.c
++++ b/middleware/third_party/httpd/src/proc.c
+@@ -52,6 +52,10 @@
+    so makefile set file dependence "src/proc.o: webpage.h" */
+ #include "webpage.h"
+ 
++#if WEB_UI_ENABLE
++#include "web_ui.h"
++#endif
++
+ static const char * rfc1123_format = "%a, %d %b %Y %H:%M:%S GMT";
+ 
+ static void send_error(struct connstruct *cn, int err);
+@@ -394,15 +398,31 @@ void procsendhead(struct connstruct *cn)
+ 		return ;
+ 	}
+     memset(sendbuf, 0, MAXREQUESTLENGTH);
+-    snprintf(sendbuf, MAXREQUESTLENGTH - 1, HTTP_VERSION" 200 OK\r\n"
+-        "Server: %s\r\n"
+-        "Date: %s\r\n"
+-        "Pragma: no-cache\r\n"
+-        "Cache-Control: no-cache\r\n"
+-        "Content-Type: %s\r\n"
+-        "Last-Modified: %s\r\n"
+-        "Connection: close\r\n\r\n",
+-        date, server_version, getmimetype(cn->actualfile), last_modified);
++#if WEB_UI_ENABLE
++    if (web_ui_is_active()
++        && strcmp(cn->actualfile, CONFIG_HTTP_HOME_HTML) == 0) {
++        snprintf(sendbuf, MAXREQUESTLENGTH - 1, HTTP_VERSION" 200 OK\r\n"
++            "Server: %s\r\n"
++            "Date: %s\r\n"
++            "Pragma: no-cache\r\n"
++            "Cache-Control: no-cache\r\n"
++            "Content-Type: text/html; charset=utf-8\r\n"
++            "Content-Encoding: gzip\r\n"
++            "Connection: close\r\n\r\n",
++            date, server_version);
++    } else
++#endif
++    {
++        snprintf(sendbuf, MAXREQUESTLENGTH - 1, HTTP_VERSION" 200 OK\r\n"
++            "Server: %s\r\n"
++            "Date: %s\r\n"
++            "Pragma: no-cache\r\n"
++            "Cache-Control: no-cache\r\n"
++            "Content-Type: %s\r\n"
++            "Last-Modified: %s\r\n"
++            "Connection: close\r\n\r\n",
++            date, server_version, getmimetype(cn->actualfile), last_modified);
++    }
+ 
+     write_len = special_write(cn->networkdesc, sendbuf, strlen(sendbuf));
+     ax_free(sendbuf);
 diff --git a/middleware/third_party/httpd/web_c/web__index_html.c b/middleware/third_party/httpd/web_c/web__index_html.c
-index 873a651c..9494fa17 100644
+index 873a651c..ff47cc33 100644
 --- a/middleware/third_party/httpd/web_c/web__index_html.c
 +++ b/middleware/third_party/httpd/web_c/web__index_html.c
-@@ -4,53 +4,14 @@
+@@ -4,53 +4,20 @@
   */
  
  #include "web_proc.h"
 -#include "cgi_api.h"
 -
++#include "web_ui.h"
++#include "web_api_cgi.h"
  
  int web__index_html(struct connstruct *cn, char *datap)
  {
@@ -216,7 +290,10 @@ index 873a651c..9494fa17 100644
 - 	total_send_len += send_len;
 -
 -	return total_send_len;
--
++    if (web_ui_is_active()) {
++        return web_ui_index_serve(cn);
++    }
+ 
 +    return WEB_printf(cn,
 +                      "<!DOCTYPE html><html><head>"
 +                      "<meta http-equiv=\"refresh\" content=\"0;url=/provision.cgi\">"

@@ -15,6 +15,9 @@ cloud dependency and no phone-home telemetry.
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).
+- **LAN web UI** — optional HTTP control panel on the device IP when Wi-Fi is
+  connected; schedule and basic controls work without MQTT (see
+  [web-ui.md](../30-processes/web-ui.md)).
 - **Neutral namespace** — topic paths use `petfeeder/<device_id>/...`
   with no vendor-specific prefixes.
 - **Simple payloads** — flat JSON for multi-field topics; plain strings for

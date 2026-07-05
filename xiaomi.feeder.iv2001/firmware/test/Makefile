@@ -2,7 +2,7 @@
 
 CC       ?= gcc
 CFLAGS   ?= -Wall -Wextra -std=c11 -pedantic
-CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity -DHOST_TEST -DAPP_LOG_LEVEL=APP_LOG_LEVEL_DEBUG -DREMOTE_CLI_ENABLE=1
+CPPFLAGS := -I. -I../inc -I../ports -Ifakes -Ifakes/shim -Iunity -DHOST_TEST -DAPP_LOG_LEVEL=APP_LOG_LEVEL_DEBUG -DREMOTE_CLI_ENABLE=1 -DWEB_UI_ENABLE=1
 LDFLAGS  :=
 BUILD    := build-host
 RUNNER   := $(BUILD)/test_runner.c
@@ -54,7 +54,12 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_hopper.c \
              ../src/mqtt_timezone.c \
              ../src/schedule.c \
+             ../src/schedule_cmd.c \
              ../src/mqtt_schedule.c \
+             ../src/app_cmd_dispatch.c \
+             ../src/web_api.c \
+             ../src/web_ui.c \
+             ../src/web_ui_gz.c \
              ../src/battery_pct.c \
              ../src/battery_monitor.c \
              ../src/mqtt_dispense_event.c \
@@ -150,7 +155,14 @@ HOST_SRCS :=              ../src/app_log.c \
              fakes/host_stubs.c \
              fakes/port_providers_host.c
 
-.PHONY: all test-host check-no-printf clean
+.PHONY: all test-host check-no-printf clean web-ui-gz
+
+WEB_UI_GZ := ../src/web_ui_gz.c
+
+web-ui-gz: $(WEB_UI_GZ)
+
+$(WEB_UI_GZ): ../../tools/web/index.html ../../tools/web/build.sh
+	../../tools/web/build.sh
 
 all: test-host
 
@@ -164,7 +176,7 @@ check-no-printf:
 		exit 1; \
 	fi
 
-test-host: check-no-printf $(BUILD)/test_host
+test-host: check-no-printf web-ui-gz $(BUILD)/test_host
 	./$(BUILD)/test_host
 	@../../tools/host-green-nudge.sh
 

@@ -42,6 +42,7 @@ The SDK creates these internally. Their priorities are fixed:
 | `ota_dl` | NORMAL | 4096 B | Ephemeral | Spawned during OTA download only, posts progress to `app_event_q`, self-deletes on completion |
 | `motor_ctrl` | HIGH | 2048 B | Persistent (when dispense features land) | Safety-critical motor I2C: receives fault notifications from ADC ISR, performs protective I2C writes, posts `EVT_MOTOR_FAULT` to `app_event_q` |
 | `remote_cli` | NORMAL | `[tune]` 4096 B | Persistent when `REMOTE_CLI_ENABLE=y` | TCP listen/accept on port 2323; runs MiniCLI on the active socket; attaches/detaches telnet `app_log` mirror; all socket I/O in this task only; **deleted** during OTA preflight when enabled (recreated after failed OTA) |
+| Admin HTTP (`httpd`) | NORMAL | 8192 B (SDK `httpd_proc`) | When `WEB_UI_ENABLE=y` and STA ready | LAN web UI on port 80; **stopped** during AP provisioning and OTA preflight; see [web-ui.md](../30-processes/web-ui.md) |
 | `app_cli` | NORMAL | 4096 B | Persistent | UART0 MiniCLI; polls UART for local override while a remote session is active; **deleted** during OTA preflight (recreated after failed OTA) |
 | `wifi_sta` | NORMAL | 4096 B | Persistent | STA connect/disconnect worker; posts `EVT_WIFI_STA_*`; **deleted** during OTA preflight (recreated after failed OTA) |
 

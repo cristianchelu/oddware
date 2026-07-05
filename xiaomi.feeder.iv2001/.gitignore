@@ -41,3 +41,7 @@ out/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Web UI — generated at build time (tools/web/build.sh)
+firmware/src/web_ui_gz.c
+tools/web/.web_ui_bundle.gz

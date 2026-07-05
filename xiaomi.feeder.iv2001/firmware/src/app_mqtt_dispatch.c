@@ -3,12 +3,10 @@
  */
 
 #include "app_log.h"
+#include "app_cmd_dispatch.h"
 #include "app_mqtt_dispatch.h"
 #include "battery_monitor.h"
 #include "mqtt_client.h"
-#include "mqtt_dispense_cmd.h"
-#include "mqtt_config.h"
-#include "mqtt_feed_mode.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_route.h"
 #include "mqtt_state.h"
@@ -19,7 +17,8 @@
 #include "mqtt_mains.h"
 #include "mqtt_timezone.h"
 #include "mqtt_schedule.h"
-#include "schedule.h"
+#include "mqtt_config.h"
+#include "mqtt_feed_mode.h"
 #include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
@@ -77,33 +76,9 @@ void app_mqtt_dispatch(const char *topic,
         ota_client_on_mqtt_message(topic, payload, len);
         break;
     case MQTT_ROUTE_CMD_DISPENSE:
-        app_log_info("mqtt",
-                     "cmd %s topic=%s len=%u",
-                     mqtt_route_label(route),
-                     topic,
-                     (unsigned)len);
-        mqtt_dispense_cmd_handle(topic, payload, len, device_id);
-        break;
+    case MQTT_ROUTE_CMD_DISPENSE_CANCEL:
     case MQTT_ROUTE_CMD_CONFIG:
-        app_log_info("mqtt",
-                     "cmd %s topic=%s len=%u",
-                     mqtt_route_label(route),
-                     topic,
-                     (unsigned)len);
-        if (mqtt_config_handle(payload, len) != PORT_OK) {
-            app_log_info("mqtt", "config rejected");
-        }
-        break;
     case MQTT_ROUTE_CMD_FEED_MODE:
-        app_log_info("mqtt",
-                     "cmd %s topic=%s len=%u",
-                     mqtt_route_label(route),
-                     topic,
-                     (unsigned)len);
-        if (mqtt_feed_mode_handle(payload, len) != PORT_OK) {
-            app_log_info("mqtt", "feed mode rejected");
-        }
-        break;
     case MQTT_ROUTE_CMD_SCHEDULE_SET:
     case MQTT_ROUTE_CMD_SCHEDULE_DELETE:
     case MQTT_ROUTE_CMD_SCHEDULE_TOGGLE:
@@ -115,7 +90,9 @@ void app_mqtt_dispatch(const char *topic,
                      mqtt_route_label(route),
                      topic,
                      (unsigned)len);
-        (void)mqtt_schedule_handle(route, payload, len);
+        if (app_cmd_dispatch(route, payload, len, device_id) != PORT_OK) {
+            app_log_info("mqtt", "cmd rejected route=%s", mqtt_route_label(route));
+        }
         break;
     default:
         app_log_debug("app", "mqtt cmd stub route=%d topic=%s", (int)route, topic);

@@ -10,6 +10,7 @@
 #include "app_schedule_cli.h"
 #include "cli.h"
 #include "schedule.h"
+#include "schedule_cmd.h"
 
 static bool schedule_cli_parse_on_off(const char *word, bool *out)
 {
@@ -115,27 +116,7 @@ uint8_t schedule_cli_run_set(unsigned hour,
                              bool enabled)
 {
     schedule_slot_config_t cfg;
-    bool ok;
-
-    if (hour > 23u) {
-        app_log_info("cli", "schedule: invalid hour");
-        return 1;
-    }
-
-    if (min > 59u) {
-        app_log_info("cli", "schedule: invalid min");
-        return 1;
-    }
-
-    if (days > 127u) {
-        app_log_info("cli", "schedule: invalid days");
-        return 1;
-    }
-
-    if (g < SCHEDULE_G_MIN || g > SCHEDULE_G_MAX) {
-        app_log_info("cli", "schedule: invalid g");
-        return 1;
-    }
+    schedule_cmd_result_t result;
 
     cfg.hour = (uint8_t)hour;
     cfg.min = (uint8_t)min;
@@ -143,117 +124,129 @@ uint8_t schedule_cli_run_set(unsigned hour,
     cfg.g = (uint8_t)g;
     cfg.enabled = enabled;
 
-    ok = schedule_set_slot(&cfg);
-    if (!ok) {
+    result = schedule_cmd_set(&cfg);
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule set ok");
+        return 0;
+    case SCHEDULE_CMD_INVALID:
+        if (hour > 23u) {
+            app_log_info("cli", "schedule: invalid hour");
+        } else if (min > 59u) {
+            app_log_info("cli", "schedule: invalid min");
+        } else if (days > 127u) {
+            app_log_info("cli", "schedule: invalid days");
+        } else {
+            app_log_info("cli", "schedule: invalid g");
+        }
+        return 1;
+    case SCHEDULE_CMD_NVDM_FAIL:
         app_log_info("cli", "schedule: nvdm write failed");
         return 1;
+    default:
+        return 1;
     }
-
-    app_log_info("cli", "schedule set ok");
-    return 0;
-}
-
-static bool schedule_cli_slot_exists(uint8_t hour, uint8_t min)
-{
-    size_t i;
-
-    for (i = 0; i < schedule_slot_count(); i++) {
-        schedule_slot_config_t cfg;
-
-        if (schedule_get_slot(i, &cfg, NULL) && cfg.hour == hour && cfg.min == min) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 uint8_t schedule_cli_run_delete(unsigned hour, unsigned min)
 {
-    if (hour > 23u || min > 59u) {
+    schedule_cmd_result_t result = schedule_cmd_delete((uint8_t)hour, (uint8_t)min);
+
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule delete ok");
+        return 0;
+    case SCHEDULE_CMD_INVALID:
         app_log_info("cli", "schedule: invalid time");
         return 1;
-    }
-
-    if (!schedule_delete_slot((uint8_t)hour, (uint8_t)min)) {
-        if (schedule_cli_slot_exists((uint8_t)hour, (uint8_t)min)) {
-            app_log_info("cli", "schedule: nvdm write failed");
-        } else {
-            app_log_info("cli", "schedule: slot not found");
-        }
+    case SCHEDULE_CMD_NOT_FOUND:
+        app_log_info("cli", "schedule: slot not found");
+        return 1;
+    case SCHEDULE_CMD_NVDM_FAIL:
+        app_log_info("cli", "schedule: nvdm write failed");
+        return 1;
+    default:
         return 1;
     }
-
-    app_log_info("cli", "schedule delete ok");
-    return 0;
 }
 
 uint8_t schedule_cli_run_toggle(unsigned hour, unsigned min)
 {
-    if (hour > 23u || min > 59u) {
+    schedule_cmd_result_t result = schedule_cmd_toggle((uint8_t)hour, (uint8_t)min);
+
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule toggle ok");
+        return 0;
+    case SCHEDULE_CMD_INVALID:
         app_log_info("cli", "schedule: invalid time");
         return 1;
-    }
-
-    if (!schedule_toggle_slot((uint8_t)hour, (uint8_t)min)) {
-        if (schedule_cli_slot_exists((uint8_t)hour, (uint8_t)min)) {
-            app_log_info("cli", "schedule: nvdm write failed");
-        } else {
-            app_log_info("cli", "schedule: slot not found");
-        }
+    case SCHEDULE_CMD_NOT_FOUND:
+        app_log_info("cli", "schedule: slot not found");
+        return 1;
+    case SCHEDULE_CMD_NVDM_FAIL:
+        app_log_info("cli", "schedule: nvdm write failed");
+        return 1;
+    default:
         return 1;
     }
-
-    app_log_info("cli", "schedule toggle ok");
-    return 0;
 }
 
 uint8_t schedule_cli_run_skip(unsigned hour, unsigned min, bool skip)
 {
-    if (hour > 23u || min > 59u) {
+    schedule_cmd_result_t result = schedule_cmd_skip((uint8_t)hour, (uint8_t)min, skip);
+
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule skip ok");
+        return 0;
+    case SCHEDULE_CMD_INVALID:
         app_log_info("cli", "schedule: invalid time");
         return 1;
-    }
-
-    if (!schedule_skip_slot((uint8_t)hour, (uint8_t)min, skip)) {
+    case SCHEDULE_CMD_NOT_FOUND:
         app_log_info("cli", "schedule: slot not found");
         return 1;
+    default:
+        return 1;
     }
-
-    app_log_info("cli", "schedule skip ok");
-    return 0;
 }
 
 uint8_t schedule_cli_run_enable(bool enabled)
 {
-    if (schedule_global_enabled() == enabled) {
+    schedule_cmd_result_t result = schedule_cmd_enable(enabled);
+
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule enable ok");
+        return 0;
+    case SCHEDULE_CMD_UNCHANGED:
         app_log_info("cli", "schedule: unchanged");
         return 1;
-    }
-
-    if (!schedule_set_global_enabled(enabled)) {
+    case SCHEDULE_CMD_NVDM_FAIL:
         app_log_info("cli", "schedule: nvdm write failed");
         return 1;
+    default:
+        return 1;
     }
-
-    app_log_info("cli", "schedule enable ok");
-    return 0;
 }
 
 uint8_t schedule_cli_run_today(bool enabled)
 {
-    if (schedule_today_enabled() == enabled) {
+    schedule_cmd_result_t result = schedule_cmd_today(enabled);
+
+    switch (result) {
+    case SCHEDULE_CMD_OK:
+        app_log_info("cli", "schedule today ok");
+        return 0;
+    case SCHEDULE_CMD_UNCHANGED:
         app_log_info("cli", "schedule: unchanged");
         return 1;
-    }
-
-    if (!schedule_set_today_enabled(enabled)) {
+    case SCHEDULE_CMD_NVDM_FAIL:
         app_log_info("cli", "schedule: nvdm write failed");
         return 1;
+    default:
+        return 1;
     }
-
-    app_log_info("cli", "schedule today ok");
-    return 0;
 }
 
 static uint8_t schedule_cli_show(uint8_t argc, char *argv[])

@@ -31,6 +31,9 @@
 #include "task_def.h"
 #include "wifi_cred.h"
 #include "wifi_port.h"
+#if WEB_UI_ENABLE
+#include "web_ui.h"
+#endif
 
 #define PROVISION_AP_CHANNEL        6
 #define PROVISION_AP_SETTLE_MS      2000
@@ -347,6 +350,9 @@ static void provision_task(void *param)
 
     vTaskDelay(pdMS_TO_TICKS(PROVISION_SCHEDULER_DELAY_MS));
 
+#if WEB_UI_ENABLE
+    web_ui_stop();
+#endif
     mqtt_client_stop();
     wifi_sdk_profile_invalidate();
     provision_build_ap_ssid(s_ap_ssid, sizeof(s_ap_ssid));

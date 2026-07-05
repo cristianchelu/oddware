@@ -17,8 +17,8 @@ motor and a bowl-mounted weight sensor.
 
 ## Dispense modes
 
-The user can choose between two modes (persistent setting) from Home Assistant
-or UART `feed mode`:
+The user can choose between two modes (persistent setting) from Home Assistant,
+the LAN web UI, or UART `feed mode`:
 
 | Mode | Behavior |
 |------|----------|

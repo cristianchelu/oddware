@@ -13,8 +13,9 @@ food automatically at the configured times.
   Sun=6); the bench UART uses a numeric weekday bitmask.
 - **Hour + minute** uniquely identify a slot — only one feed per
   time-of-day.
-- Slots can be created, updated, listed, and deleted via MQTT or the bench
-  UART `schedule` commands (see [uart-console.md](../30-processes/uart-console.md)).
+- Slots can be created, updated, listed, and deleted via MQTT, the LAN web UI
+  (see [web-ui.md](../30-processes/web-ui.md)), or the bench UART `schedule`
+  commands (see [uart-console.md](../30-processes/uart-console.md)).
 - A global master switch enables or disables the entire schedule.
 - A today-only override can disable scheduled feeds for the current day
   without changing recurring slot config.

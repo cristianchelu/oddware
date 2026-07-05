@@ -38,15 +38,17 @@ download worker needs `[tune]` 12 KB stack. `[design]`
 
 | Task | Action during OTA window |
 |------|--------------------------|
+| Admin HTTP (`httpd`) | Stop LAN web UI when `WEB_UI_ENABLE=y`; restart after failed OTA when STA ready — see [web-ui.md](web-ui.md) |
 | `remote_cli` | End active telnet session, close port 2323 listener, delete task to free stack (when `REMOTE_CLI_ENABLE`; recreated after failed OTA) |
 | `app_cli` | Suspend UART0 console task and delete to free stack; recreated after failed OTA |
 | `wifi_sta` | Suspend connect worker and delete to free stack; recreated after failed OTA |
 | `mqtt_io` | Disarm reconnect, disconnect broker session (task keeps running; broker buffers freed) |
 
 On download-worker spawn failure or any download/verify/apply failure before
-reboot: resume suspended tasks in reverse order (MQTT, `wifi_sta`, `app_cli`,
-`remote_cli` when enabled). On successful apply: reboot — no resume. See
-[uart-console.md](uart-console.md) § Remote telnet console.
+reboot: resume suspended tasks in reverse order (admin HTTP when enabled,
+MQTT, `wifi_sta`, `app_cli`, `remote_cli` when enabled). On successful apply:
+reboot — no resume. See [uart-console.md](uart-console.md) § Remote telnet
+console and [web-ui.md](web-ui.md).
 
 ### Steps
 

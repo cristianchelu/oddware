@@ -11,6 +11,9 @@
 #include "app_cli_ota.h"
 #include "mqtt_client.h"
 #include "remote_cli.h"
+#if WEB_UI_ENABLE
+#include "web_ui.h"
+#endif
 #include "wifi_sta.h"
 
 #define OTA_PREFLIGHT_MQTT_DISCONNECT_MS  5000u
@@ -23,6 +26,9 @@ port_err_t ota_preflight_suspend_idle_tasks(void)
      * worker. Order: bench CLI, UART CLI, Wi-Fi connect worker, then MQTT.
      */
     remote_cli_suspend_for_ota();
+#if WEB_UI_ENABLE
+    web_ui_suspend_for_ota();
+#endif
     app_cli_suspend_for_ota();
     wifi_sta_suspend_for_ota();
 
@@ -47,5 +53,8 @@ void ota_preflight_resume_idle_tasks(void)
     wifi_sta_resume_after_ota();
     app_cli_resume_after_ota();
     remote_cli_resume_after_ota();
+#if WEB_UI_ENABLE
+    web_ui_resume_after_ota();
+#endif
     mqtt_client_resume_after_ota();
 }

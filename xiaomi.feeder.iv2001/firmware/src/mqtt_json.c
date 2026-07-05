@@ -186,3 +186,31 @@ bool mqtt_json_find_uint(const char *json,
     *out = (unsigned)value;
     return true;
 }
+
+bool mqtt_json_find_bool(const char *json,
+                          size_t len,
+                          const char *key,
+                          bool *out)
+{
+    const char *cursor;
+
+    if (out == NULL) {
+        return false;
+    }
+
+    if (!mqtt_json_locate_value(json, len, key, &cursor)) {
+        return false;
+    }
+
+    if (strncmp(cursor, "true", 4) == 0) {
+        *out = true;
+        return true;
+    }
+
+    if (strncmp(cursor, "false", 5) == 0) {
+        *out = false;
+        return true;
+    }
+
+    return false;
+}
