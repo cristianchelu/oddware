@@ -161,7 +161,7 @@ WEB_UI_GZ := ../src/web_ui_gz.c
 
 web-ui-gz: $(WEB_UI_GZ)
 
-$(WEB_UI_GZ): ../../tools/web/index.html ../../tools/web/build.sh
+$(WEB_UI_GZ): ../../tools/web/index.html ../../tools/web/logic.mjs ../../tools/web/build.sh
 	../../tools/web/build.sh
 
 all: test-host

@@ -39,7 +39,14 @@ echo ""
 echo "==> Running host unit tests"
 make -C firmware/test test-host
 
+echo ""
+echo "==> Running web UI client tests"
+make test-web
+
 if [ "$HOST_ONLY" -eq 1 ]; then
+    echo ""
+    echo "==> Running web UI client tests"
+    make test-web
     echo ""
     echo "Host setup verified. To prepare firmware builds:"
     echo "  ./tools/bootstrap.sh          # includes SDK fetch"
@@ -80,7 +87,8 @@ echo ""
 echo "Setup complete."
 echo ""
 echo "Next steps:"
-echo "  make test-host                  # re-run host tests anytime"
+echo "  make test-host                  # re-run firmware host tests"
+echo "  make test-web                   # re-run web UI client tests"
 echo "  source tools/build-env.sh       # per-shell ARM toolchain PATH"
 echo "  ./tools/build-firmware.sh       # once GCC/Makefile exists (Step 1)"
 if [ "$WITH_FLASH_TOOL" -eq 1 ]; then

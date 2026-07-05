@@ -108,7 +108,7 @@ APP_FILES      += $(APP_PATH_SRC)/web_ui.c
 APP_FILES      += $(APP_PATH_SRC)/web_ui_gz.c
 APP_FILES      += $(APP_PATH_ADAPT)/web_api_cgi.c
 
-$(WEB_UI_GZ): $(REPO_ROOT)/tools/web/index.html $(REPO_ROOT)/tools/web/build.sh
+$(WEB_UI_GZ): $(REPO_ROOT)/tools/web/index.html $(REPO_ROOT)/tools/web/logic.mjs $(REPO_ROOT)/tools/web/build.sh
 	$(REPO_ROOT)/tools/web/build.sh
 else
 CFLAGS += -DWEB_UI_ENABLE=0

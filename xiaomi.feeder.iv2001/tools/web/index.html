@@ -58,61 +58,132 @@ td,th{border-bottom:1px solid #333;padding:4px;text-align:left}.pill{display:inl
 </div>
 </section>
 <script>
-const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const dayBox=document.getElementById('days');
-DAYS.forEach((d,i)=>{const l=document.createElement('label');l.innerHTML=`<input type=checkbox class=day value=${i}> ${d}`;dayBox.appendChild(l);});
-function msg(t,ok){const s=document.getElementById('status');s.textContent=t;s.className=ok?'ok':'err';}
-async function api(method,path,body){
-  const o={method};if(body!==undefined){o.headers={'Content-Type':body.startsWith('{')?'application/json':'text/plain'};o.body=body;}
-  const r=await fetch(path,o);const t=await r.text();try{return JSON.parse(t)}catch(e){return t;}
+<!-- INJECT_LOGIC -->
+const dayBox = document.getElementById('days');
+DAYS.forEach((d, i) => {
+  const l = document.createElement('label');
+  l.innerHTML = `<input type=checkbox class=day value=${i}> ${d}`;
+  dayBox.appendChild(l);
+});
+function msg(text, ok) {
+  const s = document.getElementById('status');
+  s.textContent = text;
+  s.className = ok ? 'ok' : 'err';
 }
-function daysToMask(){
-  let m=0;document.querySelectorAll('.day:checked').forEach(c=>m|=1<<+c.value);return m;
+async function api(method, path, body) {
+  const o = { method };
+  if (body !== undefined) {
+    o.headers = { 'Content-Type': apiContentType(body) };
+    o.body = body;
+  }
+  const r = await fetch(path, o);
+  return parseApiResponse(await r.text());
 }
-function maskToDays(mask){
-  const a=[];for(let i=0;i<7;i++)if(mask&(1<<i))a.push(i);return a;
+function daysToMask() {
+  const values = [...document.querySelectorAll('.day:checked')].map((c) => c.value);
+  return readMaskFromCheckedValues(values);
 }
-function renderDays(mask){
-  document.querySelectorAll('.day').forEach(c=>{c.checked=!!(mask&(1<<c.value));});
+function renderDays(mask) {
+  document.querySelectorAll('.day').forEach((c) => {
+    c.checked = !!(mask & (1 << c.value));
+  });
 }
-async function loadStatus(){
-  const st=await api('GET','/api/status');
-  const nx=st.next?`Next: ${st.next.hour}:${String(st.next.min).padStart(2,'0')} ${st.next.g}g in ${st.next.in_min}m`:'No upcoming feed';
-  document.getElementById('next').textContent=nx;
-  document.getElementById('schedEn').checked=!!st.schedule_enabled;
-  document.getElementById('todayEn').checked=!!st.today_enabled;
-  msg(`${st.time_synced?st.local_time:'time not synced'} | hopper ${st.hopper} | busy ${st.dispense_busy}`,true);
+async function loadStatus() {
+  const st = await api('GET', '/api/status');
+  document.getElementById('next').textContent = formatNextFeed(st.next);
+  document.getElementById('schedEn').checked = !!st.schedule_enabled;
+  document.getElementById('todayEn').checked = !!st.today_enabled;
+  msg(formatStatusMessage(st), true);
 }
-async function loadSchedule(){
-  const doc=await api('GET','/api/schedule/state');
-  const tb=document.querySelector('#slots tbody');tb.innerHTML='';
-  (doc.schedule||[]).forEach(s=>{
-    const tr=document.createElement('tr');
-    const t=s.time.split(':');
-    const days=(s.repeat_days||[]).map(d=>DAYS[d][0]).join('');
-    tr.innerHTML=`<td>${s.time}</td><td>${days}</td><td>${s.g}</td><td><span class=pill>${s.state}</span></td>
+async function loadSchedule() {
+  const doc = await api('GET', '/api/schedule/state');
+  const tb = document.querySelector('#slots tbody');
+  tb.innerHTML = '';
+  (doc.schedule || []).forEach((s) => {
+    const tr = document.createElement('tr');
+    const t = s.time.split(':');
+    const days = formatSlotDayLetters(s.repeat_days);
+    tr.innerHTML = `<td>${s.time}</td><td>${days}</td><td>${s.g}</td><td><span class=pill>${s.state}</span></td>
     <td><button data-del="${t[0]}:${t[1]}">Del</button> <button data-skip="${t[0]}:${t[1]}">Skip</button></td>`;
-    tr.querySelector('[data-del]').onclick=async()=>{await api('POST','/api/schedule/delete',JSON.stringify({hour:+t[0],min:+t[1]}));loadAll();};
-    tr.querySelector('[data-skip]').onclick=async()=>{await api('POST','/api/schedule/skip',JSON.stringify({hour:+t[0],min:+t[1],skip:true}));loadAll();};
+    tr.querySelector('[data-del]').onclick = async () => {
+      await api('POST', '/api/schedule/delete', JSON.stringify(buildScheduleDeleteBody(t[0], t[1])));
+      loadAll();
+    };
+    tr.querySelector('[data-skip]').onclick = async () => {
+      await api('POST', '/api/schedule/skip', JSON.stringify(buildScheduleSkipBody(t[0], t[1])));
+      loadAll();
+    };
     tb.appendChild(tr);
   });
 }
-async function loadMode(){const m=await api('GET','/api/feed/mode');document.getElementById('feedMode').value=m.trim?m.trim():m;}
-async function loadConfig(){const c=await api('GET','/api/config');if(c.tz_rule)document.getElementById('tzRule').value=c.tz_rule;}
-async function loadAll(){await loadStatus();await loadSchedule();await loadMode();await loadConfig();}
-document.getElementById('refreshBtn').onclick=loadAll;
-document.getElementById('dispBtn').onclick=async()=>{const g=+document.getElementById('dispG').value;const r=await api('POST','/api/dispense',JSON.stringify({g}));msg(r.ok?'Dispense queued':'Dispense failed: '+r.error,!!r.ok);};
-document.getElementById('schedEn').onchange=async e=>{await api('POST','/api/schedule/enable',JSON.stringify({enabled:e.target.checked}));loadAll();};
-document.getElementById('todayEn').onchange=async e=>{await api('POST','/api/schedule/today',JSON.stringify({enabled:e.target.checked}));loadAll();};
-document.getElementById('saveSlot').onclick=async()=>{
-  const mask=daysToMask();if(!mask){msg('Pick at least one day',false);return;}
-  const body={hour:+document.getElementById('slotH').value,min:+document.getElementById('slotM').value,
-    repeat_days:maskToDays(mask),g:+document.getElementById('slotG').value,enabled:document.getElementById('slotOn').checked};
-  const r=await api('POST','/api/schedule/set',JSON.stringify(body));msg(r.ok?'Slot saved':r.error,!!r.ok);loadAll();
+async function loadMode() {
+  const m = await api('GET', '/api/feed/mode');
+  document.getElementById('feedMode').value = typeof m === 'string' && m.trim ? m.trim() : m;
+}
+async function loadConfig() {
+  const c = await api('GET', '/api/config');
+  if (c.tz_rule) {
+    document.getElementById('tzRule').value = c.tz_rule;
+  }
+}
+async function loadAll() {
+  await loadStatus();
+  await loadSchedule();
+  await loadMode();
+  await loadConfig();
+}
+document.getElementById('refreshBtn').onclick = loadAll;
+document.getElementById('dispBtn').onclick = async () => {
+  const g = document.getElementById('dispG').value;
+  const r = await api('POST', '/api/dispense', JSON.stringify(buildDispenseBody(g)));
+  const m = mutationMessage(r, 'Dispense queued', 'Dispense failed');
+  msg(m.text, m.ok);
 };
-document.getElementById('saveMode').onclick=async()=>{const v=document.getElementById('feedMode').value;const r=await api('POST','/api/feed/mode',v);msg(r.ok?'Mode saved':r.error,!!r.ok);};
-document.getElementById('saveTz').onclick=async()=>{const r=await api('POST','/api/config',JSON.stringify({tz_rule:document.getElementById('tzRule').value}));msg(r.ok?'TZ saved':r.error,!!r.ok);};
-renderDays(127);loadAll();setInterval(loadStatus,5000);
+document.getElementById('schedEn').onchange = async (e) => {
+  await api('POST', '/api/schedule/enable', JSON.stringify(buildScheduleEnableBody(e.target.checked)));
+  loadAll();
+};
+document.getElementById('todayEn').onchange = async (e) => {
+  await api('POST', '/api/schedule/today', JSON.stringify(buildScheduleTodayBody(e.target.checked)));
+  loadAll();
+};
+document.getElementById('saveSlot').onclick = async () => {
+  const mask = daysToMask();
+  const v = validateScheduleMask(mask);
+  if (!v.ok) {
+    msg(v.error, false);
+    return;
+  }
+  const body = buildScheduleSetBody({
+    hour: document.getElementById('slotH').value,
+    min: document.getElementById('slotM').value,
+    mask,
+    g: document.getElementById('slotG').value,
+    enabled: document.getElementById('slotOn').checked,
+  });
+  const r = await api('POST', '/api/schedule/set', JSON.stringify(body));
+  const m = mutationMessage(r, 'Slot saved');
+  msg(m.text, m.ok);
+  loadAll();
+};
+document.getElementById('saveMode').onclick = async () => {
+  const v = document.getElementById('feedMode').value;
+  const r = await api('POST', '/api/feed/mode', v);
+  const m = mutationMessage(r, 'Mode saved');
+  msg(m.text, m.ok);
+};
+document.getElementById('saveTz').onclick = async () => {
+  const r = await api(
+    'POST',
+    '/api/config',
+    JSON.stringify(buildConfigTzBody(document.getElementById('tzRule').value)),
+  );
+  const m = mutationMessage(r, 'TZ saved');
+  msg(m.text, m.ok);
+};
+renderDays(127);
+loadAll();
+setInterval(loadStatus, 5000);
 </script>
 </body>
 </html>

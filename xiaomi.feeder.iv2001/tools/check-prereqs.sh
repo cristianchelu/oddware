@@ -18,6 +18,7 @@ case "$mode" in
         require_cmd git
         require_cmd make
         require_cmd gcc
+        require_cmd node
         ;;
     sdk)
         require_cmd patch
@@ -49,8 +50,8 @@ if [ "${#missing[@]}" -gt 0 ]; then
     case "$mode" in
         host)
             echo "Install host tools, then re-run bootstrap." >&2
-            echo "  Fedora:  sudo dnf install git make gcc" >&2
-            echo "  Debian:  sudo apt install git make gcc" >&2
+            echo "  Fedora:  sudo dnf install git make gcc nodejs" >&2
+            echo "  Debian:  sudo apt install git make gcc nodejs" >&2
             ;;
         sdk)
             echo "Install patch for SDK patch application (full bootstrap)." >&2

@@ -4,11 +4,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 OUT="${ROOT}/../../firmware/src/web_ui_gz.c"
 GZ="${ROOT}/.web_ui_bundle.gz"
-trap 'rm -f "$GZ"' EXIT
+BUNDLE="${ROOT}/.web_ui_bundle.html"
+LOGIC_INLINE="${ROOT}/.logic.inline.js"
+trap 'rm -f "$GZ" "$BUNDLE" "$LOGIC_INLINE"' EXIT
 
-gzip -9 -c "${ROOT}/index.html" > "$GZ"
+sed 's/^export //' "${ROOT}/logic.mjs" > "$LOGIC_INLINE"
 
-raw_bytes=$(wc -c < "${ROOT}/index.html")
+awk -v logic="$LOGIC_INLINE" '
+  /<!-- INJECT_LOGIC -->/ {
+    while ((getline line < logic) > 0) {
+      print line
+    }
+    close(logic)
+    next
+  }
+  { print }
+' "${ROOT}/index.html" > "$BUNDLE"
+
+gzip -9 -c "$BUNDLE" > "$GZ"
+
+raw_bytes=$(wc -c < "$BUNDLE")
 gz_bytes=$(wc -c < "$GZ")
 
 {

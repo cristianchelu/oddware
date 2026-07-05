@@ -56,7 +56,7 @@ From `xiaomi.feeder.iv2001/`:
 ```
 
 Prerequisites: `git`, `make`, `gcc`, `patch` (for SDK patches),
-`arm-none-eabi-gcc` (for target builds).
+`node` (for web UI client tests), `arm-none-eabi-gcc` (for target builds).
 
 ### Build
 
@@ -269,6 +269,18 @@ make test-host
 
 Unity (vendored in `firmware/test/unity/`). Fakes in `firmware/test/fakes/`.
 No FreeRTOS dependency.
+
+### Web UI client tests
+
+```
+make test-web
+```
+
+Node.js (`node --test`) runs `tools/web/test_logic.mjs` against
+`tools/web/logic.mjs` — weekday masks, POST body shapes, and formatters aligned
+with [web-ui-client.md](../30-processes/web-ui-client.md). HTTP route handlers
+stay in `make test-host` (`test_web_api.c`, `test_schedule_cmd.c`). No npm or
+browser automation in the default loop.
 
 ### On-target tests
 
