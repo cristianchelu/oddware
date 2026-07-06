@@ -14,6 +14,8 @@ void mqtt_hopper_sync(hopper_level_state_t level);
 void mqtt_hopper_connect_snapshot(hopper_level_state_t level);
 void mqtt_hopper_on_mqtt_connected(void);
 void mqtt_hopper_on_outbox_reset(void);
+bool mqtt_hopper_format_wire(char *buf, size_t len);
+
 void mqtt_hopper_test_reset(void);
 
 #endif /* MQTT_HOPPER_H */

@@ -46,17 +46,26 @@ void test_mqtt_battery_sync_publishes_plain_integer(void)
     TEST_ASSERT_EQUAL_STRING("75", mqtt->last_publish_payload);
 }
 
-void test_mqtt_battery_sync_ignored_before_topic_configured(void)
+void test_mqtt_battery_sync_cached_before_topic_configured(void)
 {
+    const fake_mqtt_port_state_t *mqtt;
+    char wire[8];
+
     setup_mqtt_battery();
     mqtt_battery_test_reset();
-    mqtt_battery_sync(true, 0u, false);
+    mqtt_battery_sync(true, 72u, false);
+
+    TEST_ASSERT_TRUE(mqtt_battery_format_wire(wire, sizeof(wire)));
+    TEST_ASSERT_EQUAL_STRING("72", wire);
+    TEST_ASSERT_EQUAL_UINT(0, fake_mqtt_port_state()->publish_calls);
 
     mqtt_battery_set_device_id(TEST_DEVICE_ID);
     mqtt_battery_on_mqtt_connected();
     drain_battery_outbox();
 
-    TEST_ASSERT_EQUAL_UINT(0, fake_mqtt_port_state()->publish_calls);
+    mqtt = fake_mqtt_port_state();
+    TEST_ASSERT_EQUAL_UINT(1, mqtt->publish_calls);
+    TEST_ASSERT_EQUAL_STRING("72", mqtt->last_publish_payload);
 }
 
 void test_mqtt_battery_sync_unknown_publishes_unknown_payload(void)

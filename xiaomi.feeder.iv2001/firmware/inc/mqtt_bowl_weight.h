@@ -22,6 +22,8 @@ void mqtt_bowl_weight_sync(bowl_mass_status_t status,
 void mqtt_bowl_weight_on_mqtt_connected(void);
 void mqtt_bowl_weight_on_outbox_reset(void);
 
+bool mqtt_bowl_weight_format_wire(char *buf, size_t len);
+
 void mqtt_bowl_weight_test_reset(void);
 
 #endif /* MQTT_BOWL_WEIGHT_H */

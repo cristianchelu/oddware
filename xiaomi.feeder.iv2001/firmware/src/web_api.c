@@ -5,15 +5,20 @@
 #include "web_api.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 #include "app_cmd_dispatch.h"
 #include "dispense.h"
 #include "feed_config.h"
 #include "feeder_runtime.h"
-#include "hopper_level.h"
+#include "mqtt_battery.h"
+#include "mqtt_bowl_weight.h"
 #include "mqtt_config.h"
+#include "mqtt_hopper.h"
+#include "mqtt_mains.h"
 #include "mqtt_route.h"
+#include "mqtt_state.h"
 #include "port_err.h"
 #include "schedule.h"
 #include "time_local.h"
@@ -47,17 +52,15 @@ static mqtt_route_kind_t web_api_post_route_to_mqtt(web_api_route_t route)
     }
 }
 
-static const char *web_api_hopper_wire(hopper_level_state_t level)
+static const char *web_api_hopper_wire(void)
 {
-    switch (level) {
-    case HOPPER_LEVEL_STATE_LOW:
-        return "low";
-    case HOPPER_LEVEL_STATE_EMPTY:
-        return "empty";
-    case HOPPER_LEVEL_STATE_NORMAL:
-    default:
-        return "normal";
+    static char hopper_buf[8];
+
+    if (mqtt_hopper_format_wire(hopper_buf, sizeof(hopper_buf))) {
+        return hopper_buf;
     }
+
+    return "normal";
 }
 
 static int web_api_write_ok(char *resp, size_t resp_len)
@@ -86,6 +89,142 @@ static int web_api_write_error(char *resp, size_t resp_len, const char *error)
     }
 
     return written;
+}
+
+static int web_api_append(char *buf, size_t len, int off, const char *fmt, ...)
+{
+    va_list ap;
+    int written;
+
+    if (off < 0 || (size_t)off >= len) {
+        return -1;
+    }
+
+    va_start(ap, fmt);
+    written = vsnprintf(buf + off, len - (size_t)off, fmt, ap);
+    va_end(ap);
+
+    if (written <= 0 || (size_t)off + (size_t)written >= len) {
+        return -1;
+    }
+
+    return off + written;
+}
+
+static int web_api_append_telemetry_fields(char *buf, size_t len, int off)
+{
+    char wire[16];
+    bool bowl_error;
+    bool known;
+
+    known = mqtt_bowl_weight_format_wire(wire, sizeof(wire));
+    if (known) {
+        off = web_api_append(buf, len, off, ",\"bowl_weight\":\"%s\"", wire);
+        if (off < 0) {
+            return -1;
+        }
+    }
+
+    known = mqtt_state_format_bowl_error(&bowl_error);
+    if (known) {
+        off = web_api_append(buf,
+                             len,
+                             off,
+                             ",\"bowl_error\":%s",
+                             bowl_error ? "true" : "false");
+        if (off < 0) {
+            return -1;
+        }
+    }
+
+    known = mqtt_battery_format_wire(wire, sizeof(wire));
+    if (known) {
+        off = web_api_append(buf, len, off, ",\"battery\":\"%s\"", wire);
+        if (off < 0) {
+            return -1;
+        }
+    }
+
+    known = mqtt_mains_format_wire(wire, sizeof(wire));
+    if (known) {
+        off = web_api_append(buf, len, off, ",\"mains\":\"%s\"", wire);
+        if (off < 0) {
+            return -1;
+        }
+    }
+
+    return off;
+}
+
+static int web_api_format_status(char *buf, size_t len)
+{
+    time_local_t now;
+    schedule_next_t next;
+    bool time_ok;
+    bool have_next;
+    int off;
+
+    have_next = schedule_compute_next(&next);
+    time_ok = time_sync_is_valid() && time_local_now(&now);
+
+    if (time_ok) {
+        off = snprintf(buf,
+                       len,
+                       "{\"time_synced\":true,"
+                       "\"local_time\":\"%04u-%02u-%02u %02u:%02u:%02u\","
+                       "\"hopper\":\"%s\","
+                       "\"dispense_busy\":%s,"
+                       "\"schedule_enabled\":%s,"
+                       "\"today_enabled\":%s",
+                       (unsigned)now.year,
+                       (unsigned)now.month,
+                       (unsigned)now.day,
+                       (unsigned)now.hour,
+                       (unsigned)now.min,
+                       (unsigned)now.sec,
+                       web_api_hopper_wire(),
+                       feeder_runtime_dispense_active() ? "true" : "false",
+                       schedule_global_enabled() ? "true" : "false",
+                       schedule_today_enabled() ? "true" : "false");
+    } else {
+        off = snprintf(buf,
+                       len,
+                       "{\"time_synced\":false,"
+                       "\"hopper\":\"%s\","
+                       "\"dispense_busy\":%s,"
+                       "\"schedule_enabled\":%s,"
+                       "\"today_enabled\":%s",
+                       web_api_hopper_wire(),
+                       feeder_runtime_dispense_active() ? "true" : "false",
+                       schedule_global_enabled() ? "true" : "false",
+                       schedule_today_enabled() ? "true" : "false");
+    }
+
+    if (off <= 0 || (size_t)off >= len) {
+        return -1;
+    }
+
+    off = web_api_append_telemetry_fields(buf, len, off);
+    if (off < 0) {
+        return -1;
+    }
+
+    if (time_ok && have_next) {
+        off = web_api_append(buf,
+                             len,
+                             off,
+                             ",\"next\":{\"hour\":%u,\"min\":%u,\"g\":%u,\"in_min\":%ld}",
+                             (unsigned)next.hour,
+                             (unsigned)next.min,
+                             (unsigned)next.g,
+                             (long)next.in_min);
+        if (off < 0) {
+            return -1;
+        }
+    }
+
+    off = web_api_append(buf, len, off, "}");
+    return off < 0 ? -1 : off;
 }
 
 web_api_route_t web_api_classify(const char *method, const char *path)
@@ -161,9 +300,6 @@ web_api_route_t web_api_classify(const char *method, const char *path)
 int web_api_handle_get(web_api_route_t route, char *buf, size_t len)
 {
     int written;
-    time_local_t now;
-    schedule_next_t next;
-    bool have_next;
 
     if (buf == NULL || len == 0) {
         return -1;
@@ -207,71 +343,7 @@ int web_api_handle_get(web_api_route_t route, char *buf, size_t len)
         return written;
 
     case WEB_API_GET_STATUS:
-        have_next = schedule_compute_next(&next);
-        if (time_sync_is_valid() && time_local_now(&now)) {
-            if (have_next) {
-                written = snprintf(buf,
-                                   len,
-                                   "{\"time_synced\":true,"
-                                   "\"local_time\":\"%04u-%02u-%02u %02u:%02u:%02u\","
-                                   "\"hopper\":\"%s\","
-                                   "\"dispense_busy\":%s,"
-                                   "\"schedule_enabled\":%s,"
-                                   "\"today_enabled\":%s,"
-                                   "\"next\":{\"hour\":%u,\"min\":%u,\"g\":%u,\"in_min\":%ld}}",
-                                   (unsigned)now.year,
-                                   (unsigned)now.month,
-                                   (unsigned)now.day,
-                                   (unsigned)now.hour,
-                                   (unsigned)now.min,
-                                   (unsigned)now.sec,
-                                   web_api_hopper_wire(hopper_level_get()),
-                                   feeder_runtime_dispense_active() ? "true" : "false",
-                                   schedule_global_enabled() ? "true" : "false",
-                                   schedule_today_enabled() ? "true" : "false",
-                                   (unsigned)next.hour,
-                                   (unsigned)next.min,
-                                   (unsigned)next.g,
-                                   (long)next.in_min);
-            } else {
-                written = snprintf(buf,
-                                   len,
-                                   "{\"time_synced\":true,"
-                                   "\"local_time\":\"%04u-%02u-%02u %02u:%02u:%02u\","
-                                   "\"hopper\":\"%s\","
-                                   "\"dispense_busy\":%s,"
-                                   "\"schedule_enabled\":%s,"
-                                   "\"today_enabled\":%s}",
-                                   (unsigned)now.year,
-                                   (unsigned)now.month,
-                                   (unsigned)now.day,
-                                   (unsigned)now.hour,
-                                   (unsigned)now.min,
-                                   (unsigned)now.sec,
-                                   web_api_hopper_wire(hopper_level_get()),
-                                   feeder_runtime_dispense_active() ? "true" : "false",
-                                   schedule_global_enabled() ? "true" : "false",
-                                   schedule_today_enabled() ? "true" : "false");
-            }
-        } else {
-            written = snprintf(buf,
-                               len,
-                               "{\"time_synced\":false,"
-                               "\"hopper\":\"%s\","
-                               "\"dispense_busy\":%s,"
-                               "\"schedule_enabled\":%s,"
-                               "\"today_enabled\":%s}",
-                               web_api_hopper_wire(hopper_level_get()),
-                               feeder_runtime_dispense_active() ? "true" : "false",
-                               schedule_global_enabled() ? "true" : "false",
-                               schedule_today_enabled() ? "true" : "false");
-        }
-
-        if (written <= 0 || (size_t)written >= len) {
-            return -1;
-        }
-
-        return written;
+        return web_api_format_status(buf, len);
 
     default:
         return -1;

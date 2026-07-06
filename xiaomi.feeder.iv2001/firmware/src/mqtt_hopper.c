@@ -111,6 +111,20 @@ void mqtt_hopper_on_outbox_reset(void)
     s_last_published_valid = false;
 }
 
+bool mqtt_hopper_format_wire(char *buf, size_t len)
+{
+    const char *level_str;
+
+    if (!s_level_known || buf == NULL || len == 0) {
+        return false;
+    }
+
+    level_str = mqtt_hopper_level_string(s_last_level);
+    strncpy(buf, level_str, len - 1);
+    buf[len - 1] = '\0';
+    return true;
+}
+
 void mqtt_hopper_test_reset(void)
 {
     s_hopper_topic[0] = '\0';

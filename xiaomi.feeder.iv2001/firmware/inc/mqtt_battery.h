@@ -16,6 +16,8 @@ void mqtt_battery_sync(bool known, uint8_t pct, bool force);
 void mqtt_battery_on_mqtt_connected(void);
 void mqtt_battery_on_outbox_reset(void);
 
+bool mqtt_battery_format_wire(char *buf, size_t len);
+
 void mqtt_battery_test_reset(void);
 
 #endif /* MQTT_BATTERY_H */

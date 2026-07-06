@@ -102,13 +102,13 @@ void mqtt_battery_sync(bool known, uint8_t pct, bool force)
         pct = 100u;
     }
 
-    if (s_battery_topic[0] == '\0') {
-        return;
-    }
-
     s_last_known = known;
     s_last_pct = pct;
     s_pct_known = true;
+
+    if (s_battery_topic[0] == '\0') {
+        return;
+    }
 
     if (!mqtt_battery_should_publish(known, pct, force)) {
         return;
@@ -141,4 +141,22 @@ void mqtt_battery_test_reset(void)
     s_last_published_valid = false;
     s_last_published_known = false;
     s_last_published_pct = 0u;
+}
+
+bool mqtt_battery_format_wire(char *buf, size_t len)
+{
+    int written;
+
+    if (!s_pct_known || buf == NULL || len == 0) {
+        return false;
+    }
+
+    if (!s_last_known) {
+        strncpy(buf, MQTT_BATTERY_PAYLOAD_UNKNOWN, len - 1);
+        buf[len - 1] = '\0';
+        return true;
+    }
+
+    written = snprintf(buf, len, "%u", (unsigned)s_last_pct);
+    return written > 0 && (size_t)written < len;
 }

@@ -104,3 +104,14 @@ void mqtt_mains_test_reset(void)
     s_last_published_valid = false;
     s_last_published_mains = false;
 }
+
+bool mqtt_mains_format_wire(char *buf, size_t len)
+{
+    if (!s_mains_known || buf == NULL || len < 4) {
+        return false;
+    }
+
+    strncpy(buf, s_last_mains ? "ON" : "OFF", len - 1);
+    buf[len - 1] = '\0';
+    return true;
+}

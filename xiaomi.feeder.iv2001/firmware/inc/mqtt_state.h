@@ -13,6 +13,8 @@ void mqtt_state_on_mqtt_connected(void);
 
 void mqtt_state_on_outbox_reset(void);
 
+bool mqtt_state_format_bowl_error(bool *out_bowl_error);
+
 void mqtt_state_test_reset(void);
 
 #endif /* MQTT_STATE_H */

@@ -148,3 +148,13 @@ void mqtt_state_test_reset(void)
     s_publish_pending = false;
     s_pending_bowl_error = false;
 }
+
+bool mqtt_state_format_bowl_error(bool *out_bowl_error)
+{
+    if (!s_bowl_error_known || out_bowl_error == NULL) {
+        return false;
+    }
+
+    *out_bowl_error = s_has_bowl_error;
+    return true;
+}

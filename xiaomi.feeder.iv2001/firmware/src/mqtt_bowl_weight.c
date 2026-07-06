@@ -206,3 +206,20 @@ void mqtt_bowl_weight_test_reset(void)
     s_coalesce_known = false;
     s_coalesce_dg = 0;
 }
+
+bool mqtt_bowl_weight_format_wire(char *buf, size_t len)
+{
+    int written;
+
+    if (!s_value_known || buf == NULL || len == 0) {
+        return false;
+    }
+
+    if (s_last_status != BOWL_MASS_KNOWN) {
+        buf[0] = '\0';
+        return true;
+    }
+
+    written = weight_format_mqtt_g(s_last_dg, buf, len);
+    return written > 0;
+}
