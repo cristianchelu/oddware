@@ -102,6 +102,107 @@ mqtt_bench_ha_weight_compensation_broken_payload() {
         | mqtt_bench_substitute_device_id
 }
 
+mqtt_bench_ha_feeding_schedule_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-feeding_schedule.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_device_timezone_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-device_timezone.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_hopper_level_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-hopper_level.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_dispense_completed_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-dispense_completed.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_overfill_protection_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-overfill_protection.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_overfill_threshold_g_payload() {
+    mqtt_bench_payload_file "$MQTT_BENCH_PAYLOADS/ha-overfill_threshold_g.json" \
+        | mqtt_bench_substitute_device_id
+}
+
+mqtt_bench_ha_discovery_lookup() {
+    local entity="$1"
+    local topic payload
+
+    case "$entity" in
+        bowl_error)
+            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config"
+            payload="$(mqtt_bench_ha_bowl_error_payload)"
+            ;;
+        bowl_weight)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
+            payload="$(mqtt_bench_ha_bowl_weight_payload)"
+            ;;
+        battery)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config"
+            payload="$(mqtt_bench_ha_battery_payload)"
+            ;;
+        battery_voltage)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config"
+            payload="$(mqtt_bench_ha_battery_voltage_payload)"
+            ;;
+        mains)
+            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config"
+            payload="$(mqtt_bench_ha_mains_payload)"
+            ;;
+        dispense)
+            topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
+            payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
+            ;;
+        weight_compensation)
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
+            payload="$(mqtt_bench_ha_weight_compensation_payload)"
+            ;;
+        weight_compensation-broken)
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
+            payload="$(mqtt_bench_ha_weight_compensation_broken_payload)"
+            ;;
+        feeding_schedule)
+            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config"
+            payload="$(mqtt_bench_ha_feeding_schedule_payload)"
+            ;;
+        device_timezone)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/device_timezone/config"
+            payload="$(mqtt_bench_ha_device_timezone_payload)"
+            ;;
+        hopper_level)
+            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/hopper_level/config"
+            payload="$(mqtt_bench_ha_hopper_level_payload)"
+            ;;
+        dispense_completed)
+            topic="homeassistant/event/petfeeder_${DEVICE_ID}/dispense_completed/config"
+            payload="$(mqtt_bench_ha_dispense_completed_payload)"
+            ;;
+        overfill_protection)
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/overfill_protection/config"
+            payload="$(mqtt_bench_ha_overfill_protection_payload)"
+            ;;
+        overfill_threshold_g)
+            topic="homeassistant/number/petfeeder_${DEVICE_ID}/overfill_threshold_g/config"
+            payload="$(mqtt_bench_ha_overfill_threshold_g_payload)"
+            ;;
+        *)
+            echo "error: unknown HA entity: $entity" >&2
+            return 1
+            ;;
+    esac
+
+    MQTT_BENCH_HA_TOPIC="$topic"
+    MQTT_BENCH_HA_PAYLOAD="$payload"
+}
+
 mqtt_bench_bowl_weight() {
     local mode="$1"
     local payload
@@ -228,53 +329,60 @@ mqtt_bench_state_bowl_error() {
     mqtt_bench_pub "$(mqtt_bench_topic state)" "$payload" --retain
 }
 
+mqtt_bench_ha_discovery_clear() {
+    local entity="$1"
+
+    if ! mqtt_bench_ha_discovery_lookup "$entity"; then
+        return 1
+    fi
+
+    mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+        -u "$MQTT_USER" -P "$MQTT_PASS" \
+        -t "$MQTT_BENCH_HA_TOPIC" -n -r -q 1
+    echo "cleared retained HA discovery:"
+    echo "  topic: $MQTT_BENCH_HA_TOPIC"
+}
+
+mqtt_bench_ha_rediscover() {
+    local entity="$1"
+    local wait_s="${MQTT_BENCH_HA_REDISCOVER_WAIT_S:-5}"
+
+    mqtt_bench_ha_discovery_clear "$entity"
+    sleep "$wait_s"
+    mqtt_bench_ha_discovery "$entity"
+}
+
+mqtt_bench_ha_rediscover_categories() {
+    local entity wait_s="${MQTT_BENCH_HA_REDISCOVER_WAIT_S:-5}"
+    local entities=(
+        battery_voltage
+        device_timezone
+        weight_compensation
+        overfill_protection
+        overfill_threshold_g
+    )
+
+    echo "clearing categorized entities (wait ${wait_s}s before republish)..."
+    for entity in "${entities[@]}"; do
+        mqtt_bench_ha_discovery_clear "$entity"
+    done
+    sleep "$wait_s"
+    for entity in "${entities[@]}"; do
+        mqtt_bench_ha_discovery "$entity"
+    done
+}
+
 mqtt_bench_ha_discovery() {
     local entity="$1"
-    local topic payload
 
-    case "$entity" in
-        bowl_error)
-            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config"
-            payload="$(mqtt_bench_ha_bowl_error_payload)"
-            ;;
-        bowl_weight)
-            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
-            payload="$(mqtt_bench_ha_bowl_weight_payload)"
-            ;;
-        battery)
-            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config"
-            payload="$(mqtt_bench_ha_battery_payload)"
-            ;;
-        battery_voltage)
-            topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config"
-            payload="$(mqtt_bench_ha_battery_voltage_payload)"
-            ;;
-        mains)
-            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config"
-            payload="$(mqtt_bench_ha_mains_payload)"
-            ;;
-        dispense)
-            topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
-            payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
-            ;;
-        weight_compensation)
-            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
-            payload="$(mqtt_bench_ha_weight_compensation_payload)"
-            ;;
-        weight_compensation-broken)
-            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
-            payload="$(mqtt_bench_ha_weight_compensation_broken_payload)"
-            ;;
-        *)
-            echo "error: unknown HA entity: $entity" >&2
-            return 1
-            ;;
-    esac
+    if ! mqtt_bench_ha_discovery_lookup "$entity"; then
+        return 1
+    fi
 
-    mqtt_bench_validate_json "$payload" "ha discovery $entity"
-    mqtt_bench_pub "$topic" "$payload" --retain
+    mqtt_bench_validate_json "$MQTT_BENCH_HA_PAYLOAD" "ha discovery $entity"
+    mqtt_bench_pub "$MQTT_BENCH_HA_TOPIC" "$MQTT_BENCH_HA_PAYLOAD" --retain
     echo "published retained HA discovery:"
-    echo "  topic: $topic"
+    echo "  topic: $MQTT_BENCH_HA_TOPIC"
     echo "  device_id: $DEVICE_ID broker: $MQTT_HOST:$MQTT_PORT"
 }
 
@@ -326,6 +434,30 @@ mqtt_bench_clean() {
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
                 -t "homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/sensor/petfeeder_${DEVICE_ID}/device_timezone/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/sensor/petfeeder_${DEVICE_ID}/hopper_level/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/event/petfeeder_${DEVICE_ID}/dispense_completed/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/switch/petfeeder_${DEVICE_ID}/overfill_protection/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/number/petfeeder_${DEVICE_ID}/overfill_threshold_g/config" \
                 -n -r -q 1 2>/dev/null || true
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \

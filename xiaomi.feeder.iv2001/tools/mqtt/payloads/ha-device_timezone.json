@@ -1,0 +1,15 @@
+{
+  "name": "Device timezone",
+  "unique_id": "petfeeder_DEVICE_ID_device_timezone",
+  "state_topic": "petfeeder/DEVICE_ID/timezone",
+  "entity_category": "diagnostic",
+  "availability_topic": "petfeeder/DEVICE_ID/connection",
+  "payload_available": "online",
+  "payload_not_available": "offline",
+  "device": {
+    "identifiers": ["petfeeder_DEVICE_ID"],
+    "name": "Pet Feeder DEVICE_ID",
+    "manufacturer": "Xiaomi",
+    "model": "Smart Pet Food Feeder 2"
+  }
+}

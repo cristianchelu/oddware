@@ -12,6 +12,7 @@
   "availability_topic": "petfeeder/DEVICE_ID/connection",
   "payload_available": "online",
   "payload_not_available": "offline",
+  "entity_category": "config",
   "device": {
     "identifiers": ["petfeeder_DEVICE_ID"],
     "name": "Pet Feeder DEVICE_ID",

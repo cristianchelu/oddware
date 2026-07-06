@@ -26,8 +26,10 @@ Commands:
   battery_voltage <mV>
   mains ON|OFF
   feed_mode open_loop|compensated
-  ha discovery <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains|weight_compensation|weight_compensation-broken>
-  verify ha <dispense|bowl_error|bowl_weight|battery|battery_voltage|mains|weight_compensation>   # print topic + JSON (no publish)
+  ha discovery <entity>              # publish retained discovery config
+  ha rediscover <entity>             # clear config topic, wait, republish (entity_category updates)
+  ha rediscover-categories           # rediscover all diagnostic + config entities
+  verify ha <entity>                 # print topic + JSON (no publish)
   clean [--slice state|ota|ha|connection|power|all]
 
 Environment:
@@ -130,59 +132,40 @@ case "$cmd" in
         ;;
 
     ha)
-        sub="${1:?discovery required}"
-        entity="${2:?entity required}"
-        if [ "$sub" != "discovery" ]; then
-            echo "error: ha subcommand: discovery <entity>" >&2
-            exit 1
-        fi
-        mqtt_bench_ha_discovery "$entity"
+        sub="${1:?subcommand required}"
+        shift || true
+        case "$sub" in
+            discovery)
+                entity="${1:?entity required}"
+                mqtt_bench_ha_discovery "$entity"
+                ;;
+            rediscover)
+                entity="${1:?entity required}"
+                mqtt_bench_ha_rediscover "$entity"
+                ;;
+            rediscover-categories)
+                mqtt_bench_ha_rediscover_categories
+                ;;
+            *)
+                echo "error: ha subcommand: discovery|rediscover|rediscover-categories" >&2
+                exit 1
+                ;;
+        esac
         ;;
 
     verify)
         sub="${1:?ha required}"
         entity="${2:?entity required}"
         if [ "$sub" != "ha" ]; then
-            echo "error: verify subcommand: ha <dispense|bowl_error>" >&2
+            echo "error: verify subcommand: ha <entity>" >&2
             exit 1
         fi
-        case "$entity" in
-            bowl_error)
-                topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/bowl_error/config"
-                payload="$(mqtt_bench_ha_bowl_error_payload)"
-                ;;
-            bowl_weight)
-                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/bowl_weight/config"
-                payload="$(mqtt_bench_ha_bowl_weight_payload)"
-                ;;
-            battery)
-                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery/config"
-                payload="$(mqtt_bench_ha_battery_payload)"
-                ;;
-            battery_voltage)
-                topic="homeassistant/sensor/petfeeder_${DEVICE_ID}/battery_voltage/config"
-                payload="$(mqtt_bench_ha_battery_voltage_payload)"
-                ;;
-            mains)
-                topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/mains/config"
-                payload="$(mqtt_bench_ha_mains_payload)"
-                ;;
-            dispense)
-                topic="homeassistant/button/petfeeder_${DEVICE_ID}/dispense/config"
-                payload="{\"name\":\"Dispense\",\"unique_id\":\"petfeeder_${DEVICE_ID}_dispense\",\"command_topic\":\"petfeeder/${DEVICE_ID}/cmd/dispense\",\"payload_press\":\"{}\",\"availability_topic\":\"petfeeder/${DEVICE_ID}/connection\",\"payload_available\":\"online\",\"payload_not_available\":\"offline\",\"device\":{\"identifiers\":[\"petfeeder_${DEVICE_ID}\"],\"name\":\"Pet Feeder ${DEVICE_ID}\",\"manufacturer\":\"Xiaomi\",\"model\":\"Smart Pet Food Feeder 2\"}}"
-                ;;
-            weight_compensation)
-                topic="homeassistant/switch/petfeeder_${DEVICE_ID}/weight_compensation/config"
-                payload="$(mqtt_bench_ha_weight_compensation_payload)"
-                ;;
-            *)
-                echo "error: unknown HA entity: $entity" >&2
-                exit 1
-                ;;
-        esac
-        mqtt_bench_validate_json "$payload" "ha $entity"
-        echo "topic: $topic"
-        printf '%s\n' "$payload" | python3 -m json.tool
+        if ! mqtt_bench_ha_discovery_lookup "$entity"; then
+            exit 1
+        fi
+        mqtt_bench_validate_json "$MQTT_BENCH_HA_PAYLOAD" "ha $entity"
+        echo "topic: $MQTT_BENCH_HA_TOPIC"
+        printf '%s\n' "$MQTT_BENCH_HA_PAYLOAD" | python3 -m json.tool
         ;;
 
     clean)

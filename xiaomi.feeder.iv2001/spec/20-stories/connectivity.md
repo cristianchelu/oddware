@@ -7,11 +7,15 @@ cloud dependency and no phone-home telemetry.
 
 ## Design principles
 
-- **Home Assistant auto-discovery** — entities appear automatically. Shipped
-  today: **Dispense** button, **Bowl error** binary sensor, **Bowl weight**
-  sensor, **Battery** sensor, **Mains connected** binary sensor, and
-  **Dispense completed** event, and **Feeding schedule** binary sensor; the
-  full entity table is in
+- **Home Assistant auto-discovery** — entities appear automatically on a single
+  device card, grouped into **primary** (day-to-day monitoring and actions),
+  **Diagnostics** (integrator readouts), and **Configuration** (writable
+  settings). Category mapping is in
+  [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Entity categories.
+  Shipped today: dispense button, bowl error, bowl weight, battery, mains,
+  hopper level, device timezone, feeding schedule, dispense completed event,
+  weight compensation, overfill protection, overfill threshold, and battery
+  pack voltage; the full entity table is in
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).

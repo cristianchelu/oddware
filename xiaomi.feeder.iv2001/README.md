@@ -42,12 +42,14 @@ live in [`spec/20-stories/`](spec/20-stories/), detailed behavior in
 - [x] MQTT broker session (LWT on `connection`, device condition on `state`, reconnect backoff)
 - [x] MQTT OTA command (`cmd/ota`)
 - [ ] TLS
-- [x] Home Assistant / MQTT integration [partial] — auto-discovery for dispense button,
-  bowl error, bowl weight, battery, battery pack voltage (diagnostic), mains connected,
-  hopper level, device timezone, feeding schedule (with full JSON attributes),
-  dispense completed event, weight compensation, overfill protection, and overfill
-  threshold; pending: child lock, custom dispense grams, eaten today, display mode,
-  display brightness (see [`mqtt-protocol.md`](spec/30-processes/mqtt-protocol.md))
+- [x] Home Assistant / MQTT integration [partial] — auto-discovery with Diagnostics
+  and Configuration entity sections; dispense button, bowl error, bowl weight,
+  battery, battery pack voltage (diagnostic), mains connected, hopper level,
+  device timezone (diagnostic), feeding schedule (with full JSON attributes),
+  dispense completed event, weight compensation (config), overfill protection
+  (config), and overfill threshold (config); pending: child lock, custom dispense
+  grams, eaten today, display mode, display brightness (see
+  [`mqtt-protocol.md`](spec/30-processes/mqtt-protocol.md))
 - [x] LAN web admin UI on port 80 when STA is up (`WEB_UI_ENABLE=y`; see
   [`web-ui.md`](spec/30-processes/web-ui.md))
 

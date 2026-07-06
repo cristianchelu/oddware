@@ -34,7 +34,8 @@ when the bowl already holds at least a configured amount of food (30–100 g).
 Manual dispenses (button, MQTT, web UI, UART) always bypass this check. When
 a scheduled feed is skipped for overfill, the slot status is `skipped_full`.
 Settings persist in non-volatile storage and are configurable from Home
-Assistant, the LAN web UI Settings tab, MQTT, or UART.
+Assistant (**Configuration** → overfill protection and threshold), the LAN web
+UI Settings tab, MQTT, or UART.
 
 Runtime status lives in RAM only — it resets at local midnight and after
 reboot. Slot configuration persists in non-volatile storage.

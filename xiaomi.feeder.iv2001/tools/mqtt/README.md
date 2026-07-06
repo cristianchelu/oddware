@@ -67,6 +67,49 @@ export DEVICE_ID=768722   # your feeder id
 Do **not** use an empty payload for unknown — Mosquitto drops zero-length
 retains. Payload files live in `payloads/battery-unknown` and `payloads/ha-battery.json`.
 
+## Entity categories (Diagnostics / Configuration)
+
+Bench `entity_category` before firmware ships. Use the same `DEVICE_ID` as your
+live feeder.
+
+```bash
+export DEVICE_ID=<your feeder id>
+./tools/mqtt/mqtt-bench.sh session online
+
+# Diagnostic section
+./tools/mqtt/mqtt-bench.sh ha discovery battery_voltage
+./tools/mqtt/mqtt-bench.sh ha discovery device_timezone
+./tools/mqtt/mqtt-bench.sh battery_voltage 4200
+
+# Configuration section
+./tools/mqtt/mqtt-bench.sh ha discovery weight_compensation
+./tools/mqtt/mqtt-bench.sh ha discovery overfill_protection
+./tools/mqtt/mqtt-bench.sh ha discovery overfill_threshold_g
+./tools/mqtt/mqtt-bench.sh feed_mode compensated
+```
+
+### HA checklist
+
+1. Device page shows **Diagnostics** card with battery voltage and device timezone.
+2. **Configuration** card shows weight compensation, overfill protection, and overfill threshold.
+3. Primary entities (bowl weight, dispense, battery, etc.) stay on the main device view.
+4. Dry-run any payload: `./tools/mqtt/mqtt-bench.sh verify ha battery_voltage`
+5. Re-publish discovery after editing `payloads/ha-*.json`; reload MQTT integration if HA does not update.
+
+**Updating `entity_category` on entities HA already discovered:** republishing discovery
+alone is not enough — Home Assistant keeps the original category in the entity
+registry. Clear and republish:
+
+```bash
+./tools/mqtt/mqtt-bench.sh ha rediscover weight_compensation
+# or all diagnostic + config entities at once:
+./tools/mqtt/mqtt-bench.sh ha rediscover-categories
+```
+
+Optional wait before republish (default 5 s): `MQTT_BENCH_HA_REDISCOVER_WAIT_S=8`.
+
+Category mapping is canonical in `spec/30-processes/mqtt-protocol.md` § Entity categories.
+
 ## Generic commands
 
 ```bash

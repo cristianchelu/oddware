@@ -85,24 +85,47 @@ Each discovery message includes a `device` block with `identifiers`,
 `manufacturer` and `model` identify the **physical hardware** (retail
 product), not the firmware author — see [validation slice](#home-assistant-validation-slice).
 
+### Entity categories
+
+Discovery payloads set Home Assistant `entity_category` where applicable.
+Primary entities omit the field; they appear on the main device card and may
+be auto-added to dashboards.
+
+| Category | Entities |
+|----------|----------|
+| (primary) | `dispense`, `bowl_weight`, `bowl_error`, `battery`, `mains`, `hopper_level`, `feeding_schedule`, `dispense_completed` |
+| `diagnostic` | `battery_voltage`, `device_timezone` |
+| `config` | `weight_compensation`, `overfill_protection`, `overfill_threshold_g` |
+
+Read-only sensors use `diagnostic`, not `config` — Home Assistant rejects
+passive sensors with `entity_category: config`. Writable components (switch,
+number, select) use `config` for tuning entities.
+
+When `entity_category` changes on a broker that Home Assistant already
+discovered, republishing discovery alone does not move existing entities —
+clear the config topic (empty retained payload) and republish, or use
+`tools/mqtt/mqtt-bench.sh ha rediscover` / `ha rediscover-categories`.
+
 ### Full entity table (planned)
 
-| Component | object_id | HA device_class | Notes |
-|-----------|-----------|-----------------|-------|
-| sensor | bowl_weight | `weight` | Unit: g |
-| sensor | eaten_today | `weight` | Unit: g |
-| sensor | battery | `battery` | Unit: % |
-| sensor | hopper_level | `enum` | Options: normal, low, empty |
-| binary_sensor | mains | `power` | Mains connected — `ON`/`OFF` on `.../mains` |
-| button | dispense | — | Triggers default portion |
-| event | dispense_completed | — | Fires on each dispense job completion |
-| number | dispense_custom | — | Range: 5–150 g |
-| switch | weight_compensation | — | On = compensated dispense mode |
-| switch | overfill_protection | — | On = skip scheduled feeds when bowl ≥ threshold |
-| number | overfill_threshold_g | — | Range: 30–100 g |
-| switch | child_lock | — | On/off |
-| select | display_mode | — | Options: weight, eaten_today, off |
-| number | display_brightness | — | Range: 1–4 |
+| Component | object_id | HA device_class | entity_category | Notes |
+|-----------|-----------|-----------------|-----------------|-------|
+| sensor | bowl_weight | `weight` | — | Unit: g |
+| sensor | eaten_today | `weight` | — | Unit: g |
+| sensor | battery | `battery` | — | Unit: % |
+| sensor | hopper_level | `enum` | — | Options: normal, low, empty |
+| binary_sensor | mains | `power` | — | Mains connected — `ON`/`OFF` on `.../mains` |
+| button | dispense | — | — | Triggers default portion |
+| event | dispense_completed | — | — | Fires on each dispense job completion |
+| number | dispense_custom | — | `config` | Range: 5–150 g |
+| switch | weight_compensation | — | `config` | On = compensated dispense mode |
+| switch | overfill_protection | — | `config` | On = skip scheduled feeds when bowl ≥ threshold |
+| number | overfill_threshold_g | — | `config` | Range: 30–100 g |
+| switch | child_lock | — | `config` | On/off |
+| select | display_mode | — | `config` | Options: weight, eaten_today, off |
+| number | display_brightness | — | `config` | Range: 1–4 |
+| sensor | battery_voltage | `voltage` | `diagnostic` | Unit: mV; `enabled_by_default`: false |
+| sensor | device_timezone | — | `diagnostic` | POSIX or label string |
 
 ### Home Assistant validation slice
 
@@ -192,10 +215,13 @@ No `value_template` on the sensor — payload is plain integer percentage, or `u
 | `unit_of_measurement` | `mV` |
 | `device_class` | `voltage` |
 | `state_class` | `measurement` |
+| `entity_category` | `diagnostic` |
 | `enabled_by_default` | `false` |
 | `availability_topic` | `petfeeder/<device_id>/connection` |
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
+
+Bench payload: `tools/mqtt/payloads/ha-battery_voltage.json`.
 
 **Mains connected** binary sensor (validation slice):
 
@@ -236,9 +262,12 @@ No `value_template` on the sensor — payload is the level string directly.
 | `availability_topic` | `petfeeder/<device_id>/connection` |
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
+| `entity_category` | `diagnostic` |
 
 No `device_class` — payload is a free-form string (`tz_label` when set, else
 POSIX `tz_rule`; always non-empty due to UTC0 fallback).
+
+Bench payload: `tools/mqtt/payloads/ha-device_timezone.json`.
 
 **Feeding schedule** binary sensor (validation slice):
 
@@ -279,8 +308,40 @@ Bench payloads: `tools/mqtt/payloads/ha-feeding_schedule.json`.
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
 | `unique_id` | `petfeeder_<device_id>_weight_compensation` |
+| `entity_category` | `config` |
 
 Bench payload: `tools/mqtt/payloads/ha-weight_compensation.json`.
+
+**Overfill protection** switch (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/switch/petfeeder_<device_id>/overfill_protection/config` |
+| `name` | `Overfill protection` |
+| `state_topic` | `petfeeder/<device_id>/feed/overfill` |
+| `value_template` | `{{ 'ON' if value_json.enabled else 'OFF' }}` |
+| `command_topic` | `petfeeder/<device_id>/cmd/feed/overfill` |
+| `payload_on` | `{"enabled": true}` |
+| `payload_off` | `{"enabled": false}` |
+| `entity_category` | `config` |
+
+Bench payload: `tools/mqtt/payloads/ha-overfill_protection.json`.
+
+**Overfill threshold** number (validation slice):
+
+| Field | Value |
+|-------|-------|
+| Discovery topic | `homeassistant/number/petfeeder_<device_id>/overfill_threshold_g/config` |
+| `name` | `Overfill threshold` |
+| `state_topic` | `petfeeder/<device_id>/feed/overfill` |
+| `value_template` | `{{ value_json.threshold_g }}` |
+| `command_topic` | `petfeeder/<device_id>/cmd/feed/overfill` |
+| `command_template` | `{"threshold_g": {{ value }}}` |
+| `min` / `max` / `step` | 30 / 100 / 1 |
+| `unit_of_measurement` | `g` |
+| `entity_category` | `config` |
+
+Bench payload: `tools/mqtt/payloads/ha-overfill_threshold_g.json`.
 
 `cmd/dispense` accepts `{}` (one default portion) or `{"g": <5–150>}` for
 gram-targeted dispense. Invalid JSON or out-of-range `g` is rejected at info
@@ -532,6 +593,7 @@ is configured.
 
 Home Assistant discovery publishes a **switch** (`overfill_protection`) bound
 to `enabled` and a **number** (`overfill_threshold_g`) bound to `threshold_g`.
+Both use `entity_category: config` — see [validation slice](#home-assistant-validation-slice).
 
 ## Device timezone
 

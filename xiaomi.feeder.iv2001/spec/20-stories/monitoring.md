@@ -68,7 +68,8 @@ device is doing and whether it needs attention.
   (no cells) — Home Assistant shows the sensor unavailable.
 - Optional diagnostic raw pack voltage on `petfeeder/<device_id>/battery_voltage`
   (plain integer mV, retained). Home Assistant discovers **Battery pack voltage**
-  (`device_class`: voltage, unit mV, disabled by default).
+  under the device **Diagnostics** section (`device_class`: voltage, unit mV,
+  disabled by default). **Device timezone** also appears under Diagnostics.
 - Pack voltage is sampled on `[tune]` **60 s** while on battery and
   `[tune]` **300 s** while on mains — see
   [battery-monitoring.md](../30-processes/battery-monitoring.md).

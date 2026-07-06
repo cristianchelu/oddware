@@ -102,6 +102,7 @@ void test_mqtt_ha_format_battery_voltage_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"device_class\":\"voltage\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_class\":\"measurement\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"enabled_by_default\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"diagnostic\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"availability_topic\":\"petfeeder/ddeeff/connection\""));
 }
 
@@ -143,6 +144,7 @@ void test_mqtt_ha_format_device_timezone_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Device timezone\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/timezone\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"unique_id\":\"petfeeder_ddeeff_device_timezone\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"diagnostic\""));
     TEST_ASSERT_NULL(strstr(buf, "device_class"));
     TEST_ASSERT_NULL(strstr(buf, "value_template"));
 }
@@ -193,6 +195,48 @@ void test_mqtt_ha_format_weight_compensation_config_json(void)
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"optimistic\":false"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"command_topic\":\"petfeeder/ddeeff/cmd/feed/mode\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":\"compensated\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"config\""));
+}
+
+void test_mqtt_ha_format_overfill_protection_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_overfill_protection_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Overfill protection\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/feed/overfill\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"config\""));
+}
+
+void test_mqtt_ha_format_overfill_threshold_g_config_json(void)
+{
+    char buf[768];
+    int written;
+
+    written = mqtt_ha_format_overfill_threshold_g_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Overfill threshold\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"min\":30"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"config\""));
+}
+
+void test_mqtt_ha_primary_entities_omit_entity_category(void)
+{
+    char buf[768];
+
+    mqtt_ha_format_bowl_weight_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_NULL(strstr(buf, "entity_category"));
+
+    mqtt_ha_format_dispense_button_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_NULL(strstr(buf, "entity_category"));
+
+    mqtt_ha_format_feeding_schedule_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_NULL(strstr(buf, "entity_category"));
+
+    mqtt_ha_format_hopper_level_config(buf, sizeof(buf), TEST_DEVICE_ID);
+    TEST_ASSERT_NULL(strstr(buf, "entity_category"));
 }
 
 void test_mqtt_ha_discovery_schedule_enqueues_one_item(void)
