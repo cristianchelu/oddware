@@ -65,7 +65,32 @@ Read payloads match retained MQTT state / command wire formats in
 | GET | `/api/schedule/next` | Same JSON as `.../schedule/next` |
 | GET | `/api/config` | Same JSON as `.../config` |
 | GET | `/api/feed/mode` | Plain text `open_loop` or `compensated` (same as `.../feed/mode`) |
-| GET | `/api/status` | Composite JSON: `time_synced`, `local_time`, `hopper`, `dispense_busy`, `schedule_enabled`, `today_enabled`, optional `next` object |
+| GET | `/api/status` | Composite JSON — see [Status composite](#status-composite) |
+
+#### Status composite
+
+v0 exposes **one** status GET. The UI polls `/api/status` only (no per-topic mirror
+routes). Field values use the same wire formats as retained MQTT topics in
+[mqtt-protocol.md](mqtt-protocol.md). Telemetry strings are formatted from each
+publisher module's last-known cache (`mqtt_*_sync` paths) — **not** live port or
+sensor reads from the HTTP handler.
+
+| Field | When present | Wire format (MQTT topic) |
+|-------|----------------|--------------------------|
+| `time_synced` | always | boolean |
+| `local_time` | `time_synced` true | `YYYY-MM-DD HH:MM:SS` |
+| `hopper` | always | `normal` / `low` / `empty` (`.../hopper`) |
+| `dispense_busy` | always | boolean |
+| `schedule_enabled` | always | boolean |
+| `today_enabled` | always | boolean |
+| `bowl_weight` | when publisher cache known | grams string or `""` unknown (`.../bowl_weight`) |
+| `bowl_error` | when publisher cache known | boolean (`.../state`) |
+| `battery` | when publisher cache known | `0`–`100` or `unknown` (`.../battery`) |
+| `mains` | when publisher cache known | `ON` / `OFF` (`.../mains`) |
+| `next` | when time synced and next slot exists | `{hour, min, g, in_min}` (`.../schedule/next`) |
+
+Per-topic GET mirrors (`/api/bowl_weight`, `/api/hopper`, …) are **deferred**
+past v0.
 
 ### Writes
 
