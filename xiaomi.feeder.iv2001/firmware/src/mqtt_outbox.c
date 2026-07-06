@@ -10,7 +10,7 @@
 #include "app_log.h"
 #include "mqtt_outbox.h"
 
-#define MQTT_OUTBOX_DEPTH          20u
+#define MQTT_OUTBOX_DEPTH          24u
 #define MQTT_OUTBOX_MAX_PAYLOAD    768u
 #define MQTT_OUTBOX_MAX_TOPIC      128u
 #define MQTT_OUTBOX_MIN_DRAIN_MS   100u

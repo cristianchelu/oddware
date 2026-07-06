@@ -85,6 +85,7 @@ future-today.
 | `pending` | Applies today, not skipped, not yet dispensed this cycle |
 | `to_be_skipped` | `skip_today=true` and dispense time is still in the future |
 | `skipped` | `skip_today=true` and time passed; OR due minute missed; OR `today_enabled=false` for a future today entry |
+| `skipped_full` | Overfill protection enabled, bowl mass known, and `bowl_g >= overfill_threshold_g` at fire time — no dispense job submitted |
 | `dispensing` | Gram job submitted for this slot and dispense supervisor active |
 | `dispensed` | Terminal dispense event with `event_type=success` or `underfill` |
 | `failed` | Terminal event with `event_type` in `stuck`, `empty_hopper`, `aborted` |
@@ -108,8 +109,30 @@ and slot key matches active slot; published until midnight reset.
     with `DISPENSE_SOURCE_SCHEDULE`).
   - On `SCHEDULE_FIRE_OK`: set `fired_today`, `state=dispensing`, record
     active slot key.
+  - On `SCHEDULE_FIRE_SKIPPED_FULL`: set `fired_today`, `state=skipped_full`
+    (terminal; no dispense job).
   - On `SCHEDULE_FIRE_BUSY` or `SCHEDULE_FIRE_REJECTED`: leave `fired_today`
     clear; mark `skipped` on minute advance if never fired.
+
+### Overfill protection at fire time
+
+When NVDM `feed/overfill_enabled` is true, the fire callback evaluates bowl
+mass before submitting a schedule dispense:
+
+1. Read cached bowl sample via `app_bowl_dg_snapshot()` and
+   `bowl_mass_present_dg()` (same known/unknown rules as `.../bowl_weight`).
+2. If mass is **not** known, proceed as a normal scheduled feed (submit
+   dispense).
+3. If `display_g >= feed/overfill_threshold_g` (integer grams, `>=`), return
+   `SCHEDULE_FIRE_SKIPPED_FULL`.
+4. Otherwise submit dispense as today.
+
+Manual dispense paths (`button`, `MQTT`, web, UART) do not run this check.
+No `dispense/event` is published for `skipped_full` — status appears in
+retained `schedule/state` only. `skipped_full` is terminal for the rest of the
+local day (`fired_today` set, same as `dispensed` / `failed`). Runtime slot
+state is not persisted: after reboot, past-due slots reconcile to generic
+`skipped` per the rules below.
 - If a due slot never fires during its minute (busy queue, time invalid),
   the first poll of the next minute sets `state=skipped`.
 

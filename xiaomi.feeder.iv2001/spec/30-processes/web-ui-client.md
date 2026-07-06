@@ -52,6 +52,7 @@ produces the sorted `repeat_days` array for the POST body.
 | `buildScheduleEnableBody(enabled)` | `POST /api/schedule/enable` |
 | `buildScheduleTodayBody(enabled)` | `POST /api/schedule/today` |
 | `buildConfigTzBody(tz_rule)` | `POST /api/config` time slice |
+| `buildFeedOverfillBody({enabled, threshold_g})` | `POST /api/feed/overfill` |
 | `formatNextFeed(next)` | Next-feed summary line |
 | `formatNextFeedParts(next)` | Two-line next feed (`Next feed · in N min` / `HH:MM · Ng`) |
 | `formatDeviceTime(st)` | Feeder `local_time` in header (or `—` if unsynced) |
@@ -112,7 +113,8 @@ Poll `/api/status` every 5 s; do not add per-topic GETs in v0.
 
 ### Settings tab
 
-Feed mode + timezone (collapsed section).
+Feed mode, overfill protection (toggle + 30–100 g threshold), and timezone.
+The threshold input is disabled when overfill protection is off.
 
 ### Chrome
 
@@ -148,6 +150,12 @@ Host client tests use Node built-in `node:test` only (no npm). Local UI preview:
 whitespace), then `gzip -9`. Sources in git stay readable; minification applies
 only to the ephemeral firmware bundle. Set `WEB_UI_SKIP_MINIFY=1` to skip the
 minifier step. Output: gitignored `firmware/src/web_ui_gz.c`.
+
+The LinkIt SDK invokes bare `make` in `firmware/GCC/` (no explicit target).
+When `WEB_UI_ENABLE=y`, the `web_ui_gz.c` generation rule must not become the
+default goal or the app never links and stale UI bytes remain in flash.
+`firmware/GCC/Makefile` sets `.DEFAULT_GOAL := all`, passes `all` to the
+bank-B sub-make, and drops `web_ui_gz.o` when HTML sources change.
 
 `make preview-web` and `dev_server.mjs` serve the **unminified** inline bundle
 for browser debugging.

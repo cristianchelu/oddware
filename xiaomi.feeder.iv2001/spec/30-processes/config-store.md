@@ -24,6 +24,8 @@ MT7682 NVDM (Non-Volatile Data Management) — SDK-provided key-value flash stor
 | feed | mode | enum | open_loop | Dispense mode: open_loop / compensated |
 | feed | default_g | uint8 | 10 | Manual button portion grams |
 | feed | child_lock | bool | false | All physical button gestures blocked except unlock combo |
+| feed | overfill_enabled | bool | false | Skip scheduled feeds when bowl mass known and ≥ threshold |
+| feed | overfill_threshold_g | uint8 | 50 | Overfill threshold in grams; clamped 30–100 on load |
 | display | mode | enum | weight | Display mode: weight / eaten_today / off |
 | display | brightness | uint8 | 4 | TM1637 brightness (1–4, maps to `0x88`–`0x8B`) |
 | schedule | enabled | bool | true | Global schedule master switch |
@@ -47,6 +49,8 @@ Firmware constants in `firmware/inc/config_keys.h`:
 | `CONFIG_GROUP_FEED` | `feed` |
 | `CONFIG_KEY_FEED_MODE` | `mode` |
 | `CONFIG_KEY_CHILD_LOCK` | `child_lock` |
+| `CONFIG_KEY_OVERFILL_ENABLED` | `overfill_enabled` |
+| `CONFIG_KEY_OVERFILL_THRESHOLD_G` | `overfill_threshold_g` |
 | `CONFIG_GROUP_TIME` | `time` |
 | `CONFIG_KEY_TZ_RULE` | `tz_rule` |
 | `CONFIG_KEY_TZ_LABEL` | `tz_label` |
@@ -68,6 +72,7 @@ Schedule runtime status (`state`, `skip_today`, `g_actual`, `fired_today`,
 | Runtime | Write on change (from MQTT entity commands, provisioning, calibration, schedule update) |
 | Runtime (`time/tz_rule`, `time/tz_label`) | UART `time set` and legacy MQTT `cmd/config` both call `time_config_apply` |
 | Runtime (`feed/mode`) | UART `feed mode`, MQTT `cmd/feed/mode`, and `feed_config_mode_set` |
+| Runtime (`feed/overfill_*`) | UART `feed overfill`, MQTT `cmd/feed/overfill`, web `/api/feed/overfill` |
 | Clear `time/tz_label` | Empty string via UART or MQTT erases the key; load returns `""` |
 | Clear `time/tz_rule` | Empty string via UART or MQTT erases the key; load returns `UTC0`; RAM cache refreshed immediately |
 | Write discipline | Minimize write frequency — flash has limited erase cycles. Batch writes where possible. |
@@ -108,6 +113,7 @@ partition sizes defined in `../10-hardware/flash.md`. `[design]`
 |-------|-----------|---------|
 | `.../config` | State (retained) | Time/TZ snapshot (`tz_rule`, `tz_label`, `time_synced`, `utc_epoch`) |
 | `.../feed/mode` | State (retained) | Dispense mode: `open_loop` or `compensated` |
+| `.../feed/overfill` | State (retained) | `{"enabled":false,"threshold_g":50}` |
 | `.../cmd/config` | Command | **Legacy** time slice only (`tz_rule`, `tz_label`) — see [mqtt-protocol.md](mqtt-protocol.md) |
 | `.../cmd/feed/mode` | Command | Same payloads as `.../feed/mode` state |
 

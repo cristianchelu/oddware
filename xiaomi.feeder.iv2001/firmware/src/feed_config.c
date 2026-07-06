@@ -2,6 +2,8 @@
  * Feed settings in NVDM — spec/30-processes/config-store.md
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "config_keys.h"
@@ -178,4 +180,127 @@ bool feed_config_mode_set(dispense_mode_t mode)
 
     stored = feed_config_mode_string(mode);
     return cfg->write(CONFIG_GROUP_FEED, CONFIG_KEY_FEED_MODE, stored) == PORT_OK;
+}
+
+static uint8_t feed_config_clamp_overfill_threshold(uint8_t threshold_g)
+{
+    if (threshold_g < FEED_OVERFILL_THRESHOLD_G_MIN) {
+        return FEED_OVERFILL_THRESHOLD_G_MIN;
+    }
+
+    if (threshold_g > FEED_OVERFILL_THRESHOLD_G_MAX) {
+        return FEED_OVERFILL_THRESHOLD_G_MAX;
+    }
+
+    return threshold_g;
+}
+
+static bool feed_config_overfill_enabled_load(bool *out)
+{
+    const config_port_t *cfg = config_port_get();
+    char buf[8];
+    port_err_t err;
+
+    if (out == NULL) {
+        return false;
+    }
+
+    if (cfg == NULL) {
+        return false;
+    }
+
+    err = cfg->read(CONFIG_GROUP_FEED, CONFIG_KEY_OVERFILL_ENABLED, buf, sizeof(buf));
+    if (err == PORT_ERR_NOT_FOUND) {
+        *out = false;
+        return true;
+    }
+
+    if (err != PORT_OK) {
+        return false;
+    }
+
+    return parse_bool(buf, out);
+}
+
+bool feed_config_overfill_enabled_get(void)
+{
+    bool enabled = false;
+
+    if (!feed_config_overfill_enabled_load(&enabled)) {
+        return false;
+    }
+
+    return enabled;
+}
+
+bool feed_config_overfill_enabled_set(bool enabled)
+{
+    const config_port_t *cfg = config_port_get();
+
+    if (cfg == NULL) {
+        return false;
+    }
+
+    return cfg->write(CONFIG_GROUP_FEED,
+                      CONFIG_KEY_OVERFILL_ENABLED,
+                      enabled ? "1" : "0") == PORT_OK;
+}
+
+static bool feed_config_overfill_threshold_load(uint8_t *out)
+{
+    const config_port_t *cfg = config_port_get();
+    char buf[8];
+    port_err_t err;
+    unsigned long parsed;
+
+    if (out == NULL) {
+        return false;
+    }
+
+    if (cfg == NULL) {
+        return false;
+    }
+
+    err = cfg->read(CONFIG_GROUP_FEED, CONFIG_KEY_OVERFILL_THRESHOLD_G, buf, sizeof(buf));
+    if (err == PORT_ERR_NOT_FOUND) {
+        *out = FEED_OVERFILL_THRESHOLD_G_DEFAULT;
+        return true;
+    }
+
+    if (err != PORT_OK) {
+        return false;
+    }
+
+    parsed = strtoul(buf, NULL, 10);
+    *out = feed_config_clamp_overfill_threshold((uint8_t)parsed);
+    return true;
+}
+
+uint8_t feed_config_overfill_threshold_g_get(void)
+{
+    uint8_t threshold_g = FEED_OVERFILL_THRESHOLD_G_DEFAULT;
+
+    if (!feed_config_overfill_threshold_load(&threshold_g)) {
+        return FEED_OVERFILL_THRESHOLD_G_DEFAULT;
+    }
+
+    return threshold_g;
+}
+
+bool feed_config_overfill_threshold_g_set(uint8_t threshold_g)
+{
+    const config_port_t *cfg = config_port_get();
+    char buf[8];
+
+    if (cfg == NULL) {
+        return false;
+    }
+
+    if (threshold_g < FEED_OVERFILL_THRESHOLD_G_MIN ||
+        threshold_g > FEED_OVERFILL_THRESHOLD_G_MAX) {
+        return false;
+    }
+
+    (void)snprintf(buf, sizeof(buf), "%u", (unsigned)threshold_g);
+    return cfg->write(CONFIG_GROUP_FEED, CONFIG_KEY_OVERFILL_THRESHOLD_G, buf) == PORT_OK;
 }

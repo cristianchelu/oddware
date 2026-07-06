@@ -17,6 +17,7 @@ typedef enum {
     SCHEDULE_STATE_PENDING = 0,
     SCHEDULE_STATE_TO_BE_SKIPPED,
     SCHEDULE_STATE_SKIPPED,
+    SCHEDULE_STATE_SKIPPED_FULL,
     SCHEDULE_STATE_DISPENSING,
     SCHEDULE_STATE_DISPENSED,
     SCHEDULE_STATE_FAILED,
@@ -50,6 +51,7 @@ typedef enum {
     SCHEDULE_FIRE_OK = 0,
     SCHEDULE_FIRE_BUSY,
     SCHEDULE_FIRE_REJECTED,
+    SCHEDULE_FIRE_SKIPPED_FULL,
 } schedule_fire_result_t;
 
 typedef schedule_fire_result_t (*schedule_fire_fn)(uint8_t hour,

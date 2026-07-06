@@ -23,9 +23,18 @@ food automatically at the configured times.
 ## Runtime status
 
 Each slot reports a native status on MQTT (`pending`, `to_be_skipped`,
-`skipped`, `dispensing`, `dispensed`, `failed`). The user can skip an
-individual slot for today only. When a feed completes, actual dispensed
-grams are reported alongside the target amount.
+`skipped`, `skipped_full`, `dispensing`, `dispensed`, `failed`). The user can
+skip an individual slot for today only. When a feed completes, actual
+dispensed grams are reported alongside the target amount.
+
+## Overfill protection
+
+The user can enable **overfill protection** so scheduled feeds are skipped
+when the bowl already holds at least a configured amount of food (30–100 g).
+Manual dispenses (button, MQTT, web UI, UART) always bypass this check. When
+a scheduled feed is skipped for overfill, the slot status is `skipped_full`.
+Settings persist in non-volatile storage and are configurable from Home
+Assistant, the LAN web UI Settings tab, MQTT, or UART.
 
 Runtime status lives in RAM only — it resets at local midnight and after
 reboot. Slot configuration persists in non-volatile storage.

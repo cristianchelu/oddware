@@ -5,6 +5,7 @@ import {
     DAYS,
     apiContentType,
     buildDispenseBody,
+    buildFeedOverfillBody,
     buildScheduleSetBody,
     buildScheduleToggleBody,
     busyTone,
@@ -274,5 +275,13 @@ describe('api helpers', () => {
 
     it('buildDispenseBody', () => {
         assert.deepEqual(buildDispenseBody('30'), { g: 30 });
+    });
+
+    it('buildFeedOverfillBody', () => {
+        assert.deepEqual(buildFeedOverfillBody({ enabled: true, threshold_g: '40' }), {
+            enabled: true,
+            threshold_g: 40,
+        });
+        assert.deepEqual(buildFeedOverfillBody({ enabled: false }), { enabled: false });
     });
 });

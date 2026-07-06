@@ -23,6 +23,7 @@ Base: `petfeeder/<device_id>/` where `<device_id>` is user-configurable
 | `.../schedule/next` | `{"hour":8,"min":0,"g":30,"in_min":120}` | 1 |
 | `.../config` | Config snapshot JSON — see [Config snapshot](#config-snapshot) | 1 |
 | `.../feed/mode` | `open_loop` or `compensated` (plain text) — see [Feed mode](#feed-mode) | 1 |
+| `.../feed/overfill` | `{"enabled":false,"threshold_g":50}` — see [Overfill protection](#overfill-protection) | 1 |
 | `.../timezone` | Device timezone plain text — see [Device timezone](#device-timezone) | 1 |
 | `.../display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../ota/status` | `{"state": "idle", "pct": 0, "error": "", "bank": "A"}` — see [OTA status](#ota-status) | 1 |
@@ -53,6 +54,7 @@ unchanged.
 | `.../cmd/calibrate` | `{"action": "zero"}` or `{"action": "span"}` | 1 |
 | `.../cmd/display` | `{"mode": "weight", "brightness": 4}` | 1 |
 | `.../cmd/feed/mode` | `open_loop` or `compensated` (plain text) — see [Feed mode](#feed-mode) | 1 |
+| `.../cmd/feed/overfill` | `{"enabled":true}` and/or `{"threshold_g":40}` — see [Overfill protection](#overfill-protection) | 1 |
 | `.../cmd/config` | `{"tz_rule":"...", "tz_label":"..."}` — **legacy** time slice only; see [Config snapshot](#config-snapshot) | 1 |
 | `.../cmd/reboot` | `{}` | 1 |
 | `.../cmd/ota` | `{"url": "http://...", "sha512": "<128 hex chars>"}` — `sha512` optional | 1 |
@@ -96,6 +98,8 @@ product), not the firmware author — see [validation slice](#home-assistant-val
 | event | dispense_completed | — | Fires on each dispense job completion |
 | number | dispense_custom | — | Range: 5–150 g |
 | switch | weight_compensation | — | On = compensated dispense mode |
+| switch | overfill_protection | — | On = skip scheduled feeds when bowl ≥ threshold |
+| number | overfill_threshold_g | — | Range: 30–100 g |
 | switch | child_lock | — | On/off |
 | select | display_mode | — | Options: weight, eaten_today, off |
 | number | display_brightness | — | Range: 1–4 |
@@ -502,6 +506,32 @@ Invalid payloads are rejected at info with no NVDM change.
 
 Publish state on boot (MQTT connect snapshot), `cmd/feed/mode` change, and UART
 `feed mode` set when MQTT is configured.
+
+## Overfill protection
+
+Topic `.../feed/overfill` (retained, QoS 1) reports overfill settings from
+NVDM `feed/overfill_enabled` and `feed/overfill_threshold_g` (see
+[config-store.md](config-store.md) and [scheduler-engine.md](scheduler-engine.md)).
+
+```json
+{"enabled": false, "threshold_g": 50}
+```
+
+| Field | Type | Range |
+|-------|------|-------|
+| `enabled` | bool | — |
+| `threshold_g` | uint8 | 30–100 |
+
+Command topic `.../cmd/feed/overfill` accepts a JSON object with either or
+both fields (partial update). Invalid `threshold_g` is rejected with no NVDM
+change. When `enabled` is true and a scheduled slot fires with known bowl
+mass `>= threshold_g`, the slot becomes `skipped_full` without a dispense job.
+
+Publish state on boot, command success, and UART `feed overfill` set when MQTT
+is configured.
+
+Home Assistant discovery publishes a **switch** (`overfill_protection`) bound
+to `enabled` and a **number** (`overfill_threshold_g`) bound to `threshold_g`.
 
 ## Device timezone
 

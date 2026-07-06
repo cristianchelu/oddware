@@ -19,6 +19,7 @@
 #include "mqtt_schedule.h"
 #include "mqtt_config.h"
 #include "mqtt_feed_mode.h"
+#include "mqtt_feed_overfill.h"
 #include "hopper_level.h"
 #include "ota_client.h"
 #include "power_source_input.h"
@@ -51,6 +52,7 @@ void app_mqtt_on_connected(void)
     mqtt_schedule_connect_snapshot();
     mqtt_config_connect_snapshot();
     mqtt_feed_mode_connect_snapshot();
+    mqtt_feed_overfill_connect_snapshot();
 }
 
 void app_mqtt_dispatch(const char *topic,
@@ -79,6 +81,7 @@ void app_mqtt_dispatch(const char *topic,
     case MQTT_ROUTE_CMD_DISPENSE_CANCEL:
     case MQTT_ROUTE_CMD_CONFIG:
     case MQTT_ROUTE_CMD_FEED_MODE:
+    case MQTT_ROUTE_CMD_FEED_OVERFILL:
     case MQTT_ROUTE_CMD_SCHEDULE_SET:
     case MQTT_ROUTE_CMD_SCHEDULE_DELETE:
     case MQTT_ROUTE_CMD_SCHEDULE_TOGGLE:

@@ -7,11 +7,16 @@
 #include "config_keys.h"
 #include "fake_config_port.h"
 #include "fake_time_port.h"
+#include "fake_weight_port.h"
+#include "app.h"
+#include "feed_bowl.h"
+#include "feed_config.h"
 #include "schedule.h"
 #include "schedule_nvdm.h"
 #include "schedule_test_epochs.h"
 #include "time_sync.h"
 #include "tz_rule.h"
+#include "weight_units.h"
 
 static unsigned s_fire_hour;
 static unsigned s_fire_min;
@@ -26,6 +31,17 @@ static schedule_fire_result_t test_schedule_fire(uint8_t hour, uint8_t min, uint
     s_fire_g = (unsigned)g;
     s_fire_calls++;
     return s_fire_result;
+}
+
+static schedule_fire_result_t test_schedule_fire_with_overfill(uint8_t hour,
+                                                               uint8_t min,
+                                                               uint8_t g)
+{
+    (void)hour;
+    (void)min;
+    s_fire_g = (unsigned)g;
+    s_fire_calls++;
+    return feed_schedule_fire(g, 1000u);
 }
 
 static void setup_schedule_synced(int64_t epoch)
@@ -523,4 +539,84 @@ void test_schedule_on_dispense_complete_failed(void)
 
     TEST_ASSERT_TRUE(schedule_get_slot(0, NULL, &rt));
     TEST_ASSERT_EQUAL(SCHEDULE_STATE_FAILED, rt.state);
+}
+
+void test_schedule_poll_skipped_full_sets_terminal_state(void)
+{
+    schedule_slot_config_t slot = {
+        .hour = 8,
+        .min = 0,
+        .days = 127,
+        .g = 30,
+        .enabled = true,
+    };
+    schedule_slot_runtime_t rt;
+
+    setup_schedule_synced(SCHEDULE_TEST_EPOCH_THU_08_00_UTC);
+    TEST_ASSERT_TRUE(schedule_set_slot(&slot));
+    s_fire_result = SCHEDULE_FIRE_SKIPPED_FULL;
+
+    schedule_poll(1000u);
+
+    TEST_ASSERT_EQUAL_UINT(1, s_fire_calls);
+    TEST_ASSERT_TRUE(schedule_get_slot(0, NULL, &rt));
+    TEST_ASSERT_EQUAL(SCHEDULE_STATE_SKIPPED_FULL, rt.state);
+    TEST_ASSERT_TRUE(rt.fired_today);
+    TEST_ASSERT_EQUAL_STRING("skipped_full", schedule_state_wire(rt.state));
+}
+
+void test_schedule_poll_overfill_skips_when_bowl_full(void)
+{
+    schedule_slot_config_t slot = {
+        .hour = 8,
+        .min = 0,
+        .days = 127,
+        .g = 30,
+        .enabled = true,
+    };
+    schedule_slot_runtime_t rt;
+
+    fake_weight_port_reset();
+    fake_weight_port_set_cal_status(WEIGHT_CAL_SUCCESS);
+    app_test_reset();
+    app_test_finish_weight_boot();
+
+    setup_schedule_synced(SCHEDULE_TEST_EPOCH_THU_08_00_UTC);
+    schedule_set_fire_fn(test_schedule_fire_with_overfill);
+    TEST_ASSERT_TRUE(feed_config_overfill_enabled_set(true));
+    TEST_ASSERT_TRUE(feed_config_overfill_threshold_g_set(50u));
+    app_bowl_dg_notify_read(WEIGHT_G_TO_DG(50), true, 1000u);
+    TEST_ASSERT_TRUE(schedule_set_slot(&slot));
+
+    schedule_poll(1000u);
+
+    TEST_ASSERT_EQUAL_UINT(1, s_fire_calls);
+    TEST_ASSERT_TRUE(schedule_get_slot(0, NULL, &rt));
+    TEST_ASSERT_EQUAL(SCHEDULE_STATE_SKIPPED_FULL, rt.state);
+    TEST_ASSERT_TRUE(rt.fired_today);
+}
+
+void test_schedule_skipped_full_stays_terminal_on_later_poll(void)
+{
+    schedule_slot_config_t slot = {
+        .hour = 8,
+        .min = 0,
+        .days = 127,
+        .g = 30,
+        .enabled = true,
+    };
+    schedule_slot_runtime_t rt;
+
+    setup_schedule_synced(SCHEDULE_TEST_EPOCH_THU_08_00_UTC);
+    TEST_ASSERT_TRUE(schedule_set_slot(&slot));
+    s_fire_result = SCHEDULE_FIRE_SKIPPED_FULL;
+
+    schedule_poll(1000u);
+
+    fake_time_port_set_epoch(SCHEDULE_TEST_EPOCH_THU_08_00_UTC + 60LL);
+    schedule_poll(2000u);
+
+    TEST_ASSERT_TRUE(schedule_get_slot(0, NULL, &rt));
+    TEST_ASSERT_EQUAL(SCHEDULE_STATE_SKIPPED_FULL, rt.state);
+    TEST_ASSERT_TRUE(rt.fired_today);
 }

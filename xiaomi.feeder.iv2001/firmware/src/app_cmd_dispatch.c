@@ -10,6 +10,7 @@
 #include "mqtt_config.h"
 #include "mqtt_dispense_cmd.h"
 #include "mqtt_feed_mode.h"
+#include "mqtt_feed_overfill.h"
 #include "mqtt_json.h"
 #include "mqtt_schedule.h"
 #include "schedule.h"
@@ -64,6 +65,9 @@ port_err_t app_cmd_dispatch(mqtt_route_kind_t route,
 
     case MQTT_ROUTE_CMD_FEED_MODE:
         return mqtt_feed_mode_handle(payload, len);
+
+    case MQTT_ROUTE_CMD_FEED_OVERFILL:
+        return mqtt_feed_overfill_handle(payload, len);
 
     case MQTT_ROUTE_CMD_SCHEDULE_SET:
     case MQTT_ROUTE_CMD_SCHEDULE_DELETE:

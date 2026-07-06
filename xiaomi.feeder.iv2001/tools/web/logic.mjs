@@ -73,6 +73,17 @@ export function buildConfigTzBody(tz_rule) {
     return { tz_rule };
 }
 
+export function buildFeedOverfillBody({ enabled, threshold_g }) {
+    const body = {};
+    if (enabled !== undefined) {
+        body.enabled = Boolean(enabled);
+    }
+    if (threshold_g !== undefined && threshold_g !== '') {
+        body.threshold_g = Number(threshold_g);
+    }
+    return body;
+}
+
 export function formatNextFeed(next) {
     if (!next) {
         return 'No upcoming feed';
@@ -337,6 +348,7 @@ export function slotStateTone(state) {
         case 'missed':
             return 'bad';
         case 'skipped':
+        case 'skipped_full':
             return 'muted';
         default:
             return 'muted';

@@ -196,6 +196,15 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut
 </div>
 <div class="set-block">
 <div class="row between">
+<label class="tog"><input type="checkbox" id="overfillEn"> Skip scheduled feeds when bowl is full</label>
+</div>
+<div class="row between">
+<label>Full bowl threshold (g) <input type="number" id="overfillG" min="30" max="100" value="50"></label>
+<button id="saveOverfill">Save</button>
+</div>
+</div>
+<div class="set-block">
+<div class="row between">
 <label>Timezone <input id="tzRule" size="20" placeholder="UTC0"></label>
 <button id="saveTz">Save</button>
 </div>
@@ -372,6 +381,16 @@ async function loadMode() {
   const v = typeof m === 'string' && m.trim ? m.trim() : m;
   document.getElementById('feedMode').value = v;
 }
+async function loadOverfill() {
+  const o = await api('GET', '/api/feed/overfill');
+  const en = document.getElementById('overfillEn');
+  const g = document.getElementById('overfillG');
+  if (o && typeof o === 'object') {
+    en.checked = Boolean(o.enabled);
+    if (o.threshold_g !== undefined) g.value = o.threshold_g;
+  }
+  g.disabled = !en.checked;
+}
 async function loadConfig() {
   const c = await api('GET', '/api/config');
   if (c.tz_rule) document.getElementById('tzRule').value = c.tz_rule;
@@ -381,6 +400,7 @@ async function loadAll() {
   await loadStatus();
   await loadSchedule();
   await loadMode();
+  await loadOverfill();
   await loadConfig();
 }
 document.getElementById('refreshBtn').onclick = loadAll;
@@ -427,6 +447,18 @@ document.getElementById('saveSlot').onclick = async () => {
 document.getElementById('saveMode').onclick = async () => {
   const r = await api('POST', '/api/feed/mode', document.getElementById('feedMode').value);
   const m = mutationMessage(r, 'Feed mode saved');
+  toast(m.text, m.ok);
+};
+document.getElementById('overfillEn').onchange = () => {
+  document.getElementById('overfillG').disabled = !document.getElementById('overfillEn').checked;
+};
+document.getElementById('saveOverfill').onclick = async () => {
+  const body = buildFeedOverfillBody({
+    enabled: document.getElementById('overfillEn').checked,
+    threshold_g: document.getElementById('overfillG').value,
+  });
+  const r = await api('POST', '/api/feed/overfill', JSON.stringify(body));
+  const m = mutationMessage(r, 'Overfill settings saved');
   toast(m.text, m.ok);
 };
 document.getElementById('saveTz').onclick = async () => {

@@ -21,6 +21,7 @@
 #include "power_source_port.h"
 #include "display_presentation.h"
 #include "dispense.h"
+#include "feed_bowl.h"
 #include "task_def.h"
 #include "time_sync.h"
 #include "tz_rule.h"
@@ -64,20 +65,13 @@ static void app_housekeeping_timer_cb(TimerHandle_t timer)
 
 static schedule_fire_result_t app_schedule_fire(uint8_t hour, uint8_t min, uint8_t g)
 {
-    dispense_submit_result_t result;
+    uint32_t now_ms =
+        (uint32_t)(xTaskGetTickCount() * (TickType_t)portTICK_PERIOD_MS);
 
     (void)hour;
     (void)min;
 
-    result = dispense_submit_grams(g, DISPENSE_SOURCE_SCHEDULE);
-    switch (result) {
-    case DISPENSE_SUBMIT_OK:
-        return SCHEDULE_FIRE_OK;
-    case DISPENSE_SUBMIT_BUSY:
-        return SCHEDULE_FIRE_BUSY;
-    default:
-        return SCHEDULE_FIRE_REJECTED;
-    }
+    return feed_schedule_fire(g, now_ms);
 }
 
 static void app_timers_start(void)

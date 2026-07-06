@@ -17,6 +17,7 @@
 #include "time_sync.h"
 #include "tz_rule.h"
 #include "app_mqtt_dispatch.h"
+#include "feed_config.h"
 
 extern void fake_app_event_q_reset(void);
 
@@ -125,4 +126,22 @@ void test_app_mqtt_dispatch_handles_schedule_set(void)
 
     TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "cmd schedule_set"));
     TEST_ASSERT_EQUAL_size_t(1, schedule_slot_count());
+}
+
+void test_app_mqtt_dispatch_handles_feed_overfill(void)
+{
+    const char *topic = "petfeeder/ddeeff/cmd/feed/overfill";
+    const char *payload = "{\"enabled\":true}";
+
+    fake_config_port_reset();
+    mqtt_dispatch_test_reset();
+    TEST_ASSERT_FALSE(feed_config_overfill_enabled_get());
+
+    mqtt_dispatch_log_capture_begin();
+    app_mqtt_dispatch(topic, payload, strlen(payload), "ddeeff");
+    mqtt_dispatch_log_capture_end();
+
+    TEST_ASSERT_TRUE(feed_config_overfill_enabled_get());
+    TEST_ASSERT_NOT_NULL(strstr(s_log_capture, "cmd feed_overfill"));
+    TEST_ASSERT_NULL(strstr(s_log_capture, "cmd stub"));
 }

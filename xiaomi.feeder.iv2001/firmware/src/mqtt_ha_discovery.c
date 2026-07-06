@@ -669,6 +669,126 @@ int mqtt_ha_format_weight_compensation_config(char *buf, size_t len, const char 
     return written;
 }
 
+int mqtt_ha_format_overfill_protection_config(char *buf, size_t len, const char *device_id)
+{
+    char state_topic[96];
+    char cmd_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(state_topic, sizeof(state_topic), device_id, "feed/overfill")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(cmd_topic, sizeof(cmd_topic), device_id, "cmd/feed/overfill")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block, sizeof(device_block), device_id) < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Overfill protection\","
+                       "\"unique_id\":\"petfeeder_%s_overfill_protection\","
+                       "\"state_topic\":\"%s\","
+                       "\"value_template\":\"{{ 'ON' if value_json.enabled else 'OFF' }}\","
+                       "\"state_on\":\"ON\","
+                       "\"state_off\":\"OFF\","
+                       "\"command_topic\":\"%s\","
+                       "\"payload_on\":\"{\\\"enabled\\\": true}\","
+                       "\"payload_off\":\"{\\\"enabled\\\": false}\","
+                       "\"optimistic\":false,"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       state_topic,
+                       cmd_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
+int mqtt_ha_format_overfill_threshold_g_config(char *buf, size_t len, const char *device_id)
+{
+    char state_topic[96];
+    char cmd_topic[96];
+    char connection_topic[96];
+    char device_block[192];
+    int written;
+
+    if (buf == NULL || len == 0 || device_id == NULL || device_id[0] == '\0') {
+        return -1;
+    }
+
+    if (mqtt_topic_format(state_topic, sizeof(state_topic), device_id, "feed/overfill")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(cmd_topic, sizeof(cmd_topic), device_id, "cmd/feed/overfill")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(connection_topic,
+                          sizeof(connection_topic),
+                          device_id,
+                          "connection")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_ha_format_device_suffix(device_block, sizeof(device_block), device_id) < 0) {
+        return -1;
+    }
+
+    written = snprintf(buf,
+                       len,
+                       "{\"name\":\"Overfill threshold\","
+                       "\"unique_id\":\"petfeeder_%s_overfill_threshold_g\","
+                       "\"state_topic\":\"%s\","
+                       "\"value_template\":\"{{ value_json.threshold_g }}\","
+                       "\"command_topic\":\"%s\","
+                       "\"command_template\":\"{\\\"threshold_g\\\": {{ value }}}\","
+                       "\"min\":30,"
+                       "\"max\":100,"
+                       "\"step\":1,"
+                       "\"unit_of_measurement\":\"g\","
+                       "\"mode\":\"box\","
+                       "\"optimistic\":false,"
+                       "\"availability_topic\":\"%s\","
+                       "\"payload_available\":\"online\","
+                       "\"payload_not_available\":\"offline\","
+                       "%s}",
+                       device_id,
+                       state_topic,
+                       cmd_topic,
+                       connection_topic,
+                       device_block);
+    if (written < 0 || (size_t)written >= len) {
+        return -1;
+    }
+
+    return written;
+}
+
 static const mqtt_ha_entity_t s_ha_entities[] = {
     {
         .component = "button",
@@ -724,6 +844,16 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .component = "switch",
         .object_id = "weight_compensation",
         .format_config = mqtt_ha_format_weight_compensation_config,
+    },
+    {
+        .component = "switch",
+        .object_id = "overfill_protection",
+        .format_config = mqtt_ha_format_overfill_protection_config,
+    },
+    {
+        .component = "number",
+        .object_id = "overfill_threshold_g",
+        .format_config = mqtt_ha_format_overfill_threshold_g_config,
     },
 };
 

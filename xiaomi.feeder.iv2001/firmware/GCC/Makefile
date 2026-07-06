@@ -103,17 +103,21 @@ CFLAGS += -DWEB_UI_ENABLE=1
 FIRMWARE_DIR := $(realpath $(PWD)/../src/..)
 REPO_ROOT := $(abspath $(FIRMWARE_DIR)/..)
 WEB_UI_GZ := $(FIRMWARE_DIR)/src/web_ui_gz.c
+WEB_UI_INPUTS := $(REPO_ROOT)/tools/web/index.html \
+                 $(REPO_ROOT)/tools/web/logic.mjs \
+                 $(REPO_ROOT)/tools/web/build.sh
 WEB_UI_GZ_OBJ := $(BUILD_DIR)/$(APP_PATH_SRC)/web_ui_gz.o
+WEB_UI_GZ_OBJ_BANK_B := $(BUILD_DIR)/binary_B/$(APP_PATH_SRC)/web_ui_gz.o
 APP_FILES      += $(APP_PATH_SRC)/web_api.c
 APP_FILES      += $(APP_PATH_SRC)/web_ui.c
 APP_FILES      += $(APP_PATH_SRC)/web_ui_gz.c
 APP_FILES      += $(APP_PATH_ADAPT)/web_api_cgi.c
 
-$(WEB_UI_GZ): $(REPO_ROOT)/tools/web/index.html $(REPO_ROOT)/tools/web/logic.mjs $(REPO_ROOT)/tools/web/build.sh
+$(WEB_UI_GZ): $(WEB_UI_INPUTS)
 	$(REPO_ROOT)/tools/web/build.sh
-	@rm -f $(WEB_UI_GZ_OBJ)
+	@rm -f $(WEB_UI_GZ_OBJ) $(WEB_UI_GZ_OBJ_BANK_B)
 
-$(WEB_UI_GZ_OBJ): $(WEB_UI_GZ)
+$(WEB_UI_GZ_OBJ): $(WEB_UI_GZ) $(WEB_UI_INPUTS)
 else
 CFLAGS += -DWEB_UI_ENABLE=0
 endif
@@ -126,6 +130,7 @@ APP_FILES      += $(APP_PATH_SRC)/wifi_sdk_profile.c
 APP_FILES      += $(APP_PATH_SRC)/wifi_scan_oui.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_cred.c
 APP_FILES      += $(APP_PATH_SRC)/feed_config.c
+APP_FILES      += $(APP_PATH_SRC)/feed_bowl.c
 APP_FILES      += $(APP_PATH_SRC)/tz_rule.c
 APP_FILES      += $(APP_PATH_SRC)/epoch_calendar.c
 APP_FILES      += $(APP_PATH_SRC)/time_local.c
@@ -134,6 +139,7 @@ APP_FILES      += $(APP_PATH_SRC)/time_config.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_config.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_json.c
 APP_FILES      += $(APP_PATH_SRC)/mqtt_feed_mode.c
+APP_FILES      += $(APP_PATH_SRC)/mqtt_feed_overfill.c
 APP_FILES      += $(APP_PATH_SRC)/app_time_cli.c
 APP_FILES      += $(APP_PATH_SRC)/app_feed_cli.c
 APP_FILES      += $(APP_PATH_SRC)/app_schedule_cli.c
@@ -326,9 +332,11 @@ ifneq ($(FOTA_PARTITION_B_BUILD),y)
 	@echo "build partition B binary."
 	@mkdir -p $(BUILD_DIR)/binary_B
 	@mkdir -p $(OUTPATH)/binary_B
-	@$(MAKE) -C $(PWD) $(PARTITION_B_EXTRA) BUILD_DIR=$(BUILD_DIR) PROJ_PATH=$(PROJ_PATH)
+	@$(MAKE) -C $(PWD) all $(PARTITION_B_EXTRA) BUILD_DIR=$(BUILD_DIR) PROJ_PATH=$(PROJ_PATH)
 endif
 endif
+
+.DEFAULT_GOAL := all
 
 MOD_EXTRA = BUILD_DIR=$(BUILD_DIR) OUTPATH=$(OUTPATH) PROJ_PATH=$(PROJ_PATH)
 

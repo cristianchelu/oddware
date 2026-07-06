@@ -127,6 +127,37 @@ void test_web_api_handle_get_feed_mode(void)
     TEST_ASSERT_EQUAL_STRING("compensated", buf);
 }
 
+void test_web_api_handle_get_feed_overfill(void)
+{
+    char buf[64];
+    int written;
+
+    fake_config_port_reset();
+    TEST_ASSERT_TRUE(feed_config_overfill_enabled_set(true));
+    TEST_ASSERT_TRUE(feed_config_overfill_threshold_g_set(40u));
+
+    written = web_api_handle_get(WEB_API_GET_FEED_OVERFILL, buf, sizeof(buf));
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_EQUAL_STRING("{\"enabled\":true,\"threshold_g\":40}", buf);
+}
+
+void test_web_api_handle_post_feed_overfill(void)
+{
+    char resp[64];
+    int written;
+
+    fake_config_port_reset();
+    written = web_api_handle_post(WEB_API_POST_FEED_OVERFILL,
+                                  "{\"enabled\":true,\"threshold_g\":35}",
+                                  strlen("{\"enabled\":true,\"threshold_g\":35}"),
+                                  resp,
+                                  sizeof(resp));
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_NOT_NULL(strstr(resp, "\"ok\":true"));
+    TEST_ASSERT_TRUE(feed_config_overfill_enabled_get());
+    TEST_ASSERT_EQUAL_UINT8(35u, feed_config_overfill_threshold_g_get());
+}
+
 void test_web_api_handle_get_status_telemetry(void)
 {
     char buf[1024];

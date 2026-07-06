@@ -65,6 +65,7 @@ Read payloads match retained MQTT state / command wire formats in
 | GET | `/api/schedule/next` | Same JSON as `.../schedule/next` |
 | GET | `/api/config` | Same JSON as `.../config` |
 | GET | `/api/feed/mode` | Plain text `open_loop` or `compensated` (same as `.../feed/mode`) |
+| GET | `/api/feed/overfill` | JSON `{"enabled":false,"threshold_g":50}` (same as `.../feed/overfill`) |
 | GET | `/api/status` | Composite JSON — see [Status composite](#status-composite) |
 
 #### Status composite
@@ -107,6 +108,7 @@ POST body is the exact MQTT command payload for the equivalent topic.
 | POST | `/api/dispense` | `cmd/dispense` |
 | POST | `/api/dispense/cancel` | `cmd/dispense/cancel` (no-op success when idle) |
 | POST | `/api/feed/mode` | `cmd/feed/mode` plain body |
+| POST | `/api/feed/overfill` | `cmd/feed/overfill` JSON body |
 | POST | `/api/config` | `cmd/config` time slice (`tz_rule`, `tz_label`) |
 
 Excluded from web API (MQTT-only): `cmd/ota`, `cmd/reboot`, `cmd/calibrate`,

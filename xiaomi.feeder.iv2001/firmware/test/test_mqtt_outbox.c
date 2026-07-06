@@ -131,13 +131,13 @@ void test_mqtt_outbox_full_ring_drops(void)
 
     outbox_test_reset();
 
-    for (i = 0; i < 20u; i++) {
+    for (i = 0; i < 24u; i++) {
         snprintf(topic, sizeof(topic), "petfeeder/ddeeff/t%u", i);
         TEST_ASSERT_TRUE(mqtt_outbox_enqueue(topic, "x", 1, 0, false));
     }
 
     TEST_ASSERT_FALSE(mqtt_outbox_enqueue(TEST_TOPIC, "y", 1, 0, false));
-    TEST_ASSERT_EQUAL_UINT(20, mqtt_outbox_pending());
+    TEST_ASSERT_EQUAL_UINT(24, mqtt_outbox_pending());
 }
 
 void test_mqtt_outbox_not_accepting_drops_silently(void)

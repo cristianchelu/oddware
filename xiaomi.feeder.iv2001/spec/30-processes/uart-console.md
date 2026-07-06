@@ -47,6 +47,8 @@ time sync
 time set tz_rule <posix>
 time set tz_label <name>
 feed mode [open_loop|compensated]
+feed overfill [on|off]
+feed overfill_g <30-100>
 schedule show
 schedule next
 schedule set <hour> <min> <days> <g> [on|off]
@@ -1141,6 +1143,37 @@ Not a product interface. Remote telnet exposes the same commands.
 | Missing/invalid args | `usage: feed mode [open_loop\|compensated]` |
 | NVDM write failure | `feed mode: nvdm write failed` |
 
+### `feed overfill` / `feed overfill on|off`
+
+| Command | Action |
+|---------|--------|
+| `feed overfill` | Print `feed overfill: on threshold_g=50` or `off threshold_g=50` |
+| `feed overfill on` | Persist `feed/overfill_enabled = true` |
+| `feed overfill off` | Persist `feed/overfill_enabled = false` |
+
+| Outcome | UART response |
+|---------|---------------|
+| Show | `feed overfill: on threshold_g=N` or `feed overfill: off threshold_g=N` |
+| Set success | `feed overfill ok` |
+| Unchanged value | `feed overfill: unchanged` |
+| Missing/invalid args | `usage: feed overfill [on\|off]` |
+| NVDM write failure | `feed overfill: nvdm write failed` |
+
+### `feed overfill_g <30-100>`
+
+| Command | Action |
+|---------|--------|
+| `feed overfill_g` | Print current threshold |
+| `feed overfill_g <N>` | Persist `feed/overfill_threshold_g = N` |
+
+| Outcome | UART response |
+|---------|---------------|
+| Show | `feed overfill_g: N` |
+| Set success | `feed overfill_g ok` |
+| Unchanged value | `feed overfill_g: unchanged` |
+| Missing/invalid args | `usage: feed overfill_g <30-100>` |
+| NVDM write failure | `feed overfill_g: nvdm write failed` |
+
 ## `schedule` commands
 
 Bench helpers for the weekly feeding schedule — see
@@ -1170,7 +1203,7 @@ schedule: HH:MM days=<0-127> g=<5-150> enabled=<on|off> state=<native> skip=<on|
 ```
 
 `state` is the native wire string (`pending`, `to_be_skipped`, `skipped`,
-`dispensing`, `dispensed`, `failed`). `g_actual` is `-` when unknown.
+`skipped_full`, `dispensing`, `dispensed`, `failed`). `g_actual` is `-` when unknown.
 
 | Outcome | UART response |
 |---------|---------------|

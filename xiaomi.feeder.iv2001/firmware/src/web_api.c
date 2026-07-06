@@ -15,6 +15,7 @@
 #include "mqtt_battery.h"
 #include "mqtt_bowl_weight.h"
 #include "mqtt_config.h"
+#include "mqtt_feed_overfill.h"
 #include "mqtt_hopper.h"
 #include "mqtt_mains.h"
 #include "mqtt_route.h"
@@ -45,6 +46,8 @@ static mqtt_route_kind_t web_api_post_route_to_mqtt(web_api_route_t route)
         return MQTT_ROUTE_CMD_DISPENSE_CANCEL;
     case WEB_API_POST_FEED_MODE:
         return MQTT_ROUTE_CMD_FEED_MODE;
+    case WEB_API_POST_FEED_OVERFILL:
+        return MQTT_ROUTE_CMD_FEED_OVERFILL;
     case WEB_API_POST_CONFIG:
         return MQTT_ROUTE_CMD_CONFIG;
     default:
@@ -259,6 +262,9 @@ web_api_route_t web_api_classify(const char *method, const char *path)
         if (strcmp(path, "/api/feed/mode") == 0) {
             return WEB_API_GET_FEED_MODE;
         }
+        if (strcmp(path, "/api/feed/overfill") == 0) {
+            return WEB_API_GET_FEED_OVERFILL;
+        }
 
         return WEB_API_ROUTE_UNKNOWN;
     }
@@ -289,6 +295,9 @@ web_api_route_t web_api_classify(const char *method, const char *path)
     }
     if (strcmp(path, "/api/feed/mode") == 0) {
         return WEB_API_POST_FEED_MODE;
+    }
+    if (strcmp(path, "/api/feed/overfill") == 0) {
+        return WEB_API_POST_FEED_OVERFILL;
     }
     if (strcmp(path, "/api/config") == 0) {
         return WEB_API_POST_CONFIG;
@@ -341,6 +350,13 @@ int web_api_handle_get(web_api_route_t route, char *buf, size_t len)
         }
 
         return written;
+
+    case WEB_API_GET_FEED_OVERFILL:
+        if (!mqtt_feed_overfill_format_snapshot(buf, len)) {
+            return -1;
+        }
+
+        return (int)strlen(buf);
 
     case WEB_API_GET_STATUS:
         return web_api_format_status(buf, len);

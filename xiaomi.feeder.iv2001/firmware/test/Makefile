@@ -33,6 +33,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/provision_reset.c \
              ../src/mqtt_cred.c \
              ../src/feed_config.c \
+             ../src/feed_bowl.c \
              ../src/tz_rule.c \
              ../src/epoch_calendar.c \
              ../src/time_local.c \
@@ -41,6 +42,7 @@ HOST_SRCS :=              ../src/app_log.c \
              ../src/mqtt_config.c \
              ../src/mqtt_json.c \
              ../src/mqtt_feed_mode.c \
+             ../src/mqtt_feed_overfill.c \
              ../src/mqtt_backoff.c \
              ../src/mqtt_topics.c \
              ../src/mqtt_route.c \
