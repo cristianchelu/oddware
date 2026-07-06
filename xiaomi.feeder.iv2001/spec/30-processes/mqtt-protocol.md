@@ -93,9 +93,9 @@ be auto-added to dashboards.
 
 | Category | Entities |
 |----------|----------|
-| (primary) | `dispense`, `bowl_weight`, `bowl_error`, `battery`, `mains`, `hopper_level`, `feeding_schedule`, `dispense_completed` |
+| (primary) | `dispense`, `bowl_weight`, `bowl_error`, `battery`, `mains`, `hopper_level`, `dispense_completed` |
 | `diagnostic` | `battery_voltage`, `device_timezone` |
-| `config` | `weight_compensation`, `overfill_protection`, `overfill_threshold_g` |
+| `config` | `feeding_schedule`, `weight_compensation`, `overfill_protection`, `overfill_threshold_g` |
 
 Read-only sensors use `diagnostic`, not `config` — Home Assistant rejects
 passive sensors with `entity_category: config`. Writable components (switch,
@@ -118,6 +118,7 @@ clear the config topic (empty retained payload) and republish, or use
 | button | dispense | — | — | Triggers default portion |
 | event | dispense_completed | — | — | Fires on each dispense job completion |
 | number | dispense_custom | — | `config` | Range: 5–150 g |
+| switch | feeding_schedule | — | `config` | On = global schedule enabled |
 | switch | weight_compensation | — | `config` | On = compensated dispense mode |
 | switch | overfill_protection | — | `config` | On = skip scheduled feeds when bowl ≥ threshold |
 | number | overfill_threshold_g | — | `config` | Range: 30–100 g |
@@ -269,25 +270,30 @@ POSIX `tz_rule`; always non-empty due to UTC0 fallback).
 
 Bench payload: `tools/mqtt/payloads/ha-device_timezone.json`.
 
-**Feeding schedule** binary sensor (validation slice):
+**Feeding schedule** switch (validation slice):
 
 | Field | Value |
 |-------|-------|
-| Discovery topic | `homeassistant/binary_sensor/petfeeder_<device_id>/feeding_schedule/config` |
+| Discovery topic | `homeassistant/switch/petfeeder_<device_id>/feeding_schedule/config` |
 | `name` | `Feeding schedule` |
 | `state_topic` | `petfeeder/<device_id>/schedule/state` |
-| `value_template` | `{{ value_json.enabled }}` |
-| `payload_on` / `payload_off` | `true` / `false` |
+| `value_template` | `{{ 'ON' if value_json.enabled else 'OFF' }}` |
+| `state_on` / `state_off` | `ON` / `OFF` |
+| `command_topic` | `petfeeder/<device_id>/cmd/schedule/enable` |
+| `payload_on` / `payload_off` | `{"enabled": true}` / `{"enabled": false}` |
 | `json_attributes_topic` | same as `state_topic` |
 | `json_attributes_template` | `{{ value_json \| tojson }}` |
 | `force_update` | `true` |
+| `optimistic` | `false` |
+| `entity_category` | `config` |
 | `availability_topic` | `petfeeder/<device_id>/connection` |
 | `payload_available` | `online` |
 | `payload_not_available` | `offline` |
 | `unique_id` | `petfeeder_<device_id>_feeding_schedule` |
 
 Entity `on`/`off` = global schedule enabled. Attributes expose the full JSON
-document including `schedule[]` and `today_enabled`.
+document including `schedule[]` and `today_enabled`. Toggle publishes
+`cmd/schedule/enable`.
 
 Bench payloads: `tools/mqtt/payloads/ha-feeding_schedule.json`.
 
@@ -443,7 +449,7 @@ HA validation-slice **Hopper level** and **Device timezone** sensors.
 
 **Implemented (validation slice):** schedule MQTT topics (`.../schedule/state`,
 `.../schedule/next`, `.../cmd/schedule/*`), dedicated coalesced publish path,
-and HA **Feeding schedule** binary sensor. Idempotent `cmd/schedule/enable` and
+and HA **Feeding schedule** switch. Idempotent `cmd/schedule/enable` and
 `cmd/schedule/today` succeed without republishing when the value is unchanged.
 
 **Not implemented yet:** remaining telemetry topics (`eaten_today`,
@@ -465,7 +471,7 @@ Post-connect MQTT publishes use a ring-buffered **mqtt_outbox** owned by
 | Parameter | Value |
 |-----------|-------|
 | Ring depth | `[tune]` 16 slots |
-| Max payload per slot | `[tune]` 768 B (HA discovery with dual availability) |
+| Max payload per slot | `[tune]` 1024 B (HA discovery; feeding schedule switch at max `device_id` length) |
 | Min interval between successful drains | `[tune]` 100 ms |
 
 When the ring is full, new enqueues are dropped and a debug log is emitted.

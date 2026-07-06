@@ -547,6 +547,7 @@ int mqtt_ha_format_device_timezone_config(char *buf, size_t len, const char *dev
 int mqtt_ha_format_feeding_schedule_config(char *buf, size_t len, const char *device_id)
 {
     char schedule_topic[96];
+    char schedule_cmd_topic[96];
     char connection_topic[96];
     char device_block[192];
     int written;
@@ -559,6 +560,13 @@ int mqtt_ha_format_feeding_schedule_config(char *buf, size_t len, const char *de
                           sizeof(schedule_topic),
                           device_id,
                           "schedule/state")
+            != PORT_OK) {
+        return -1;
+    }
+    if (mqtt_topic_format(schedule_cmd_topic,
+                          sizeof(schedule_cmd_topic),
+                          device_id,
+                          "cmd/schedule/enable")
             != PORT_OK) {
         return -1;
     }
@@ -581,18 +589,24 @@ int mqtt_ha_format_feeding_schedule_config(char *buf, size_t len, const char *de
                        "{\"name\":\"Feeding schedule\","
                        "\"unique_id\":\"petfeeder_%s_feeding_schedule\","
                        "\"state_topic\":\"%s\","
-                       "\"value_template\":\"{{ value_json.enabled }}\","
-                       "\"payload_on\":true,"
-                       "\"payload_off\":false,"
+                       "\"value_template\":\"{{ 'ON' if value_json.enabled else 'OFF' }}\","
+                       "\"state_on\":\"ON\","
+                       "\"state_off\":\"OFF\","
+                       "\"command_topic\":\"%s\","
+                       "\"payload_on\":\"{\\\"enabled\\\": true}\","
+                       "\"payload_off\":\"{\\\"enabled\\\": false}\","
                        "\"json_attributes_topic\":\"%s\","
                        "\"json_attributes_template\":\"{{ value_json | tojson }}\","
                        "\"force_update\":true,"
+                       "\"optimistic\":false,"
+                       "\"entity_category\":\"config\","
                        "\"availability_topic\":\"%s\","
                        "\"payload_available\":\"online\","
                        "\"payload_not_available\":\"offline\","
                        "%s}",
                        device_id,
                        schedule_topic,
+                       schedule_cmd_topic,
                        schedule_topic,
                        connection_topic,
                        device_block);
@@ -836,7 +850,7 @@ static const mqtt_ha_entity_t s_ha_entities[] = {
         .format_config = mqtt_ha_format_device_timezone_config,
     },
     {
-        .component = "binary_sensor",
+        .component = "switch",
         .object_id = "feeding_schedule",
         .format_config = mqtt_ha_format_feeding_schedule_config,
     },
@@ -866,7 +880,7 @@ static bool mqtt_ha_enqueue_entity(const mqtt_ha_entity_t *entity,
                                    const char *device_id)
 {
     char topic[128];
-    char payload[768];
+    char payload[MQTT_OUTBOX_MAX_PAYLOAD];
     int written;
 
     if (entity == NULL || device_id == NULL || device_id[0] == '\0') {

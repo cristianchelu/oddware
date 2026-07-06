@@ -13,9 +13,10 @@ cloud dependency and no phone-home telemetry.
   settings). Category mapping is in
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Entity categories.
   Shipped today: dispense button, bowl error, bowl weight, battery, mains,
-  hopper level, device timezone, feeding schedule, dispense completed event,
-  weight compensation, overfill protection, overfill threshold, and battery
-  pack voltage; the full entity table is in
+  hopper level, device timezone (diagnostic), feeding schedule (config),
+  dispense completed event, weight compensation (config), overfill protection
+  (config), overfill threshold (config), and battery pack voltage (diagnostic);
+  the full entity table is in
   [mqtt-protocol.md](../30-processes/mqtt-protocol.md) § Full entity table (planned).
 - **Generic MQTT compatible** — works with any broker and automation
   platform (Homey, Node-RED, etc.).

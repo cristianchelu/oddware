@@ -73,6 +73,7 @@ user can see it in their dashboard or automation.
 
 ## Home Assistant
 
-A **Feeding schedule** binary sensor is auto-discovered. Entity state
-reflects the global schedule on/off switch; the full schedule array and
-runtime status appear as entity attributes.
+A **Feeding schedule** switch is auto-discovered under Configuration.
+Entity state reflects the global schedule on/off switch and can be toggled
+from Home Assistant; the full schedule array and runtime status appear as
+entity attributes.

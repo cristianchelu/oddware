@@ -91,7 +91,7 @@ export DEVICE_ID=<your feeder id>
 ### HA checklist
 
 1. Device page shows **Diagnostics** card with battery voltage and device timezone.
-2. **Configuration** card shows weight compensation, overfill protection, and overfill threshold.
+2. **Configuration** card shows feeding schedule, weight compensation, overfill protection, and overfill threshold.
 3. Primary entities (bowl weight, dispense, battery, etc.) stay on the main device view.
 4. Dry-run any payload: `./tools/mqtt/mqtt-bench.sh verify ha battery_voltage`
 5. Re-publish discovery after editing `payloads/ha-*.json`; reload MQTT integration if HA does not update.
@@ -102,9 +102,16 @@ registry. Clear and republish:
 
 ```bash
 ./tools/mqtt/mqtt-bench.sh ha rediscover weight_compensation
+./tools/mqtt/mqtt-bench.sh ha rediscover feeding_schedule
 # or all diagnostic + config entities at once:
 ./tools/mqtt/mqtt-bench.sh ha rediscover-categories
 ```
+
+**Feeding schedule** moved from binary sensor to switch (`entity_category: config`).
+`ha rediscover feeding_schedule` clears the legacy `binary_sensor` discovery topic
+before republishing. Home Assistant may keep a stale
+`binary_sensor.petfeeder_*_feeding_schedule` entity until removed under
+Settings → Devices.
 
 Optional wait before republish (default 5 s): `MQTT_BENCH_HA_REDISCOVER_WAIT_S=8`.
 

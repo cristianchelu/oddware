@@ -45,8 +45,8 @@ live in [`spec/20-stories/`](spec/20-stories/), detailed behavior in
 - [x] Home Assistant / MQTT integration [partial] — auto-discovery with Diagnostics
   and Configuration entity sections; dispense button, bowl error, bowl weight,
   battery, battery pack voltage (diagnostic), mains connected, hopper level,
-  device timezone (diagnostic), feeding schedule (with full JSON attributes),
-  dispense completed event, weight compensation (config), overfill protection
+  device timezone (diagnostic), dispense completed event, feeding schedule
+  (config, with full JSON attributes), weight compensation (config), overfill protection
   (config), and overfill threshold (config); pending: child lock, custom dispense
   grams, eaten today, display mode, display brightness (see
   [`mqtt-protocol.md`](spec/30-processes/mqtt-protocol.md))

@@ -238,7 +238,7 @@ void test_connect_subscribes_and_publishes_online(void)
     fake_time_advance_ms(101u);
     mqtt_client_step();
     TEST_ASSERT_EQUAL_UINT(17, mqtt->publish_calls);
-    TEST_ASSERT_EQUAL_STRING("homeassistant/binary_sensor/petfeeder_ddeeff/feeding_schedule/config",
+    TEST_ASSERT_EQUAL_STRING("homeassistant/switch/petfeeder_ddeeff/feeding_schedule/config",
                              mqtt->last_publish_topic);
 
     fake_time_advance_ms(101u);

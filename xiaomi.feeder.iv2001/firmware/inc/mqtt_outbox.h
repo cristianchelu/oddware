@@ -11,6 +11,8 @@
 
 #include "mqtt_port.h"
 
+#define MQTT_OUTBOX_MAX_PAYLOAD    1024u
+
 typedef void (*mqtt_outbox_drained_fn)(const char *topic,
                                        const void *payload,
                                        size_t len,

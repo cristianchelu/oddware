@@ -6,6 +6,7 @@
 
 #include "fake_mqtt_port.h"
 #include "fake_time.h"
+#include "mqtt_cred.h"
 #include "mqtt_ha_discovery.h"
 #include "mqtt_outbox.h"
 
@@ -151,20 +152,42 @@ void test_mqtt_ha_format_device_timezone_config_json(void)
 
 void test_mqtt_ha_format_feeding_schedule_config_json(void)
 {
-    char buf[768];
+    char buf[1024];
     int written;
 
     written = mqtt_ha_format_feeding_schedule_config(buf, sizeof(buf), TEST_DEVICE_ID);
     TEST_ASSERT_GREATER_THAN(0, written);
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"name\":\"Feeding schedule\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_topic\":\"petfeeder/ddeeff/schedule/state\""));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"value_template\":\"{{ value_json.enabled }}\""));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":true"));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_off\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"value_template\":\"{{ 'ON' if value_json.enabled else 'OFF' }}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_on\":\"ON\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"state_off\":\"OFF\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"command_topic\":\"petfeeder/ddeeff/cmd/schedule/enable\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_on\":\"{\\\"enabled\\\": true}\""));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"payload_off\":\"{\\\"enabled\\\": false}\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"json_attributes_topic\":\"petfeeder/ddeeff/schedule/state\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"json_attributes_template\":\"{{ value_json | tojson }}\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"force_update\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"optimistic\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"entity_category\":\"config\""));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"unique_id\":\"petfeeder_ddeeff_feeding_schedule\""));
+}
+
+void test_mqtt_ha_format_feeding_schedule_fits_outbox_max_device_id(void)
+{
+    char buf[MQTT_OUTBOX_MAX_PAYLOAD];
+    char device_id[MQTT_DEVICE_ID_MAX_LEN + 1];
+    int written;
+    unsigned i;
+
+    for (i = 0; i < MQTT_DEVICE_ID_MAX_LEN; i++) {
+        device_id[i] = 'a';
+    }
+    device_id[MQTT_DEVICE_ID_MAX_LEN] = '\0';
+
+    written = mqtt_ha_format_feeding_schedule_config(buf, sizeof(buf), device_id);
+    TEST_ASSERT_GREATER_THAN(0, written);
+    TEST_ASSERT_LESS_THAN((int)MQTT_OUTBOX_MAX_PAYLOAD, written);
 }
 
 void test_mqtt_ha_format_dispense_completed_config_json(void)
@@ -230,9 +253,6 @@ void test_mqtt_ha_primary_entities_omit_entity_category(void)
     TEST_ASSERT_NULL(strstr(buf, "entity_category"));
 
     mqtt_ha_format_dispense_button_config(buf, sizeof(buf), TEST_DEVICE_ID);
-    TEST_ASSERT_NULL(strstr(buf, "entity_category"));
-
-    mqtt_ha_format_feeding_schedule_config(buf, sizeof(buf), TEST_DEVICE_ID);
     TEST_ASSERT_NULL(strstr(buf, "entity_category"));
 
     mqtt_ha_format_hopper_level_config(buf, sizeof(buf), TEST_DEVICE_ID);

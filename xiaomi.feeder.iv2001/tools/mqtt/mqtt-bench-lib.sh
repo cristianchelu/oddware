@@ -170,7 +170,7 @@ mqtt_bench_ha_discovery_lookup() {
             payload="$(mqtt_bench_ha_weight_compensation_broken_payload)"
             ;;
         feeding_schedule)
-            topic="homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config"
+            topic="homeassistant/switch/petfeeder_${DEVICE_ID}/feeding_schedule/config"
             payload="$(mqtt_bench_ha_feeding_schedule_payload)"
             ;;
         device_timezone)
@@ -336,6 +336,15 @@ mqtt_bench_ha_discovery_clear() {
         return 1
     fi
 
+    if [ "$entity" = "feeding_schedule" ]; then
+        mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+            -u "$MQTT_USER" -P "$MQTT_PASS" \
+            -t "homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config" \
+            -n -r -q 1
+        echo "cleared retained HA discovery (legacy binary_sensor):"
+        echo "  topic: homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config"
+    fi
+
     mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
         -u "$MQTT_USER" -P "$MQTT_PASS" \
         -t "$MQTT_BENCH_HA_TOPIC" -n -r -q 1
@@ -357,6 +366,7 @@ mqtt_bench_ha_rediscover_categories() {
     local entities=(
         battery_voltage
         device_timezone
+        feeding_schedule
         weight_compensation
         overfill_protection
         overfill_threshold_g
@@ -438,6 +448,10 @@ mqtt_bench_clean() {
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
                 -t "homeassistant/binary_sensor/petfeeder_${DEVICE_ID}/feeding_schedule/config" \
+                -n -r -q 1 2>/dev/null || true
+            mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
+                -u "$MQTT_USER" -P "$MQTT_PASS" \
+                -t "homeassistant/switch/petfeeder_${DEVICE_ID}/feeding_schedule/config" \
                 -n -r -q 1 2>/dev/null || true
             mosquitto_pub -h "$MQTT_HOST" -p "$MQTT_PORT" \
                 -u "$MQTT_USER" -P "$MQTT_PASS" \
