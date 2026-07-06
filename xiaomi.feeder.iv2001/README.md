@@ -3,19 +3,34 @@
 Open-source replacement firmware for the **Xiaomi Smart Pet Food Feeder 2**
 (retail XMWSQ02, cloud model `xiaomi.feeder.iv2001`).
 
-Local-only MQTT control for Home Assistant, Homey, or any MQTT broker. No
-cloud, no MIoT, no phone-home.
+Local-only MQTT control for Home Assistant, Homey, or any MQTT broker, plus an
+optional LAN web admin UI. No cloud, no MIoT, no phone-home.
+
+## Early, but usable with Home Assistant
+
+This firmware is **experimental and early**. APIs, defaults, and behavior can
+change between releases; some product features from the stock feeder are still
+missing (pin-hole reset, sleep mode, TLS, and others in the checklist below).
+
+For a **Home Assistant** setup on a local MQTT broker, it is already **fully
+usable for normal day-to-day feeding**: edit schedules from HA or the LAN web
+UI, dispense on demand (button or automation), and rely on scheduled feeds at
+the configured times. Each completed dispense publishes a **Dispense completed**
+event to MQTT with measured grams and outcome (`success`, `underfill`, `stuck`,
+etc.) so you can build automations — notifications, logging, feeding history,
+or integrations with other pets/devices — on the HA side without cloud services.
 
 ## Firmware status
 
-Replacement firmware is under active development. User goals live in
-[`spec/20-stories/`](spec/20-stories/); detailed behavior in
+Active development. The checklist below tracks breadth of coverage; user goals
+live in [`spec/20-stories/`](spec/20-stories/), detailed behavior in
 [`spec/30-processes/`](spec/30-processes/).
 
 ### Build & recovery
 
 - [x] IV2001 board build (MT7682, A/B partitions, custom bootloader)
 - [x] Host unit tests (`make test-host`)
+- [x] Web UI client tests (`make test-web`)
 - [x] UART flash tooling (Linux)
 - [x] MQTT OTA bench loop ([`tools/ota/`](tools/ota/))
 - [x] UART development console (MiniCLI)
@@ -27,36 +42,52 @@ Replacement firmware is under active development. User goals live in
 - [x] MQTT broker session (LWT on `connection`, device condition on `state`, reconnect backoff)
 - [x] MQTT OTA command (`cmd/ota`)
 - [ ] TLS
-- [x] Home Assistant / MQTT integration [partial] (Dispense button, Bowl error sensor; remaining entities in spec)
+- [x] Home Assistant / MQTT integration [partial] — auto-discovery for dispense button,
+  bowl error, bowl weight, battery, battery pack voltage (diagnostic), mains connected,
+  hopper level, device timezone, feeding schedule (with full JSON attributes),
+  dispense completed event, weight compensation, overfill protection, and overfill
+  threshold; pending: child lock, custom dispense grams, eaten today, display mode,
+  display brightness (see [`mqtt-protocol.md`](spec/30-processes/mqtt-protocol.md))
+- [x] LAN web admin UI on port 80 when STA is up (`WEB_UI_ENABLE=y`; see
+  [`web-ui.md`](spec/30-processes/web-ui.md))
 
 ### Provisioning
 
 - [x] Captive portal on first boot (home Wi-Fi + MQTT via `PetFeeder-XXXX` AP)
-- [x] Factory reset via UART CLI
+- [x] Factory reset via UART CLI (`factory-reset`)
 - [ ] Re-provisioning via pin-hole reset (short press)
 - [ ] Factory reset via pin-hole reset (long press)
 
 ### Feeding
 
-- [x] Open-loop portion dispense (UART, MQTT, HA button)
+- [x] Open-loop portion dispense (button, UART, MQTT, web UI, HA button)
+- [x] Gram-targeted dispense (5–150 g via MQTT `{"g":…}`, schedule slots, UART
+  `dispense grams`, web UI)
+- [x] Compensated dispense mode (weight-based top-up; MQTT, HA switch, web UI, UART)
+- [x] Dispense completion events over MQTT / HA (`dispense/event` with grams and outcome)
 - [x] Motor index tracking and jam / anti-jam
-- [ ] Weight-based dispense (5–150 g target, bowl feedback)
-- [ ] Dispense progress and outcome reporting over MQTT
+- [x] Overfill protection — skip scheduled feeds when the bowl is already full
+  (MQTT, HA, web UI, UART; manual dispense always bypasses)
+- [ ] Dispense live progress (retained status topic; not in protocol)
 
 ### Sensing & display
 
-- [x] Bowl weight on panel (default display mode)
+- [x] Bowl weight on panel (default display mode) and MQTT (`bowl_weight`)
 - [x] Weight scale calibration (CLI: `weigh cal zero` / `span`)
-- [x] Hopper level sensing (UART)
-- [x] Status pictographs (Wi-Fi, MQTT, dispense)
-- [ ] Bowl missing detection (Food Bowl Error)
+- [x] Hopper level sensing (IR + dispense weight check; UART and MQTT `hopper`)
+- [x] Status pictographs (Wi-Fi, MQTT, dispense, bowl error, child lock)
+- [x] Bowl missing / calibration fault detection (`bowl_error` on `state`, HA sensor)
 - [ ] Alternate display modes (eaten today, off) from product paths
+- [ ] MQTT `cmd/calibrate` and `cmd/display` (UART/CLI paths exist)
 
 ### Controls
 
 - [x] Physical button input and gesture detection
-- [x] Manual dispense button
-- [x] Child lock [partial] (all physical gestures blocked except unlock combo; MQTT `cmd/config` pending)
+- [x] Manual dispense button (short press)
+- [x] Child lock [partial] — reset+dispense combo, persistent NVRAM, display feedback;
+  MQTT / HA entity pending (`cmd/config` does not accept `child_lock` yet)
+- [ ] Rear power button sleep / wake
+- [ ] Pin-hole reset gestures (see Provisioning)
 
 ### Power & battery
 
@@ -66,18 +97,21 @@ reporting, conservation) and [`controls.md`](spec/20-stories/controls.md)
 [`power-state-machine.md`](spec/30-processes/power-state-machine.md) and
 [`battery-monitoring.md`](spec/30-processes/battery-monitoring.md).
 
-- [x] Mains vs battery source detection (UART)
+- [x] Mains vs battery source detection (UART and MQTT `mains`)
+- [x] Battery voltage and percentage (MQTT `battery`, `battery_voltage`; HA sensors)
 - [ ] Power state machine (Normal / Battery / Sleep)
-- [ ] Battery voltage and percentage
 - [ ] Low-battery warning and conservation (display / Wi-Fi off; keep dispense)
 - [ ] Wi-Fi on battery (`on` / `off` / `scheduled_only`)
 - [ ] Sleep / wake (rear power button)
 
 ### Scheduling
 
-- [ ] NTP time sync
-- [ ] Schedule slots (MQTT CRUD, timed dispense)
-- [ ] Next-feed reporting
+- [x] NTP time sync over Wi-Fi (POSIX `TZ` in config; local civil times)
+- [x] Schedule slots — up to 32 entries (MQTT CRUD, LAN web UI, UART `schedule`)
+- [x] Global enable, today-only override, per-slot skip, and runtime status
+  (`pending`, `skipped`, `skipped_full`, `dispensed`, …)
+- [x] Next-feed reporting (`schedule/next` MQTT topic and web API)
+- [ ] Eaten-today tracking and MQTT sensor
 
 ## Quick start
 
@@ -94,6 +128,8 @@ sources `build-env.sh`.
 ./tools/bootstrap.sh --with-flash-tool   # also extracts MediaTek IoT Flash Tool
 ./tools/bootstrap.sh --host-only         # host tests only, no SDK fetch
 make test-host                           # re-run host tests
+make test-web                            # web UI logic tests
+make preview-web                         # local admin UI with mock API
 ```
 
 ### Prerequisites
@@ -117,6 +153,11 @@ source tools/build-env.sh
 ```
 
 See `firmware/README.md` for the GCC scaffold layout.
+
+When `WEB_UI_ENABLE=y` (default in `feature.mk`), the build embeds a minified
+gzip bundle of `tools/web/`. After flashing, open `http://<feeder-ip>/` on the
+LAN for schedule editing, manual dispense, feed mode, overfill settings, and a
+live status panel — no MQTT broker required.
 
 ### Flashing (Linux, UART)
 
@@ -162,6 +203,7 @@ MQTT-triggered A/B updates from a dev machine. See
 spec/           Specifications (source of truth)
 firmware/       Application source and board overlay
 tools/          Bootstrap, SDK fetch, build, flash helpers
+  web/          LAN admin UI sources, build script, host tests
   ota/          MQTT OTA bench scripts (see tools/ota/README.md)
 external/       Gitignored — Airoha IoT SDK and Wine flash tool
 ```
