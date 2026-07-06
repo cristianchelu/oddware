@@ -280,7 +280,8 @@ Node.js (`node --test`) runs `tools/web/test_logic.mjs` against
 `tools/web/logic.mjs` — weekday masks, POST body shapes, and formatters aligned
 with [web-ui-client.md](../30-processes/web-ui-client.md). HTTP route handlers
 stay in `make test-host` (`test_web_api.c`, `test_schedule_cmd.c`). No npm or
-browser automation in the default loop.
+browser automation in the default loop. Local layout preview:
+`make preview-web` (`tools/web/dev_server.mjs` + `mock_api.mjs`).
 
 ### On-target tests
 

@@ -1,12 +1,15 @@
 # Top-level convenience targets. See README.md for onboarding.
 
-.PHONY: test-host test-web bootstrap setup check-prereqs setup-flashtool uart-console
+.PHONY: test-host test-web preview-web bootstrap setup check-prereqs setup-flashtool uart-console
 
 test-host:
 	$(MAKE) -C firmware/test test-host
 
 test-web:
 	$(MAKE) -C tools/web test-web
+
+preview-web:
+	$(MAKE) -C tools/web preview-web
 
 bootstrap:
 	./tools/bootstrap.sh

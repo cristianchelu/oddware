@@ -3,72 +3,270 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PetFeeder</title>
+<title>Pet Feeder</title>
 <style>
-*{box-sizing:border-box}body{font-family:system-ui,sans-serif;margin:0;padding:12px;background:#111;color:#eee}
-h1,h2{font-size:1.1rem;margin:12px 0 8px}section{border:1px solid #333;border-radius:8px;padding:10px;margin:12px 0}
-#status{font-size:.85rem;color:#aaa;white-space:pre-wrap}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
-label{font-size:.85rem}input,select,button{padding:6px 8px;border-radius:4px;border:1px solid #444;background:#222;color:#eee}
-button{cursor:pointer}button.primary{background:#2a6}table{width:100%;border-collapse:collapse;font-size:.85rem}
-td,th{border-bottom:1px solid #333;padding:4px;text-align:left}.pill{display:inline-block;padding:2px 6px;border-radius:4px;background:#333;font-size:.75rem}
-.err{color:#f66}.ok{color:#6c6}
+:root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--line:#e7e5e4;--card:#fff;--accent:#2563eb;--af:#fff;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--r:10px;--sans:system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 var(--sans);background:var(--bg);color:var(--fg)}
+.wrap{max-width:36rem;margin:0 auto;padding:16px 16px 28px}
+header{margin-bottom:10px;align-items:center}
+h1{font-size:1.2rem;font-weight:650;margin:0;letter-spacing:-.02em;flex:1;min-width:0}
+.hdr-tools{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.hdr-clock{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tab-radios{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.tabs{display:flex;gap:4px;margin:0 0 12px;padding:4px;background:var(--line);border-radius:10px;position:sticky;top:0;z-index:2}
+.tabs label{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:.88rem;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+#tab-now:checked~.tabs label[for="tab-now"],#tab-sched:checked~.tabs label[for="tab-sched"],#tab-settings:checked~.tabs label[for="tab-settings"]{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.tab-pane{display:none}
+#tab-now:checked~.tab-body #pane-now,#tab-sched:checked~.tab-body #pane-sched,#tab-settings:checked~.tab-body #pane-settings{display:block}
+.tab-body .panel{margin:0 0 12px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.panel>h2{font-size:.95rem;margin:0 0 10px;font-weight:650}
+.panel.status{padding:14px 16px}
+.panel.action{border-color:#bfdbfe;background:#f8fafc}
+.next-meta{color:var(--muted);font-size:.92rem;margin:0;font-variant-numeric:tabular-nums}
+.next-main{font-size:1.35rem;font-weight:650;margin:4px 0 0;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.alerts{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.alerts:empty{display:none}
+.state-grid{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.9rem}
+.state-grid dt{color:var(--muted);margin:0}
+.state-grid dd{margin:0;font-weight:550}
+.state-grid dd.ok{color:var(--ok)}
+.state-grid dd.warn{color:var(--warn)}
+.state-grid dd.bad{color:var(--bad)}
+.state-grid dd.muted{color:var(--muted)}
+#toast:empty{display:none}
+#toast{font-size:.85rem;margin:0 0 8px}
+#toast.ok{color:var(--ok)}#toast.err{color:var(--bad)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.between{justify-content:space-between}
+.row.end{margin-top:10px}
+input,select,button{font:inherit}
+input[type=number],select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+input.tin{width:5em;text-align:center}
+button{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg);cursor:pointer}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--af);font-weight:550}
+button.sm{padding:6px 12px;font-size:.82rem;border-radius:6px;min-height:36px}
+button.xs{padding:2px 6px;font-size:.68rem;border-radius:5px;line-height:1.3}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:4px 8px;font-size:1.1rem;line-height:1}
+button.dan{border-color:#fecaca;color:var(--bad)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.82rem;margin:0 0 10px}
+.field{margin:0 0 18px}
+.field:last-child{margin-bottom:0}
+.lbl{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;margin-bottom:8px}
+.time-row{display:flex;align-items:center;gap:8px}
+.time-row input{width:3.6em;padding:10px 8px;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums}
+.time-sep{color:var(--muted);font-size:1.2rem;font-weight:300}
+.preset{display:flex;gap:8px;margin-bottom:10px}
+.preset button{flex:1;min-height:40px}
+.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.form-actions button{min-height:44px;width:100%}
+.form-actions button.ghost{border:1px solid var(--line);color:var(--fg)}
+.amt-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.amt-row input{width:4.5em}
+.sched-toggles{padding:12px 14px}
+.slot-list{display:flex;flex-direction:column;gap:10px}
+.slot-card{border:1px solid var(--line);border-radius:8px;padding:12px}
+.slot-card.pick{cursor:pointer}
+.slot-card.pick:active{background:#fafaf9}
+.slot-card.sel{border-color:#93c5fd;background:#eff6ff}
+.slot-card.off{opacity:.62}
+.slot-head{display:grid;grid-template-columns:3.25rem 2.25rem 1fr auto;align-items:center;column-gap:10px;margin-bottom:10px;font-size:.9rem;line-height:1.2}
+.slot-when{font-weight:650;font-variant-numeric:tabular-nums}
+.slot-amt{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.slot-status{justify-self:end}
+.day-dots{display:flex;gap:4px;align-items:center}
+.day-dot{color:var(--muted);opacity:.35;font-weight:500;font-size:inherit}
+.day-dot.sched{color:var(--fg);opacity:1;font-weight:600}
+.day-dot.today{display:inline-flex;align-items:center;justify-content:center;min-width:1.35em;height:1.35em;border-radius:3px;border:1px solid var(--line);font-weight:700;opacity:1}
+.day-dot.today.on{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.day-dot.today.off{background:#f5f5f4;border-color:var(--line);color:var(--muted)}
+.slot-head .badge{font-size:inherit;padding:2px 7px}
+.slot-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.slot-actions button{min-height:40px;padding:8px 6px;font-size:.78rem}
+.tog{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.tog input{width:2.4em;height:1.35em;accent-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;width:0;height:0}
+.chip span{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:.82rem;font-weight:550;cursor:pointer;user-select:none}
+.chip input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--af)}
+table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:4px}
+th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.badge.ok{background:#dcfce7;color:var(--ok)}.badge.warn{background:#fef3c7;color:var(--warn)}
+.badge.bad{background:#fee2e2;color:var(--bad)}.badge.muted{background:#f5f5f4;color:var(--muted)}
+.empty{color:var(--muted);font-size:.9rem;padding:16px 0;text-align:center}
+.set-block+.set-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<h1>PetFeeder</h1>
-<div id="status">Loading…</div>
-<section>
-<h2>Dispense</h2>
-<div class="row">
-<label>Grams <input id="dispG" type="number" min="5" max="150" value="30" style="width:4em"></label>
-<button class="primary" id="dispBtn">Feed now</button>
+<div class="wrap">
+<header class="row between">
+<h1>Pet Feeder</h1>
+<div class="hdr-tools">
+<time id="deviceTime" class="hdr-clock" title="Feeder time">—</time>
+<button type="button" class="ghost" id="refreshBtn" title="Refresh" aria-label="Refresh">↻</button>
+</div>
+</header>
+<div id="toast"></div>
+<input type="radio" name="tab" id="tab-now" class="tab-radios" checked>
+<input type="radio" name="tab" id="tab-sched" class="tab-radios">
+<input type="radio" name="tab" id="tab-settings" class="tab-radios">
+<nav class="tabs">
+<label for="tab-now">Now</label>
+<label for="tab-sched">Schedule</label>
+<label for="tab-settings">Settings</label>
+</nav>
+<div class="tab-body">
+<div id="pane-now" class="tab-pane">
+<section class="panel status" aria-live="polite">
+<p class="next-meta" id="nextMeta">—</p>
+<p class="next-main" id="nextMain" hidden></p>
+<div class="alerts" id="statusAlerts"></div>
+</section>
+<section class="panel">
+<h2>Current state</h2>
+<dl class="state-grid" id="stateGrid"></dl>
+</section>
+<section class="panel action">
+<h2>Feed now</h2>
+<div class="row between">
+<label>Amount <input id="dispG" type="number" min="5" max="150" value="30" style="width:4.5em" aria-label="Grams"> g</label>
+<button class="pri" id="dispBtn">Dispense</button>
 </div>
 </section>
-<section>
-<h2>Schedule</h2>
-<div class="row">
-<label><input type="checkbox" id="schedEn"> Enabled</label>
-<label><input type="checkbox" id="todayEn"> Today</label>
-<button id="refreshBtn">Refresh</button>
 </div>
-<div id="next"></div>
-<table id="slots"><thead><tr><th>Time</th><th>Days</th><th>g</th><th>State</th><th></th></tr></thead><tbody></tbody></table>
-<h2>Add / edit slot</h2>
+<div id="pane-sched" class="tab-pane">
+<section class="panel sched-toggles">
 <div class="row">
-<input id="slotH" type="number" min="0" max="23" placeholder="HH" style="width:3em">
-<input id="slotM" type="number" min="0" max="59" placeholder="MM" style="width:3em">
-<input id="slotG" type="number" min="5" max="150" value="30" style="width:4em">
-<label><input type="checkbox" id="slotOn" checked> on</label>
+<label class="tog"><input type="checkbox" id="schedEn"> Automatic feeds</label>
+<label class="tog"><input type="checkbox" id="todayEn"> Feeds today</label>
 </div>
-<div class="row" id="days"></div>
-<button class="primary" id="saveSlot">Save slot</button>
 </section>
-<section>
-<h2>Settings</h2>
-<div class="row">
+<section class="panel">
+<h2>Scheduled feeds</h2>
+<div id="slotList" class="slot-list"></div>
+<p class="empty" id="noSlots" hidden>No feeding times yet.</p>
+</section>
+<section class="panel" id="slotForm">
+<h2>Add or edit</h2>
+<div class="field">
+<span class="lbl">Time</span>
+<div class="time-row">
+<input id="slotH" type="number" min="0" max="23" placeholder="HH" aria-label="Hour" inputmode="numeric">
+<span class="time-sep" aria-hidden="true">:</span>
+<input id="slotM" type="number" min="0" max="59" placeholder="MM" aria-label="Minute" inputmode="numeric">
+</div>
+</div>
+<div class="field">
+<span class="lbl">Days</span>
+<div class="preset">
+<button type="button" class="sm" id="presetWeekdays">Weekdays</button>
+<button type="button" class="sm" id="presetAll">Every day</button>
+</div>
+<div class="chips" id="days"></div>
+</div>
+<div class="field">
+<span class="lbl">Amount &amp; status</span>
+<div class="amt-row">
+<label>Amount <input id="slotG" type="number" min="5" max="150" value="30" aria-label="Grams" inputmode="numeric"> g</label>
+<label class="tog"><input type="checkbox" id="slotOn" checked> Enabled</label>
+</div>
+</div>
+<div class="form-actions">
+<button class="pri" id="saveSlot">Save</button>
+<button type="button" class="ghost" id="clearSlot">Clear</button>
+</div>
+</section>
+</div>
+<div id="pane-settings" class="tab-pane">
+<section class="panel">
+<div class="set-block">
+<div class="row between">
 <label>Feed mode
-<select id="feedMode"><option value="open_loop">open_loop</option><option value="compensated">compensated</option></select>
+<select id="feedMode">
+<option value="open_loop">Open loop</option>
+<option value="compensated">Compensated</option>
+</select>
 </label>
-<button id="saveMode">Save mode</button>
+<button id="saveMode">Save</button>
 </div>
-<div class="row">
-<label>TZ rule <input id="tzRule" size="24" placeholder="UTC0"></label>
-<button id="saveTz">Save TZ</button>
+</div>
+<div class="set-block">
+<div class="row between">
+<label>Timezone <input id="tzRule" size="20" placeholder="UTC0"></label>
+<button id="saveTz">Save</button>
+</div>
 </div>
 </section>
+</div>
+</div>
+</div>
 <script>
 <!-- INJECT_LOGIC -->
+let editKey = null;
+let todayDow = null;
 const dayBox = document.getElementById('days');
 DAYS.forEach((d, i) => {
   const l = document.createElement('label');
-  l.innerHTML = `<input type=checkbox class=day value=${i}> ${d}`;
+  l.className = 'chip';
+  l.innerHTML = `<input type=checkbox class=day value=${i}><span>${d}</span>`;
   dayBox.appendChild(l);
 });
-function msg(text, ok) {
-  const s = document.getElementById('status');
-  s.textContent = text;
-  s.className = ok ? 'ok' : 'err';
+function toast(text, ok) {
+  const s = document.getElementById('toast');
+  s.textContent = text || '';
+  s.className = ok ? 'ok' : text ? 'err' : '';
+}
+function badge(text, tone) {
+  return `<span class="badge ${tone}">${text}</span>`;
+}
+function renderDayDots(repeat_days) {
+  return slotDayBadges(repeat_days, todayDow)
+    .map((d) => {
+      let cls = 'day-dot';
+      if (d.today) cls += d.on ? ' today on' : ' today off';
+      else if (d.on) cls += ' sched';
+      const hint = d.today ? `${d.label} (today)` : d.label;
+      return `<span class="${cls}" title="${hint}">${d.letter}</span>`;
+    })
+    .join('');
+}
+function showTab(name) {
+  const el = document.getElementById('tab-' + name);
+  if (el) el.checked = true;
+}
+function slotKey(h, m) {
+  return `${h}:${m}`;
+}
+function syncRowSelection() {
+  const h = document.getElementById('slotH').value;
+  const m = document.getElementById('slotM').value;
+  const key = h !== '' && m !== '' ? slotKey(h, m) : null;
+  editKey = key;
+  document.querySelectorAll('#slotList .slot-card').forEach((card) => {
+    card.classList.toggle('sel', key && card.dataset.key === key);
+  });
+}
+function renderStatus(st) {
+  const parts = formatNextFeedParts(st.next);
+  document.getElementById('nextMeta').textContent = parts.headline;
+  const main = document.getElementById('nextMain');
+  if (parts.detail) {
+    main.textContent = parts.detail;
+    main.hidden = false;
+  } else {
+    main.hidden = true;
+  }
+  document.getElementById('statusAlerts').innerHTML = formatStatusAlerts(st)
+    .map((a) => badge(a.text, a.tone))
+    .join(' ');
+  document.getElementById('stateGrid').innerHTML = statusStateRows(st)
+    .map((r) => `<dt>${r.label}</dt><dd class="${r.tone}">${r.value}</dd>`)
+    .join('');
+  document.getElementById('deviceTime').textContent = formatDeviceTime(st);
 }
 async function api(method, path, body) {
   const o = { method };
@@ -80,64 +278,126 @@ async function api(method, path, body) {
   return parseApiResponse(await r.text());
 }
 function daysToMask() {
-  const values = [...document.querySelectorAll('.day:checked')].map((c) => c.value);
-  return readMaskFromCheckedValues(values);
+  return readMaskFromCheckedValues([...document.querySelectorAll('.day:checked')].map((c) => c.value));
 }
 function renderDays(mask) {
   document.querySelectorAll('.day').forEach((c) => {
     c.checked = !!(mask & (1 << c.value));
   });
 }
+function fillSlotForm(s) {
+  const t = s.time.split(':');
+  document.getElementById('slotH').value = t[0];
+  document.getElementById('slotM').value = t[1];
+  document.getElementById('slotG').value = s.g;
+  document.getElementById('slotOn').checked = !!s.enabled;
+  renderDays(indicesToMask(s.repeat_days || []));
+  syncRowSelection();
+  showTab('sched');
+  document.getElementById('slotForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearSlotForm() {
+  ['slotH', 'slotM'].forEach((id) => { document.getElementById(id).value = ''; });
+  document.getElementById('slotG').value = 30;
+  document.getElementById('slotOn').checked = true;
+  renderDays(ALL_DAYS_MASK);
+  syncRowSelection();
+}
+function bindSlotActions(card, s) {
+  const t = s.time.split(':');
+  card.querySelector('[data-toggle]').onclick = async (e) => {
+    e.stopPropagation();
+    await api('POST', '/api/schedule/toggle', JSON.stringify(buildScheduleToggleBody(t[0], t[1])));
+    loadAll();
+  };
+  card.querySelector('[data-skip]').onclick = async (e) => {
+    e.stopPropagation();
+    const skip = s.state !== 'skipped';
+    await api('POST', '/api/schedule/skip', JSON.stringify(buildScheduleSkipBody(t[0], t[1], skip)));
+    loadAll();
+  };
+  card.querySelector('[data-del]').onclick = async (e) => {
+    e.stopPropagation();
+    await api('POST', '/api/schedule/delete', JSON.stringify(buildScheduleDeleteBody(t[0], t[1])));
+    if (editKey === slotKey(t[0], t[1])) clearSlotForm();
+    loadAll();
+  };
+}
 async function loadStatus() {
   const st = await api('GET', '/api/status');
-  document.getElementById('next').textContent = formatNextFeed(st.next);
+  const newDow = st.time_synced ? weekdayFromLocalTime(st.local_time) : null;
+  const dowChanged = newDow !== todayDow;
+  todayDow = newDow;
+  renderStatus(st);
   document.getElementById('schedEn').checked = !!st.schedule_enabled;
   document.getElementById('todayEn').checked = !!st.today_enabled;
-  msg(formatStatusMessage(st), true);
+  if (dowChanged && document.getElementById('tab-sched').checked) {
+    await loadSchedule();
+  }
 }
 async function loadSchedule() {
   const doc = await api('GET', '/api/schedule/state');
-  const tb = document.querySelector('#slots tbody');
-  tb.innerHTML = '';
-  (doc.schedule || []).forEach((s) => {
-    const tr = document.createElement('tr');
+  const rows = sortSlotsByTime(doc.schedule || []);
+  const list = document.getElementById('slotList');
+  list.innerHTML = '';
+  document.getElementById('noSlots').hidden = rows.length > 0;
+  rows.forEach((s) => {
+    const card = document.createElement('article');
+    card.className = 'slot-card pick';
     const t = s.time.split(':');
-    const days = formatSlotDayLetters(s.repeat_days);
-    tr.innerHTML = `<td>${s.time}</td><td>${days}</td><td>${s.g}</td><td><span class=pill>${s.state}</span></td>
-    <td><button data-del="${t[0]}:${t[1]}">Del</button> <button data-skip="${t[0]}:${t[1]}">Skip</button></td>`;
-    tr.querySelector('[data-del]').onclick = async () => {
-      await api('POST', '/api/schedule/delete', JSON.stringify(buildScheduleDeleteBody(t[0], t[1])));
-      loadAll();
-    };
-    tr.querySelector('[data-skip]').onclick = async () => {
-      await api('POST', '/api/schedule/skip', JSON.stringify(buildScheduleSkipBody(t[0], t[1])));
-      loadAll();
-    };
-    tb.appendChild(tr);
+    const key = slotKey(t[0], t[1]);
+    card.dataset.key = key;
+    if (!s.enabled) card.classList.add('off');
+    if (editKey === key) card.classList.add('sel');
+    const toggleLabel = s.enabled ? 'Disable' : 'Enable';
+    const skipLabel = s.state === 'skipped' ? 'Unskip' : 'Skip today';
+    card.innerHTML = `<div class=slot-head>
+<span class=slot-when>${formatSlotClock(s.time)}</span>
+<span class=slot-amt>${s.g}g</span>
+<span class=day-dots>${renderDayDots(s.repeat_days)}</span>
+<span class=slot-status>${badge(formatSlotState(s.state), slotStateTone(s.state))}</span>
+</div>
+<div class=slot-actions>
+<button type=button data-toggle>${toggleLabel}</button>
+<button type=button data-skip>${skipLabel}</button>
+<button type=button class=dan data-del>Delete</button>
+</div>`;
+    card.onclick = (e) => { if (!e.target.closest('button')) fillSlotForm(s); };
+    bindSlotActions(card, s);
+    list.appendChild(card);
   });
 }
 async function loadMode() {
   const m = await api('GET', '/api/feed/mode');
-  document.getElementById('feedMode').value = typeof m === 'string' && m.trim ? m.trim() : m;
+  const v = typeof m === 'string' && m.trim ? m.trim() : m;
+  document.getElementById('feedMode').value = v;
 }
 async function loadConfig() {
   const c = await api('GET', '/api/config');
-  if (c.tz_rule) {
-    document.getElementById('tzRule').value = c.tz_rule;
-  }
+  if (c.tz_rule) document.getElementById('tzRule').value = c.tz_rule;
 }
 async function loadAll() {
+  toast('', true);
   await loadStatus();
   await loadSchedule();
   await loadMode();
   await loadConfig();
 }
 document.getElementById('refreshBtn').onclick = loadAll;
+document.getElementById('presetWeekdays').onclick = () => renderDays(WEEKDAY_MASK);
+document.getElementById('presetAll').onclick = () => renderDays(ALL_DAYS_MASK);
+document.getElementById('clearSlot').onclick = clearSlotForm;
+['slotH', 'slotM'].forEach((id) => {
+  document.getElementById(id).addEventListener('input', syncRowSelection);
+});
 document.getElementById('dispBtn').onclick = async () => {
-  const g = document.getElementById('dispG').value;
-  const r = await api('POST', '/api/dispense', JSON.stringify(buildDispenseBody(g)));
-  const m = mutationMessage(r, 'Dispense queued', 'Dispense failed');
-  msg(m.text, m.ok);
+  const btn = document.getElementById('dispBtn');
+  btn.disabled = true;
+  const r = await api('POST', '/api/dispense', JSON.stringify(buildDispenseBody(document.getElementById('dispG').value)));
+  const m = mutationMessage(r, 'Dispense started', 'Dispense failed');
+  toast(m.text, m.ok);
+  btn.disabled = false;
+  loadStatus();
 };
 document.getElementById('schedEn').onchange = async (e) => {
   await api('POST', '/api/schedule/enable', JSON.stringify(buildScheduleEnableBody(e.target.checked)));
@@ -150,10 +410,7 @@ document.getElementById('todayEn').onchange = async (e) => {
 document.getElementById('saveSlot').onclick = async () => {
   const mask = daysToMask();
   const v = validateScheduleMask(mask);
-  if (!v.ok) {
-    msg(v.error, false);
-    return;
-  }
+  if (!v.ok) { toast(v.error, false); return; }
   const body = buildScheduleSetBody({
     hour: document.getElementById('slotH').value,
     min: document.getElementById('slotM').value,
@@ -162,26 +419,22 @@ document.getElementById('saveSlot').onclick = async () => {
     enabled: document.getElementById('slotOn').checked,
   });
   const r = await api('POST', '/api/schedule/set', JSON.stringify(body));
-  const m = mutationMessage(r, 'Slot saved');
-  msg(m.text, m.ok);
+  const m = mutationMessage(r, 'Feeding time saved');
+  toast(m.text, m.ok);
+  if (m.ok) clearSlotForm();
   loadAll();
 };
 document.getElementById('saveMode').onclick = async () => {
-  const v = document.getElementById('feedMode').value;
-  const r = await api('POST', '/api/feed/mode', v);
-  const m = mutationMessage(r, 'Mode saved');
-  msg(m.text, m.ok);
+  const r = await api('POST', '/api/feed/mode', document.getElementById('feedMode').value);
+  const m = mutationMessage(r, 'Feed mode saved');
+  toast(m.text, m.ok);
 };
 document.getElementById('saveTz').onclick = async () => {
-  const r = await api(
-    'POST',
-    '/api/config',
-    JSON.stringify(buildConfigTzBody(document.getElementById('tzRule').value)),
-  );
-  const m = mutationMessage(r, 'TZ saved');
-  msg(m.text, m.ok);
+  const r = await api('POST', '/api/config', JSON.stringify(buildConfigTzBody(document.getElementById('tzRule').value)));
+  const m = mutationMessage(r, 'Timezone saved');
+  toast(m.text, m.ok);
 };
-renderDays(127);
+clearSlotForm();
 loadAll();
 setInterval(loadStatus, 5000);
 </script>

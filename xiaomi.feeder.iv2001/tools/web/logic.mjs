@@ -49,6 +49,10 @@ export function buildScheduleDeleteBody(hour, min) {
     return { hour: Number(hour), min: Number(min) };
 }
 
+export function buildScheduleToggleBody(hour, min) {
+    return { hour: Number(hour), min: Number(min) };
+}
+
 export function buildScheduleSkipBody(hour, min, skip = true) {
     return { hour: Number(hour), min: Number(min), skip: Boolean(skip) };
 }
@@ -74,7 +78,35 @@ export function formatNextFeed(next) {
         return 'No upcoming feed';
     }
     const mm = String(next.min).padStart(2, '0');
-    return `Next: ${next.hour}:${mm} ${next.g}g in ${next.in_min}m`;
+    return `${next.hour}:${mm} · ${next.g}g · ${next.in_min}m`;
+}
+
+export function formatNextFeedParts(next) {
+    if (!next) {
+        return { headline: 'Next feed · nothing scheduled', detail: null };
+    }
+    const hh = String(next.hour).padStart(2, '0');
+    const mm = String(next.min).padStart(2, '0');
+    const when = next.in_min === 0 ? 'now' : `in ${next.in_min} min`;
+    return {
+        headline: `Next feed · ${when}`,
+        detail: `${hh}:${mm} · ${next.g}g`,
+    };
+}
+
+export const WEEKDAY_MASK = indicesToMask([0, 1, 2, 3, 4]);
+export const ALL_DAYS_MASK = 127;
+
+export function sortSlotsByTime(slots) {
+    return [...slots].sort((a, b) => {
+        const [ah, am] = a.time.split(':').map(Number);
+        const [bh, bm] = b.time.split(':').map(Number);
+        return ah !== bh ? ah - bh : am - bm;
+    });
+}
+
+export function formatEditorTitle(time) {
+    return time ? `Edit ${time}` : 'New feeding time';
 }
 
 export function formatStatusMessage(st) {
@@ -82,8 +114,233 @@ export function formatStatusMessage(st) {
     return `${time} | hopper ${st.hopper} | busy ${st.dispense_busy}`;
 }
 
+export function formatRefreshTime(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    const h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+}
+
+export function formatMetaLine(st, refreshedAt) {
+    const hop = formatHopper(st.hopper).toLowerCase();
+    const busy = st.dispense_busy ? 'feeding' : 'idle';
+    return `${formatRefreshTime(refreshedAt)} · hopper ${hop} · ${busy}`;
+}
+
+export function formatStatusAlerts(st) {
+    const out = [];
+    if (!st.time_synced) {
+        out.push({ text: 'Time not synced', tone: 'warn' });
+    }
+    if (st.bowl_error) {
+        out.push({ text: 'Bowl problem', tone: 'bad' });
+    }
+    return out;
+}
+
+export function formatBowlWeightWire(wire) {
+    if (wire === undefined) {
+        return '—';
+    }
+    if (wire === '') {
+        return 'Unknown';
+    }
+    return `${wire} g`;
+}
+
+export function bowlWeightTone(wire) {
+    if (wire === undefined) {
+        return 'muted';
+    }
+    if (wire === '') {
+        return 'warn';
+    }
+    return 'ok';
+}
+
+export function formatHopperLevel(hopper) {
+    switch (hopper) {
+        case 'empty':
+            return 'Empty';
+        case 'low':
+            return 'Low';
+        default:
+            return 'Normal';
+    }
+}
+
+export function formatBowlHealth(bowl_error) {
+    if (bowl_error === undefined) {
+        return '—';
+    }
+    return bowl_error ? 'Problem' : 'OK';
+}
+
+export function bowlHealthTone(bowl_error) {
+    if (bowl_error === undefined) {
+        return 'muted';
+    }
+    return bowl_error ? 'bad' : 'ok';
+}
+
+export function formatBatteryWire(wire) {
+    if (wire === undefined) {
+        return '—';
+    }
+    if (wire === 'unknown') {
+        return 'Unknown';
+    }
+    return `${wire}%`;
+}
+
+export function formatMainsWire(wire) {
+    if (wire === undefined) {
+        return '—';
+    }
+    return wire === 'ON' ? 'Mains' : 'Battery';
+}
+
+export function statusStateRows(st) {
+    const rows = [
+        {
+            label: 'Food in bowl',
+            value: formatBowlWeightWire(st.bowl_weight),
+            tone: bowlWeightTone(st.bowl_weight),
+        },
+        {
+            label: 'Hopper',
+            value: formatHopperLevel(st.hopper),
+            tone: hopperTone(st.hopper),
+        },
+        {
+            label: 'Activity',
+            value: formatBusy(st.dispense_busy),
+            tone: busyTone(st.dispense_busy),
+        },
+        {
+            label: 'Bowl',
+            value: formatBowlHealth(st.bowl_error),
+            tone: bowlHealthTone(st.bowl_error),
+        },
+    ];
+    if (st.battery !== undefined) {
+        rows.push({
+            label: 'Battery',
+            value: formatBatteryWire(st.battery),
+            tone: st.battery === 'unknown' ? 'warn' : 'ok',
+        });
+    }
+    if (st.mains !== undefined) {
+        rows.push({
+            label: 'Power',
+            value: formatMainsWire(st.mains),
+            tone: st.mains === 'ON' ? 'ok' : 'muted',
+        });
+    }
+    return rows;
+}
+
+export function formatDeviceTime(st) {
+    if (!st.time_synced || !st.local_time) {
+        return '—';
+    }
+    return st.local_time;
+}
+
+export function formatHopper(hopper) {
+    switch (hopper) {
+        case 'empty':
+            return 'Empty';
+        case 'low':
+            return 'Low';
+        default:
+            return 'OK';
+    }
+}
+
+export function hopperTone(hopper) {
+    switch (hopper) {
+        case 'empty':
+            return 'bad';
+        case 'low':
+            return 'warn';
+        default:
+            return 'ok';
+    }
+}
+
+export function formatBusy(busy) {
+    return busy ? 'Feeding' : 'Idle';
+}
+
+export function busyTone(busy) {
+    return busy ? 'warn' : 'ok';
+}
+
+export function formatFeedModeLabel(mode) {
+    return mode === 'compensated' ? 'Compensated' : 'Open loop';
+}
+
 export function formatSlotDayLetters(repeat_days) {
     return (repeat_days || []).map((d) => DAYS[d][0]).join('');
+}
+
+export function formatSlotClock(time) {
+    const [h, m] = String(time).split(':');
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function weekdayFromLocalTime(local_time) {
+    if (!local_time || local_time.length < 10) {
+        return null;
+    }
+    const parts = local_time.slice(0, 10).split('-').map(Number);
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+        return null;
+    }
+    const [year, month, day] = parts;
+    const sun0 = new Date(year, month - 1, day).getDay();
+    return sun0 === 0 ? 6 : sun0 - 1;
+}
+
+export function slotDayBadges(repeat_days, todayIndex = null) {
+    const set = new Set(repeat_days || []);
+    return DAYS.map((label, i) => ({
+        letter: label[0],
+        label,
+        on: set.has(i),
+        today: todayIndex !== null && i === todayIndex,
+    }));
+}
+
+export function formatSlotDays(repeat_days) {
+    if (!repeat_days || !repeat_days.length) {
+        return '—';
+    }
+    return repeat_days.map((d) => DAYS[d]).join(', ');
+}
+
+export function formatSlotState(state) {
+    if (!state) {
+        return '—';
+    }
+    return String(state).replace(/_/g, ' ');
+}
+
+export function slotStateTone(state) {
+    switch (state) {
+        case 'dispensed':
+            return 'ok';
+        case 'pending':
+            return 'warn';
+        case 'missed':
+            return 'bad';
+        case 'skipped':
+            return 'muted';
+        default:
+            return 'muted';
+    }
 }
 
 export function parseApiResponse(text) {
