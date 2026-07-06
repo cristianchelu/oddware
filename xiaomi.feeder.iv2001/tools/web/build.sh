@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 OUT="${ROOT}/../../firmware/src/web_ui_gz.c"
 GZ="${ROOT}/.web_ui_bundle.gz"
+BUNDLE_RAW="${ROOT}/.web_ui_bundle.raw.html"
 BUNDLE="${ROOT}/.web_ui_bundle.html"
 LOGIC_INLINE="${ROOT}/.logic.inline.js"
-trap 'rm -f "$GZ" "$BUNDLE" "$LOGIC_INLINE"' EXIT
+HTML_MINIFIER_VERSION="${HTML_MINIFIER_VERSION:-7.2.0}"
+trap 'rm -f "$GZ" "$BUNDLE" "$BUNDLE_RAW" "$LOGIC_INLINE"' EXIT
 
 sed 's/^export //' "${ROOT}/logic.mjs" > "$LOGIC_INLINE"
 
@@ -19,11 +21,25 @@ awk -v logic="$LOGIC_INLINE" '
     next
   }
   { print }
-' "${ROOT}/index.html" > "$BUNDLE"
+' "${ROOT}/index.html" > "$BUNDLE_RAW"
+
+raw_bytes=$(wc -c < "$BUNDLE_RAW")
+gz_raw_bytes=$(gzip -9 -c "$BUNDLE_RAW" | wc -c)
+
+if [ "${WEB_UI_SKIP_MINIFY:-}" = "1" ]; then
+  cp "$BUNDLE_RAW" "$BUNDLE"
+else
+  npx --yes "html-minifier-terser@${HTML_MINIFIER_VERSION}" \
+    --collapse-whitespace \
+    --remove-comments \
+    --minify-css true \
+    --minify-js true \
+    "$BUNDLE_RAW" -o "$BUNDLE"
+fi
 
 gzip -9 -c "$BUNDLE" > "$GZ"
 
-raw_bytes=$(wc -c < "$BUNDLE")
+min_raw_bytes=$(wc -c < "$BUNDLE")
 gz_bytes=$(wc -c < "$GZ")
 
 {
@@ -32,4 +48,4 @@ gz_bytes=$(wc -c < "$GZ")
   echo "#include <stdint.h>"
   xxd -i "$GZ" | sed 's/unsigned char .*\[\]/const uint8_t g_web_ui_gz[]/; s/unsigned int .*_len/const size_t g_web_ui_gz_len/'
 } > "$OUT"
-echo "Wrote $OUT (${gz_bytes} bytes gzipped, ${raw_bytes} bytes raw html)"
+echo "Wrote $OUT (${gz_bytes} bytes gzipped minified, ${gz_raw_bytes} bytes gzipped unminified, ${raw_bytes} → ${min_raw_bytes} bytes raw)"

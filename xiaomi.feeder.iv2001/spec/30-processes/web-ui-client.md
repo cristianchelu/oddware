@@ -19,7 +19,7 @@ tested in `test_web_api.c` and `test_schedule_cmd.c`; this document covers
 |------|------|
 | `tools/web/index.html` | Markup, styles, DOM event wiring |
 | `tools/web/logic.mjs` | Pure helpers (weekday masks, JSON bodies, formatters) |
-| `tools/web/build.sh` | Inlines `logic.mjs` into the page, gzip, emit `web_ui_gz.c` |
+| `tools/web/build.sh` | Inlines `logic.mjs`, minifies, gzip, emit `web_ui_gz.c` |
 | `tools/web/test_logic.mjs` | Host tests (`node --test`) |
 
 `build.sh` strips `export` keywords so inlined functions are global inside the
@@ -143,5 +143,11 @@ Host client tests use Node built-in `node:test` only (no npm). Local UI preview:
 ## Build
 
 `logic.mjs` is not served separately. `build.sh` substitutes the
-`<!-- INJECT_LOGIC -->` marker in `index.html` with stripped `logic.mjs` before
-`gzip -9`. Output: gitignored `firmware/src/web_ui_gz.c`.
+`<!-- INJECT_LOGIC -->` marker in `index.html` with stripped `logic.mjs`, runs
+`html-minifier-terser` on the full page (JS identifier mangling, CSS/HTML
+whitespace), then `gzip -9`. Sources in git stay readable; minification applies
+only to the ephemeral firmware bundle. Set `WEB_UI_SKIP_MINIFY=1` to skip the
+minifier step. Output: gitignored `firmware/src/web_ui_gz.c`.
+
+`make preview-web` and `dev_server.mjs` serve the **unminified** inline bundle
+for browser debugging.

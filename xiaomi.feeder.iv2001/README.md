@@ -101,9 +101,13 @@ make test-host                           # re-run host tests
 | Tool | Needed for | Fedora | Debian/Ubuntu |
 |------|------------|--------|---------------|
 | `git`, `make`, `gcc` | Host tests | `dnf install git make gcc` | `apt install git make gcc` |
+| `node` (`npx`) | Web UI client tests (`make test-web`); admin UI minify at firmware build (`WEB_UI_ENABLE=y`) | `dnf install nodejs` | `apt install nodejs` |
 | `patch` | SDK patches | `dnf install patch` | `apt install patch` |
 | `arm-none-eabi-gcc` + newlib | Board firmware | `dnf install arm-none-eabi-gcc-cs arm-none-eabi-gcc-cs-c++ arm-none-eabi-newlib` | `apt install gcc-arm-none-eabi` |
 | `wine`, `unzip` | Linux UART flash | `dnf install wine unzip` | `apt install wine unzip` |
+
+First firmware build with the admin UI enabled may download `html-minifier-terser`
+via `npx` (network once; cached afterward). See `tools/web/README.md`.
 
 ### Firmware build
 

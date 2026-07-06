@@ -100,9 +100,10 @@ CFLAGS += -DREMOTE_CLI_ENABLE=0
 endif
 ifeq ($(WEB_UI_ENABLE),y)
 CFLAGS += -DWEB_UI_ENABLE=1
-FIRMWARE_DIR := $(abspath $(PWD)/../src/..)
+FIRMWARE_DIR := $(realpath $(PWD)/../src/..)
 REPO_ROOT := $(abspath $(FIRMWARE_DIR)/..)
 WEB_UI_GZ := $(FIRMWARE_DIR)/src/web_ui_gz.c
+WEB_UI_GZ_OBJ := $(BUILD_DIR)/$(APP_PATH_SRC)/web_ui_gz.o
 APP_FILES      += $(APP_PATH_SRC)/web_api.c
 APP_FILES      += $(APP_PATH_SRC)/web_ui.c
 APP_FILES      += $(APP_PATH_SRC)/web_ui_gz.c
@@ -110,6 +111,9 @@ APP_FILES      += $(APP_PATH_ADAPT)/web_api_cgi.c
 
 $(WEB_UI_GZ): $(REPO_ROOT)/tools/web/index.html $(REPO_ROOT)/tools/web/logic.mjs $(REPO_ROOT)/tools/web/build.sh
 	$(REPO_ROOT)/tools/web/build.sh
+	@rm -f $(WEB_UI_GZ_OBJ)
+
+$(WEB_UI_GZ_OBJ): $(WEB_UI_GZ)
 else
 CFLAGS += -DWEB_UI_ENABLE=0
 endif
