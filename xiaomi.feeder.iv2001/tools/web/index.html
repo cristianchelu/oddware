@@ -5,100 +5,489 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pet Feeder</title>
 <style>
-:root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--line:#e7e5e4;--card:#fff;--accent:#2563eb;--af:#fff;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--r:10px;--sans:system-ui,sans-serif}
-*{box-sizing:border-box}body{margin:0;font:15px/1.45 var(--sans);background:var(--bg);color:var(--fg)}
-.wrap{max-width:36rem;margin:0 auto;padding:16px 16px 28px}
-header{margin-bottom:10px;align-items:center}
-h1{font-size:1.2rem;font-weight:650;margin:0;letter-spacing:-.02em;flex:1;min-width:0}
-.hdr-tools{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.hdr-clock{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
-.tab-radios{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
-.tabs{display:flex;gap:4px;margin:0 0 12px;padding:4px;background:var(--line);border-radius:10px;position:sticky;top:0;z-index:2}
-.tabs label{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:.88rem;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
-#tab-now:checked~.tabs label[for="tab-now"],#tab-sched:checked~.tabs label[for="tab-sched"],#tab-settings:checked~.tabs label[for="tab-settings"]{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.06)}
-.tab-pane{display:none}
-#tab-now:checked~.tab-body #pane-now,#tab-sched:checked~.tab-body #pane-sched,#tab-settings:checked~.tab-body #pane-settings{display:block}
-.tab-body .panel{margin:0 0 12px}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.panel>h2{font-size:.95rem;margin:0 0 10px;font-weight:650}
-.panel.status{padding:14px 16px}
-.panel.action{border-color:#bfdbfe;background:#f8fafc}
-.next-meta{color:var(--muted);font-size:.92rem;margin:0;font-variant-numeric:tabular-nums}
-.next-main{font-size:1.35rem;font-weight:650;margin:4px 0 0;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
-.alerts{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
-.alerts:empty{display:none}
-.state-grid{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.9rem}
-.state-grid dt{color:var(--muted);margin:0}
-.state-grid dd{margin:0;font-weight:550}
-.state-grid dd.ok{color:var(--ok)}
-.state-grid dd.warn{color:var(--warn)}
-.state-grid dd.bad{color:var(--bad)}
-.state-grid dd.muted{color:var(--muted)}
-#toast:empty{display:none}
-#toast{font-size:.85rem;margin:0 0 8px}
-#toast.ok{color:var(--ok)}#toast.err{color:var(--bad)}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.row.between{justify-content:space-between}
-.row.end{margin-top:10px}
-input,select,button{font:inherit}
-input[type=number],select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
-input.tin{width:5em;text-align:center}
-button{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg);cursor:pointer}
-button.pri{background:var(--accent);border-color:var(--accent);color:var(--af);font-weight:550}
-button.sm{padding:6px 12px;font-size:.82rem;border-radius:6px;min-height:36px}
-button.xs{padding:2px 6px;font-size:.68rem;border-radius:5px;line-height:1.3}
-button.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:4px 8px;font-size:1.1rem;line-height:1}
-button.dan{border-color:#fecaca;color:var(--bad)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.hint{color:var(--muted);font-size:.82rem;margin:0 0 10px}
-.field{margin:0 0 18px}
-.field:last-child{margin-bottom:0}
-.lbl{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;margin-bottom:8px}
-.time-row{display:flex;align-items:center;gap:8px}
-.time-row input{width:3.6em;padding:10px 8px;font-size:1.2rem;text-align:center;font-variant-numeric:tabular-nums}
-.time-sep{color:var(--muted);font-size:1.2rem;font-weight:300}
-.preset{display:flex;gap:8px;margin-bottom:10px}
-.preset button{flex:1;min-height:40px}
-.form-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
-.form-actions button{min-height:44px;width:100%}
-.form-actions button.ghost{border:1px solid var(--line);color:var(--fg)}
-.amt-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
-.amt-row input{width:4.5em}
-.sched-toggles{padding:12px 14px}
-.slot-list{display:flex;flex-direction:column;gap:10px}
-.slot-card{border:1px solid var(--line);border-radius:8px;padding:12px}
-.slot-card.pick{cursor:pointer}
-.slot-card.pick:active{background:#fafaf9}
-.slot-card.sel{border-color:#93c5fd;background:#eff6ff}
-.slot-card.off{opacity:.62}
-.slot-head{display:grid;grid-template-columns:3.25rem 2.25rem 1fr auto;align-items:center;column-gap:10px;margin-bottom:10px;font-size:.9rem;line-height:1.2}
-.slot-when{font-weight:650;font-variant-numeric:tabular-nums}
-.slot-amt{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
-.slot-status{justify-self:end}
-.day-dots{display:flex;gap:4px;align-items:center}
-.day-dot{color:var(--muted);opacity:.35;font-weight:500;font-size:inherit}
-.day-dot.sched{color:var(--fg);opacity:1;font-weight:600}
-.day-dot.today{display:inline-flex;align-items:center;justify-content:center;min-width:1.35em;height:1.35em;border-radius:3px;border:1px solid var(--line);font-weight:700;opacity:1}
-.day-dot.today.on{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
-.day-dot.today.off{background:#f5f5f4;border-color:var(--line);color:var(--muted)}
-.slot-head .badge{font-size:inherit;padding:2px 7px}
-.slot-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.slot-actions button{min-height:40px;padding:8px 6px;font-size:.78rem}
-.tog{display:flex;align-items:center;gap:8px;font-size:.9rem}
-.tog input{width:2.4em;height:1.35em;accent-color:var(--accent)}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0}
-.chip{position:relative}
-.chip input{position:absolute;opacity:0;width:0;height:0}
-.chip span{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:.82rem;font-weight:550;cursor:pointer;user-select:none}
-.chip input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--af)}
-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:4px}
-th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
-th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap}
-.badge.ok{background:#dcfce7;color:var(--ok)}.badge.warn{background:#fef3c7;color:var(--warn)}
-.badge.bad{background:#fee2e2;color:var(--bad)}.badge.muted{background:#f5f5f4;color:var(--muted)}
-.empty{color:var(--muted);font-size:.9rem;padding:16px 0;text-align:center}
-.set-block+.set-block{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+:root {
+  --bg: #f5f3ef;
+  --fg: #1a1814;
+  --muted: #7a756c;
+  --line: #ebe6de;
+  --card: #fff;
+  --accent: #2a9d8f;
+  --accent-soft: #e8f5f2;
+  --accent-deep: #1f7a6f;
+  --accent-ring: #b8e0d8;
+  --af: #fff;
+  --ok: #2d6a4f;
+  --ok-bg: #e8f3ec;
+  --warn: #b45309;
+  --warn-bg: #fef6e8;
+  --bad: #b42318;
+  --bad-bg: #fcecea;
+  --muted-bg: #f0ece4;
+  --r: 16px;
+  --r-sm: 10px;
+  --sans: system-ui, -apple-system, sans-serif;
+  --shadow: 0 2px 8px rgba(26, 24, 20, .05);
+  --shadow-sm: 0 1px 4px rgba(26, 24, 20, .04);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur: .18s;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.5 var(--sans);
+  color: var(--fg);
+  background: var(--bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 36rem; margin: 0 auto; padding: 20px 18px 36px; }
+header {
+  margin-bottom: 16px;
+  align-items: center;
+}
+h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -.03em;
+  flex: 1;
+  min-width: 0;
+}
+.hdr-tools { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.hdr-tools time { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tab-radios { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 5px;
+  background: var(--muted-bg);
+  border-radius: 999px;
+  position: sticky;
+  top: 8px;
+  z-index: 2;
+  box-shadow: var(--shadow-sm);
+}
+.tabs label {
+  flex: 1;
+  text-align: center;
+  padding: 10px 8px;
+  border-radius: 999px;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+#tab-now:checked ~ .tabs label[for="tab-now"],
+#tab-sched:checked ~ .tabs label[for="tab-sched"],
+#tab-settings:checked ~ .tabs label[for="tab-settings"] {
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: var(--shadow-sm);
+}
+.tab-pane { display: none; }
+#tab-now:checked ~ .tab-body #pane-now,
+#tab-sched:checked ~ .tab-body #pane-sched,
+#tab-settings:checked ~ .tab-body #pane-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.panel,
+.slot-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.panel > h2,
+.slot-form-title {
+  font-size: .72rem;
+  margin: 0 0 14px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel.hero {
+  padding: 16px 18px;
+  background: var(--card);
+}
+.panel.action { background: var(--card); }
+.panel.action > h2 { margin-bottom: 10px; }
+.stat-lbl {
+  color: var(--muted);
+  font-size: .7rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 700;
+}
+.next-main {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 6px 0 0;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.alerts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+.alerts:empty { display: none; }
+.state-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.state-item {
+  padding: 14px;
+  background: var(--muted-bg);
+  border-radius: var(--r-sm);
+}
+.state-item dt {
+  color: var(--muted);
+  margin: 0 0 6px;
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.state-item dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+.state-item dd.ok { color: var(--ok); }
+.state-item dd.warn { color: var(--warn); }
+.state-item dd.bad { color: var(--bad); }
+.state-item dd.muted { color: var(--muted); font-size: .95rem; font-weight: 600; }
+#toast:empty { display: none; }
+#toast {
+  font-size: .85rem;
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+#toast.ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border-color: #c5e0d0;
+}
+#toast.err {
+  color: var(--bad);
+  background: var(--bad-bg);
+  border-color: #f5c4c0;
+}
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row.between { justify-content: space-between; }
+.row.end { margin-top: 12px; }
+input, select, button { font: inherit; }
+input[type=number], input[type=text], select {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+input[type=number]:focus-visible, input[type=text]:focus-visible, select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+input:disabled {
+  opacity: .5;
+  background: var(--muted-bg);
+  cursor: not-allowed;
+}
+input.tin { width: 5em; text-align: center; }
+.amt-in { width: 4.5em; }
+button {
+  padding: 9px 16px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+button:hover:not(:disabled) { border-color: #d4cfc6; box-shadow: var(--shadow-sm); }
+button:active:not(:disabled) { transform: scale(.98); }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+button.pri {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--af);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(42, 157, 143, .22);
+}
+button.pri:hover:not(:disabled) { background: var(--accent-deep); border-color: var(--accent-deep); }
+button.pri.sm { flex-shrink: 0; }
+button.soft {
+  flex-shrink: 0;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--accent-deep);
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+}
+button.soft:hover:not(:disabled) { background: var(--accent); color: var(--af); border-color: var(--accent); }
+button.sm { padding: 7px 14px; font-size: .82rem; min-height: 36px; }
+button.ghost, button.icon { background: transparent; color: var(--muted); box-shadow: none; }
+button.ghost { border-color: transparent; padding: 6px; line-height: 0; min-height: auto; }
+button.icon { padding: 8px; min-width: 40px; min-height: 40px; border: none; }
+button.ghost:hover:not(:disabled), button.icon:hover:not(:disabled) {
+  background: var(--muted-bg);
+  color: var(--fg);
+  box-shadow: none;
+}
+button.ghost:hover:not(:disabled) { border-color: transparent; }
+button.icon[data-del]:hover:not(:disabled) { background: var(--bad-bg); color: var(--bad); }
+button.ghost svg, button.icon svg { display: block; width: 1.1rem; height: 1.1rem; }
+.hint { color: var(--muted); font-size: .82rem; margin: 0 0 10px; }
+.field { margin: 0 0 20px; }
+.field:last-child { margin-bottom: 0; }
+.lbl {
+  display: block;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.time-row input {
+  width: 3.6em;
+  padding: 10px 8px;
+  font-size: 1.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: var(--r-sm);
+}
+.time-row input:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); border-color: var(--accent); }
+.sched-summary .row { gap: 20px; flex-wrap: wrap; }
+.sched-summary .row.between { align-items: center; }
+.slot-list { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.slot-card {
+  transition: box-shadow var(--dur) var(--ease);
+}
+.slot-card.sel { box-shadow: 0 0 0 2px var(--accent-ring), var(--shadow); }
+.slot-card.off { opacity: .55; }
+.slot-top { margin-bottom: 10px; }
+.slot-when { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.slot-amt { color: var(--muted); font-size: .88rem; margin: 0 0 12px; font-weight: 500; }
+.slot-amt strong { color: var(--fg); font-weight: 700; }
+.day-dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.day-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85em;
+  height: 1.85em;
+  border-radius: 50%;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  opacity: .45;
+}
+.day-dot.sched {
+  opacity: 1;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--af);
+}
+.day-dot.today {
+  opacity: 1;
+  font-weight: 700;
+}
+.day-dot.today.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--af);
+}
+.day-dot.today.off {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--muted);
+}
+.slot-foot { gap: 8px; }
+.slot-tools { display: flex; gap: 4px; flex-shrink: 0; }
+.slot-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+.slot-actions button { padding: 8px 12px; font-size: .8rem; }
+.dispense-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dispense-amt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .88rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.dispense-amt input { width: 3.5em; text-align: center; font-weight: 700; }
+.form-actions button, .panel.action .pri { min-height: 44px; }
+.form-actions button { width: 100%; }
+.panel.action .pri { flex-shrink: 0; }
+.editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility var(--dur) var(--ease);
+}
+.editor-overlay.open {
+  pointer-events: auto;
+  visibility: visible;
+}
+.editor-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 24, 20, .38);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+.editor-overlay.open .editor-backdrop { opacity: 1; }
+.editor-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  max-height: min(90vh, 36rem);
+  overflow: auto;
+  border-radius: var(--r) var(--r) 0 0;
+  transform: translateY(100%);
+  transition: transform var(--dur) var(--ease);
+  box-shadow: 0 -8px 32px rgba(26, 24, 20, .12);
+}
+.editor-overlay.open .editor-sheet { transform: translateY(0); }
+.tog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.tog input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 2.6em;
+  height: 1.45em;
+  margin: 0;
+  background: #d4cfc6;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur) var(--ease);
+}
+.tog input[type=checkbox]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.45em - 4px);
+  height: calc(1.45em - 4px);
+  background: var(--card);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(26, 24, 20, .18);
+  transition: transform var(--dur) var(--ease);
+}
+.tog input[type=checkbox]:checked { background: var(--accent); }
+.tog input[type=checkbox]:checked::before { transform: translateX(calc(2.6em - 1.45em)); }
+.tog input[type=checkbox]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.9em;
+  height: 2.9em;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.chip span:hover { border-color: var(--accent-ring); }
+.chip input:checked + span {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--af);
+}
+.time-sep { color: var(--muted); font-size: 1.25rem; font-weight: 300; }
+.time-row { display: flex; align-items: center; gap: 6px; }
+.form-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.amt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+.amt-row input { width: 4.5em; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-top: 4px; }
+th, td { padding: 10px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+th {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); border-color: #c5e0d0; }
+.badge.warn { background: var(--warn-bg); color: var(--warn); border-color: #f5ddb8; }
+.badge.bad { background: var(--bad-bg); color: var(--bad); border-color: #f5c4c0; }
+.badge.muted { background: var(--muted-bg); color: var(--muted); border-color: var(--line); }
+.empty { color: var(--muted); font-size: .9rem; padding: 20px 0; text-align: center; }
+.set-block { padding: 4px 0; }
+.set-block + .set-block {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.set-block .row.between { gap: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+  button:active:not(:disabled) { transform: none; }
+  .editor-sheet { transition: none; transform: none; }
+  .editor-backdrop { transition: none; }
+}
 </style>
 </head>
 <body>
@@ -106,8 +495,8 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut
 <header class="row between">
 <h1>Pet Feeder</h1>
 <div class="hdr-tools">
-<time id="deviceTime" class="hdr-clock" title="Feeder time">—</time>
-<button type="button" class="ghost" id="refreshBtn" title="Refresh" aria-label="Refresh">↻</button>
+<time id="deviceTime" title="Feeder time">—</time>
+<button type="button" class="ghost" id="refreshBtn" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
 </div>
 </header>
 <div id="toast"></div>
@@ -121,65 +510,35 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut
 </nav>
 <div class="tab-body">
 <div id="pane-now" class="tab-pane">
-<section class="panel status" aria-live="polite">
-<p class="next-meta" id="nextMeta">—</p>
+<section class="panel hero" aria-live="polite">
+<p class="stat-lbl" id="nextMeta">—</p>
 <p class="next-main" id="nextMain" hidden></p>
 <div class="alerts" id="statusAlerts"></div>
 </section>
 <section class="panel">
-<h2>Current state</h2>
-<dl class="state-grid" id="stateGrid"></dl>
+<h2>Status</h2>
+<div class="state-grid" id="stateGrid"></div>
 </section>
 <section class="panel action">
-<h2>Feed now</h2>
-<div class="row between">
-<label>Amount <input id="dispG" type="number" min="5" max="150" value="30" style="width:4.5em" aria-label="Grams"> g</label>
+<h2>Manual dispense</h2>
+<div class="dispense-row">
+<label class="dispense-amt">Amount <input id="dispG" type="number" min="5" max="150" value="30" class="amt-in" aria-label="Grams"> g</label>
 <button class="pri" id="dispBtn">Dispense</button>
 </div>
 </section>
 </div>
 <div id="pane-sched" class="tab-pane">
-<section class="panel sched-toggles">
-<div class="row">
+<section class="panel sched-summary">
+<div class="row between">
+<div class="row sched-toggles">
 <label class="tog"><input type="checkbox" id="schedEn"> Automatic feeds</label>
 <label class="tog"><input type="checkbox" id="todayEn"> Feeds today</label>
 </div>
+<button type="button" class="pri sm" id="addSlotBtn">+ Add feed</button>
+</div>
 </section>
-<section class="panel">
-<h2>Scheduled feeds</h2>
 <div id="slotList" class="slot-list"></div>
 <p class="empty" id="noSlots" hidden>No feeding times yet.</p>
-</section>
-<section class="panel" id="slotForm">
-<h2>Add or edit</h2>
-<div class="field">
-<span class="lbl">Time</span>
-<div class="time-row">
-<input id="slotH" type="number" min="0" max="23" placeholder="HH" aria-label="Hour" inputmode="numeric">
-<span class="time-sep" aria-hidden="true">:</span>
-<input id="slotM" type="number" min="0" max="59" placeholder="MM" aria-label="Minute" inputmode="numeric">
-</div>
-</div>
-<div class="field">
-<span class="lbl">Days</span>
-<div class="preset">
-<button type="button" class="sm" id="presetWeekdays">Weekdays</button>
-<button type="button" class="sm" id="presetAll">Every day</button>
-</div>
-<div class="chips" id="days"></div>
-</div>
-<div class="field">
-<span class="lbl">Amount &amp; status</span>
-<div class="amt-row">
-<label>Amount <input id="slotG" type="number" min="5" max="150" value="30" aria-label="Grams" inputmode="numeric"> g</label>
-<label class="tog"><input type="checkbox" id="slotOn" checked> Enabled</label>
-</div>
-</div>
-<div class="form-actions">
-<button class="pri" id="saveSlot">Save</button>
-<button type="button" class="ghost" id="clearSlot">Clear</button>
-</div>
-</section>
 </div>
 <div id="pane-settings" class="tab-pane">
 <section class="panel">
@@ -191,7 +550,7 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut
 <option value="compensated">Compensated</option>
 </select>
 </label>
-<button id="saveMode">Save</button>
+<button id="saveMode" class="soft">Save</button>
 </div>
 </div>
 <div class="set-block">
@@ -200,28 +559,61 @@ th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut
 </div>
 <div class="row between">
 <label>Full bowl threshold (g) <input type="number" id="overfillG" min="30" max="100" value="50"></label>
-<button id="saveOverfill">Save</button>
+<button id="saveOverfill" class="soft">Save</button>
 </div>
 </div>
 <div class="set-block">
 <div class="row between">
 <label>Timezone <input id="tzRule" size="20" placeholder="UTC0"></label>
-<button id="saveTz">Save</button>
+<button id="saveTz" class="soft">Save</button>
 </div>
 </div>
 </section>
 </div>
 </div>
 </div>
+<div id="slotEditor" class="editor-overlay" hidden>
+<div class="editor-backdrop" id="editorBackdrop"></div>
+<section class="panel editor-sheet" id="slotForm" role="dialog" aria-modal="true" aria-labelledby="slotFormTitle">
+<h2 class="slot-form-title" id="slotFormTitle">New feeding time</h2>
+<div class="field">
+<span class="lbl">Time</span>
+<div class="time-row">
+<input id="slotH" type="number" min="0" max="23" placeholder="HH" aria-label="Hour" inputmode="numeric">
+<span class="time-sep" aria-hidden="true">:</span>
+<input id="slotM" type="number" min="0" max="59" placeholder="MM" aria-label="Minute" inputmode="numeric">
+</div>
+</div>
+<div class="field">
+<span class="lbl">Days</span>
+<div class="chips" id="days"></div>
+</div>
+<div class="field">
+<span class="lbl">Amount</span>
+<div class="amt-row">
+<label>Amount <input id="slotG" type="number" min="5" max="150" value="30" aria-label="Grams" inputmode="numeric"> g</label>
+</div>
+</div>
+<div class="form-actions">
+<button class="pri" id="saveSlot">Save</button>
+<button type="button" id="clearSlot">Cancel</button>
+</div>
+</section>
+</div>
 <script>
 <!-- INJECT_LOGIC -->
 let editKey = null;
+let editSlotEnabled = true;
 let todayDow = null;
+let deviceLocalTime = null;
 const dayBox = document.getElementById('days');
+const editorOverlay = document.getElementById('slotEditor');
+const slotFormTitle = document.getElementById('slotFormTitle');
+const PEN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 DAYS.forEach((d, i) => {
   const l = document.createElement('label');
   l.className = 'chip';
-  l.innerHTML = `<input type=checkbox class=day value=${i}><span>${d}</span>`;
+  l.innerHTML = `<input type=checkbox class=day value=${i}><span title="${d}">${d[0]}</span>`;
   dayBox.appendChild(l);
 });
 function toast(text, ok) {
@@ -254,10 +646,52 @@ function syncRowSelection() {
   const h = document.getElementById('slotH').value;
   const m = document.getElementById('slotM').value;
   const key = h !== '' && m !== '' ? slotKey(h, m) : null;
-  editKey = key;
+  editKey = editorOverlay.classList.contains('open') ? key : null;
   document.querySelectorAll('#slotList .slot-card').forEach((card) => {
     card.classList.toggle('sel', key && card.dataset.key === key);
   });
+}
+function setEditorTitle(time) {
+  slotFormTitle.textContent = formatEditorTitle(time ? formatSlotClock(time) : null);
+}
+function openEditor() {
+  editorOverlay.hidden = false;
+  requestAnimationFrame(() => editorOverlay.classList.add('open'));
+  document.getElementById('slotH').focus();
+}
+function closeEditor() {
+  editorOverlay.classList.remove('open');
+  editKey = null;
+  document.querySelectorAll('#slotList .slot-card').forEach((card) => card.classList.remove('sel'));
+  setTimeout(() => { if (!editorOverlay.classList.contains('open')) editorOverlay.hidden = true; }, 200);
+}
+function fillSlotFormData(s) {
+  const t = s.time.split(':');
+  document.getElementById('slotH').value = t[0];
+  document.getElementById('slotM').value = t[1];
+  document.getElementById('slotG').value = s.g;
+  editSlotEnabled = !!s.enabled;
+  renderDays(indicesToMask(s.repeat_days || []));
+  setEditorTitle(s.time);
+  syncRowSelection();
+}
+function clearSlotFormData() {
+  ['slotH', 'slotM'].forEach((id) => { document.getElementById(id).value = ''; });
+  document.getElementById('slotG').value = 30;
+  editSlotEnabled = true;
+  renderDays(ALL_DAYS_MASK);
+  setEditorTitle(null);
+  syncRowSelection();
+}
+function openNewSlotEditor() {
+  showTab('sched');
+  clearSlotFormData();
+  openEditor();
+}
+function openEditSlotEditor(s) {
+  showTab('sched');
+  fillSlotFormData(s);
+  openEditor();
 }
 function renderStatus(st) {
   const parts = formatNextFeedParts(st.next);
@@ -273,7 +707,7 @@ function renderStatus(st) {
     .map((a) => badge(a.text, a.tone))
     .join(' ');
   document.getElementById('stateGrid').innerHTML = statusStateRows(st)
-    .map((r) => `<dt>${r.label}</dt><dd class="${r.tone}">${r.value}</dd>`)
+    .map((r) => `<div class="state-item"><dt>${r.label}</dt><dd class="${r.tone}">${r.value}</dd></div>`)
     .join('');
   document.getElementById('deviceTime').textContent = formatDeviceTime(st);
 }
@@ -294,41 +728,25 @@ function renderDays(mask) {
     c.checked = !!(mask & (1 << c.value));
   });
 }
-function fillSlotForm(s) {
-  const t = s.time.split(':');
-  document.getElementById('slotH').value = t[0];
-  document.getElementById('slotM').value = t[1];
-  document.getElementById('slotG').value = s.g;
-  document.getElementById('slotOn').checked = !!s.enabled;
-  renderDays(indicesToMask(s.repeat_days || []));
-  syncRowSelection();
-  showTab('sched');
-  document.getElementById('slotForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-function clearSlotForm() {
-  ['slotH', 'slotM'].forEach((id) => { document.getElementById(id).value = ''; });
-  document.getElementById('slotG').value = 30;
-  document.getElementById('slotOn').checked = true;
-  renderDays(ALL_DAYS_MASK);
-  syncRowSelection();
-}
-function bindSlotActions(card, s) {
+function bindSlotActions(card, s, skipCtrl) {
   const t = s.time.split(':');
   card.querySelector('[data-toggle]').onclick = async (e) => {
     e.stopPropagation();
     await api('POST', '/api/schedule/toggle', JSON.stringify(buildScheduleToggleBody(t[0], t[1])));
     loadAll();
   };
-  card.querySelector('[data-skip]').onclick = async (e) => {
-    e.stopPropagation();
-    const skip = s.state !== 'skipped';
-    await api('POST', '/api/schedule/skip', JSON.stringify(buildScheduleSkipBody(t[0], t[1], skip)));
-    loadAll();
-  };
+  const skipBtn = card.querySelector('[data-skip]');
+  if (skipBtn && skipCtrl) {
+    skipBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await api('POST', '/api/schedule/skip', JSON.stringify(buildScheduleSkipBody(t[0], t[1], skipCtrl.skip)));
+      loadAll();
+    };
+  }
   card.querySelector('[data-del]').onclick = async (e) => {
     e.stopPropagation();
     await api('POST', '/api/schedule/delete', JSON.stringify(buildScheduleDeleteBody(t[0], t[1])));
-    if (editKey === slotKey(t[0], t[1])) clearSlotForm();
+    if (editKey === slotKey(t[0], t[1])) closeEditor();
     loadAll();
   };
 }
@@ -337,6 +755,7 @@ async function loadStatus() {
   const newDow = st.time_synced ? weekdayFromLocalTime(st.local_time) : null;
   const dowChanged = newDow !== todayDow;
   todayDow = newDow;
+  deviceLocalTime = st.time_synced ? st.local_time : null;
   renderStatus(st);
   document.getElementById('schedEn').checked = !!st.schedule_enabled;
   document.getElementById('todayEn').checked = !!st.today_enabled;
@@ -352,27 +771,35 @@ async function loadSchedule() {
   document.getElementById('noSlots').hidden = rows.length > 0;
   rows.forEach((s) => {
     const card = document.createElement('article');
-    card.className = 'slot-card pick';
+    card.className = 'slot-card';
     const t = s.time.split(':');
     const key = slotKey(t[0], t[1]);
     card.dataset.key = key;
     if (!s.enabled) card.classList.add('off');
     if (editKey === key) card.classList.add('sel');
     const toggleLabel = s.enabled ? 'Disable' : 'Enable';
-    const skipLabel = s.state === 'skipped' ? 'Unskip' : 'Skip today';
-    card.innerHTML = `<div class=slot-head>
-<span class=slot-when>${formatSlotClock(s.time)}</span>
-<span class=slot-amt>${s.g}g</span>
-<span class=day-dots>${renderDayDots(s.repeat_days)}</span>
-<span class=slot-status>${badge(formatSlotState(s.state), slotStateTone(s.state))}</span>
+    const skipCtrl = slotSkipControl(s, deviceLocalTime);
+    card.innerHTML = `<div class="slot-top row between">
+<span class="slot-when">${formatSlotClock(s.time)}</span>
+<span class="slot-status">${badge(formatSlotState(s.state), slotStateTone(s.state))}</span>
 </div>
-<div class=slot-actions>
+<p class="slot-amt"><strong>${s.g} g</strong> per feed</p>
+<div class="day-dots">${renderDayDots(s.repeat_days)}</div>
+<div class="slot-foot row between">
+<div class="slot-actions">
 <button type=button data-toggle>${toggleLabel}</button>
-<button type=button data-skip>${skipLabel}</button>
-<button type=button class=dan data-del>Delete</button>
+${skipCtrl ? `<button type=button data-skip>${skipCtrl.label}</button>` : ''}
+</div>
+<div class="slot-tools">
+<button type=button class="icon" data-edit aria-label="Edit">${PEN_SVG}</button>
+<button type=button class="icon" data-del aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+</div>
 </div>`;
-    card.onclick = (e) => { if (!e.target.closest('button')) fillSlotForm(s); };
-    bindSlotActions(card, s);
+    card.querySelector('[data-edit]').onclick = (e) => {
+      e.stopPropagation();
+      openEditSlotEditor(s);
+    };
+    bindSlotActions(card, s, skipCtrl);
     list.appendChild(card);
   });
 }
@@ -404,9 +831,17 @@ async function loadAll() {
   await loadConfig();
 }
 document.getElementById('refreshBtn').onclick = loadAll;
-document.getElementById('presetWeekdays').onclick = () => renderDays(WEEKDAY_MASK);
-document.getElementById('presetAll').onclick = () => renderDays(ALL_DAYS_MASK);
-document.getElementById('clearSlot').onclick = clearSlotForm;
+document.getElementById('addSlotBtn').onclick = openNewSlotEditor;
+document.getElementById('editorBackdrop').onclick = closeEditor;
+document.getElementById('clearSlot').onclick = closeEditor;
+document.querySelectorAll('.tab-radios').forEach((tab) => {
+  tab.addEventListener('change', () => {
+    if (!document.getElementById('tab-sched').checked) closeEditor();
+  });
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && editorOverlay.classList.contains('open')) closeEditor();
+});
 ['slotH', 'slotM'].forEach((id) => {
   document.getElementById(id).addEventListener('input', syncRowSelection);
 });
@@ -436,12 +871,12 @@ document.getElementById('saveSlot').onclick = async () => {
     min: document.getElementById('slotM').value,
     mask,
     g: document.getElementById('slotG').value,
-    enabled: document.getElementById('slotOn').checked,
+    enabled: editSlotEnabled,
   });
   const r = await api('POST', '/api/schedule/set', JSON.stringify(body));
   const m = mutationMessage(r, 'Feeding time saved');
   toast(m.text, m.ok);
-  if (m.ok) clearSlotForm();
+  if (m.ok) closeEditor();
   loadAll();
 };
 document.getElementById('saveMode').onclick = async () => {
@@ -466,7 +901,6 @@ document.getElementById('saveTz').onclick = async () => {
   const m = mutationMessage(r, 'Timezone saved');
   toast(m.text, m.ok);
 };
-clearSlotForm();
 loadAll();
 setInterval(loadStatus, 5000);
 </script>

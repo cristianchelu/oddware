@@ -32,6 +32,8 @@ import {
     readMaskFromCheckedValues,
     slotStateTone,
     slotDayBadges,
+    slotSkipControl,
+    slotIsPastToday,
     sortSlotsByTime,
     statusStateRows,
     validateScheduleMask,
@@ -242,8 +244,28 @@ describe('formatters', () => {
 
     it('formatSlotState and slotStateTone', () => {
         assert.equal(formatSlotState('dispensed'), 'dispensed');
+        assert.equal(formatSlotState('to_be_skipped'), 'to be skipped');
         assert.equal(slotStateTone('dispensed'), 'ok');
+        assert.equal(slotStateTone('to_be_skipped'), 'warn');
         assert.equal(slotStateTone('missed'), 'bad');
+    });
+
+    it('slotSkipControl', () => {
+        const local = '2026-07-09 10:00:00';
+        const past = { time: '7:00', today: true, state: 'skipped' };
+        const futurePending = { time: '18:30', today: true, state: 'pending' };
+        const futureSkipped = { time: '18:30', today: true, state: 'to_be_skipped' };
+        assert.equal(slotSkipControl(past, local), null);
+        assert.deepEqual(slotSkipControl(futurePending, local), {
+            label: 'Skip today',
+            skip: true,
+        });
+        assert.deepEqual(slotSkipControl(futureSkipped, local), {
+            label: 'Unskip',
+            skip: false,
+        });
+        assert.equal(slotIsPastToday(past, local), true);
+        assert.equal(slotIsPastToday(futurePending, local), false);
     });
 });
 

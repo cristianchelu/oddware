@@ -1,6 +1,8 @@
 /* In-memory HTTP API for local UI preview — spec/30-processes/web-ui.md */
 
-import { indicesToMask } from './logic.mjs';
+import { indicesToMask, weekdayFromLocalTime } from './logic.mjs';
+
+const TERMINAL_SLOT_STATES = new Set(['dispensing', 'dispensed', 'failed', 'skipped_full']);
 
 function pad2(n) {
     return String(n).padStart(2, '0');
@@ -8,6 +10,64 @@ function pad2(n) {
 
 function slotKey(hour, min) {
     return `${hour}:${pad2(min)}`;
+}
+
+function slotMinutes(hour, min) {
+    return hour * 60 + min;
+}
+
+function parseLocalTime(local_time) {
+    if (!local_time || local_time.length < 16) {
+        return null;
+    }
+    const wdayMon0 = weekdayFromLocalTime(local_time);
+    const [hour, min] = local_time.slice(11, 16).split(':').map(Number);
+    if (wdayMon0 === null || Number.isNaN(hour) || Number.isNaN(min)) {
+        return null;
+    }
+    return { wdayMon0, hour, min };
+}
+
+function slotAppliesToday(repeat_days, wdayMon0) {
+    return Array.isArray(repeat_days) && repeat_days.includes(wdayMon0);
+}
+
+/** Mock-only: mirrors firmware schedule state — scheduler-engine.md. Not in logic.mjs / flash bundle. */
+export function effectiveSlotState(slot, state) {
+    if (slot.terminal && TERMINAL_SLOT_STATES.has(slot.terminal)) {
+        return slot.terminal;
+    }
+    if (!state.time_synced || !state.local_time) {
+        return 'pending';
+    }
+    const now = parseLocalTime(state.local_time);
+    if (!now) {
+        return 'pending';
+    }
+    const today = slotAppliesToday(slot.repeat_days, now.wdayMon0);
+    const slotMin = slotMinutes(slot.hour, slot.min);
+    const nowMin = slotMinutes(now.hour, now.min);
+    const futureToday = today && slotMin > nowMin;
+    const pastToday = today && slotMin < nowMin;
+
+    if (slot.skip_today) {
+        return futureToday ? 'to_be_skipped' : 'skipped';
+    }
+    if (!state.today_enabled && futureToday && today) {
+        return 'skipped';
+    }
+    if (pastToday && slot.enabled && state.schedule_enabled && !slot.skip_today) {
+        return 'skipped';
+    }
+    return 'pending';
+}
+
+function slotToday(slot, state) {
+    if (!state.time_synced || !state.local_time) {
+        return false;
+    }
+    const now = parseLocalTime(state.local_time);
+    return now ? slotAppliesToday(slot.repeat_days, now.wdayMon0) : false;
 }
 
 function defaultSlots() {
@@ -19,8 +79,8 @@ function defaultSlots() {
             repeat_days: [0, 1, 2, 3, 4],
             g: 30,
             enabled: true,
-            today: true,
-            state: 'pending',
+            skip_today: false,
+            terminal: null,
         },
         {
             time: '18:30',
@@ -29,8 +89,8 @@ function defaultSlots() {
             repeat_days: [0, 1, 2, 3, 4, 5, 6],
             g: 40,
             enabled: true,
-            today: true,
-            state: 'dispensed',
+            skip_today: false,
+            terminal: null,
         },
     ];
 }
@@ -38,7 +98,7 @@ function defaultSlots() {
 export function createMockApiState(overrides = {}) {
     return {
         time_synced: true,
-        local_time: '2026-07-05 19:42:00',
+        local_time: '2026-07-09 10:00:00',
         hopper: 'normal',
         dispense_busy: false,
         schedule_enabled: true,
@@ -54,21 +114,27 @@ export function createMockApiState(overrides = {}) {
     };
 }
 
-function computeNext(slots, schedule_enabled) {
-    if (!schedule_enabled) {
+function computeNext(slots, state) {
+    if (!state.schedule_enabled) {
         return null;
     }
     const pending = slots
-        .filter((s) => s.enabled && s.state === 'pending')
+        .filter((s) => s.enabled && effectiveSlotState(s, state) === 'pending')
         .sort((a, b) => a.hour - b.hour || a.min - b.min)[0];
     if (!pending) {
         return null;
     }
-    return { hour: pending.hour, min: pending.min, g: pending.g, in_min: 47 };
+    const now = parseLocalTime(state.local_time);
+    let in_min = 47;
+    if (now) {
+        const delta = slotMinutes(pending.hour, pending.min) - slotMinutes(now.hour, now.min);
+        in_min = Math.max(0, delta);
+    }
+    return { hour: pending.hour, min: pending.min, g: pending.g, in_min };
 }
 
 function statusPayload(state) {
-    const next = computeNext(state.slots, state.schedule_enabled);
+    const next = computeNext(state.slots, state);
     const body = {
         time_synced: state.time_synced,
         hopper: state.hopper,
@@ -106,8 +172,8 @@ function schedulePayload(state) {
             repeat_days: s.repeat_days,
             g: s.g,
             enabled: s.enabled,
-            today: s.today,
-            state: s.state,
+            today: slotToday(s, state),
+            state: effectiveSlotState(s, state),
         })),
     };
 }
@@ -224,8 +290,8 @@ export function createMockApiHandler(getState, setState) {
                 repeat_days,
                 g: Number(body.g),
                 enabled: !!body.enabled,
-                today: repeat_days.includes(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1),
-                state: 'pending',
+                skip_today: false,
+                terminal: null,
             };
             const slots = state.slots.filter((s) => !(s.hour === hour && s.min === min));
             slots.push(entry);
@@ -261,7 +327,7 @@ export function createMockApiHandler(getState, setState) {
             const min = Number(body.min);
             const slot = findSlot(state, hour, min);
             if (slot) {
-                slot.state = body.skip ? 'skipped' : 'pending';
+                slot.skip_today = !!body.skip;
             }
             setState({ ...state });
             return json(res, 200, { ok: true });

@@ -29,7 +29,7 @@ page `<script>`. The flash image still receives one gzipped HTML file.
 
 | UI | Wire format |
 |----|-------------|
-| Checkboxes labelled Mon–Sun left to right | `repeat_days` integer array on `POST /api/schedule/set` |
+| Day toggles labelled M–S (single letter, Mon=0 … Sun=6) | `repeat_days` integer array on `POST /api/schedule/set` |
 | Index `0` = Monday, `6` = Sunday | Same as MQTT `cmd/schedule/set` and UART bitmask semantics |
 
 The UI uses a 7-bit mask internally (`1 << day_index`). `maskToIndices(mask)`
@@ -61,7 +61,7 @@ produces the sorted `repeat_days` array for the POST body.
 | `formatBowlWeightWire(wire)` | MQTT `bowl_weight` string → display |
 | `formatEditorTitle(time)` | Slot editor heading (`New feeding time` / `Edit HH:MM`) |
 | `sortSlotsByTime(slots)` | Client-side table sort by clock time |
-| `WEEKDAY_MASK` / `ALL_DAYS_MASK` | Day-chip presets in editor |
+| `ALL_DAYS_MASK` | Default day mask when opening **+ Add feed** |
 | `formatRefreshTime(date)` / `formatMetaLine(st, at)` | Host tests only; not shown in UI |
 | `formatFeedModeLabel(mode)` | Human-readable feed mode (settings select uses same labels) |
 | `formatSlotDayLetters(repeat_days)` | One-letter column in the slot table |
@@ -70,6 +70,7 @@ produces the sorted `repeat_days` array for the POST body.
 | `slotDayBadges(repeat_days, todayIndex?)` | Per-day `{letter, label, on, today}` for schedule cards |
 | `formatSlotDays(repeat_days)` | Full weekday list (`title` on table cell) |
 | `formatSlotState(state)` / `slotStateTone(state)` | Slot state badge |
+| `slotSkipControl(slot, local_time)` | Skip-today button (`null` hides control); uses API `today` + feeder time |
 | `parseApiResponse(text)` | JSON object or plain string (feed mode GET) |
 | `apiContentType(body)` | `application/json` vs `text/plain` for POST |
 | `mutationMessage(r, okText, failPrefix?)` | User-visible result from `{ok, error?}` |
@@ -106,10 +107,20 @@ Poll `/api/status` every 5 s; do not add per-topic GETs in v0.
 | Block | Behavior |
 |-------|----------|
 | Master toggles | Automatic schedule / feeds today |
-| Slot cards | Fixed grid: time · grams · day letters · status (right) |
+| **+ Add feed** | Opens bottom-sheet editor with empty form |
+| Slot cards | Time · grams · day letters · **`state` from API**; pen opens editor |
 | Day letters | Plain when scheduled; **today** gets bordered on/off badge (`slotDayBadges`) |
-| Row actions | Disable/Enable, Skip today, Delete (44px tap targets) |
-| Add/edit form | Always visible; Save upserts by time; Clear resets |
+| Row actions | Disable/Enable, **Skip today** (today, not yet passed, `pending` only), **Unskip** (`to_be_skipped` only), delete |
+| Add/edit sheet | Hidden until **+ Add feed** or pen on a card; Save upserts by time; Cancel closes without save |
+| Slot enable/disable | Card **Disable** / **Enable** action only — not in the editor |
+
+**Add/edit sheet fields** (no enabled toggle; new slots save as enabled, edits preserve existing enabled state):
+
+| Field | Control |
+|-------|---------|
+| Time | HH:MM number inputs |
+| Days | M–S day toggles |
+| Amount | Grams (5–150) |
 
 ### Settings tab
 
@@ -139,7 +150,10 @@ the JSON response in the toast (`ok` / `err` classes).
 
 Host client tests use Node built-in `node:test` only (no npm). Local UI preview:
 `make preview-web` serves the bundled page with an in-memory mock API at
-`http://127.0.0.1:8765/` (`tools/web/dev_server.mjs`, `mock_api.mjs`). See
+`http://127.0.0.1:8765/` (`tools/web/dev_server.mjs`, `mock_api.mjs`). The mock
+API derives slot `state` in `mock_api.mjs` only (not `logic.mjs` / not flashed) to
+mirror [scheduler-engine.md](scheduler-engine.md); the device UI renders whatever
+`/api/schedule/state` returns. See
 [build-integration.md](../40-architecture/build-integration.md).
 
 ## Build

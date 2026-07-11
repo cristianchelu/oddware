@@ -344,6 +344,7 @@ export function slotStateTone(state) {
         case 'dispensed':
             return 'ok';
         case 'pending':
+        case 'to_be_skipped':
             return 'warn';
         case 'missed':
             return 'bad';
@@ -353,6 +354,52 @@ export function slotStateTone(state) {
         default:
             return 'muted';
     }
+}
+
+/** Slot clock `HH:MM` or `H:MM` → minutes from midnight, or null. */
+export function slotMinutesFromClock(time) {
+    const parts = String(time).split(':');
+    if (parts.length !== 2) {
+        return null;
+    }
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (Number.isNaN(h) || Number.isNaN(m)) {
+        return null;
+    }
+    return h * 60 + m;
+}
+
+/** True when slot applies today and its time is before feeder `local_time`. */
+export function slotIsPastToday(slot, local_time) {
+    if (!slot?.today || !local_time) {
+        return false;
+    }
+    const nowMin = slotMinutesFromClock(local_time.slice(11, 16));
+    const slotMin = slotMinutesFromClock(slot.time);
+    if (nowMin === null || slotMin === null) {
+        return false;
+    }
+    return slotMin < nowMin;
+}
+
+const SKIP_HIDDEN_STATES = new Set(['dispensed', 'failed', 'skipped_full', 'dispensing', 'skipped']);
+
+/**
+ * Skip-today row action for a slot card, or null when no action applies.
+ * Unskip only for future `to_be_skipped`; past rows hide the control.
+ */
+export function slotSkipControl(slot, local_time) {
+    if (!slot?.today || slotIsPastToday(slot, local_time)) {
+        return null;
+    }
+    if (SKIP_HIDDEN_STATES.has(slot.state)) {
+        return null;
+    }
+    if (slot.state === 'to_be_skipped') {
+        return { label: 'Unskip', skip: false };
+    }
+    return { label: 'Skip today', skip: true };
 }
 
 export function parseApiResponse(text) {
