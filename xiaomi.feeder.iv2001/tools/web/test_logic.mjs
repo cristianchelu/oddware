@@ -16,6 +16,7 @@ import {
     formatHopperLevel,
     formatNextFeedParts,
     formatSlotClock,
+    formatSlotSummary,
     weekdayFromLocalTime,
     formatSlotState,
     formatStatusAlerts,
@@ -28,11 +29,11 @@ import {
     slotStateTone,
     slotDayBadges,
     slotSkipControl,
+    slotCardMuted,
     slotIsPastToday,
     sortSlotsByTime,
     statusStateRows,
     validateScheduleMask,
-    formatEditorTitle,
 } from './logic.mjs';
 
 describe('weekday mask', () => {
@@ -105,11 +106,6 @@ describe('formatters', () => {
             { time: '07:05' },
         ]);
         assert.deepEqual(sorted.map((s) => s.time), ['07:05', '07:15', '18:00']);
-    });
-
-    it('formatEditorTitle', () => {
-        assert.equal(formatEditorTitle(null), 'New feeding time');
-        assert.equal(formatEditorTitle('07:15'), 'Edit 07:15');
     });
 
     it('ALL_DAYS_MASK', () => {
@@ -194,9 +190,13 @@ describe('formatters', () => {
         assert.equal(wed.on, true);
     });
 
-    it('formatSlotClock and weekdayFromLocalTime', () => {
+    it('formatSlotClock and formatSlotSummary', () => {
         assert.equal(formatSlotClock('7:0'), '07:00');
         assert.equal(formatSlotClock('18:30'), '18:30');
+        assert.equal(formatSlotSummary('7:15', 40), '07:15 · 40g');
+    });
+
+    it('weekdayFromLocalTime', () => {
         assert.equal(weekdayFromLocalTime('2026-07-06 08:00:00'), 0);
         assert.equal(weekdayFromLocalTime(null), null);
     });
@@ -215,16 +215,25 @@ describe('formatters', () => {
         const futurePending = { time: '18:30', today: true, state: 'pending' };
         const futureSkipped = { time: '18:30', today: true, state: 'to_be_skipped' };
         assert.equal(slotSkipControl(past, local), null);
+        assert.equal(slotSkipControl({ ...futurePending, enabled: false }, local), null);
         assert.deepEqual(slotSkipControl(futurePending, local), {
-            label: 'Skip today',
             skip: true,
+            active: false,
+            label: 'Skip today',
         });
         assert.deepEqual(slotSkipControl(futureSkipped, local), {
-            label: 'Unskip',
             skip: false,
+            active: true,
+            label: 'Unskip today',
         });
         assert.equal(slotIsPastToday(past, local), true);
         assert.equal(slotIsPastToday(futurePending, local), false);
+    });
+
+    it('slotCardMuted', () => {
+        assert.equal(slotCardMuted({ enabled: true, state: 'pending' }), false);
+        assert.equal(slotCardMuted({ enabled: false, state: 'pending' }), true);
+        assert.equal(slotCardMuted({ enabled: true, state: 'to_be_skipped' }), true);
     });
 });
 

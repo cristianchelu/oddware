@@ -63,15 +63,16 @@ produces the sorted `repeat_days` array for the POST body.
 | `formatStatusAlerts(st)` | Problem badges (time sync, bowl error) |
 | `statusStateRows(st)` | Current-state label/value rows for the Now tab |
 | `formatBowlWeightWire(wire)` | MQTT `bowl_weight` string → display |
-| `formatEditorTitle(time)` | Slot editor heading (`New feeding time` / `Edit HH:MM`) |
 | `sortSlotsByTime(slots)` | Client-side card sort by clock time |
 | `ALL_DAYS_MASK` | Default day mask when opening **+ Add feed** |
-| `formatSlotClock(time)` | Zero-padded `HH:MM` for card column alignment |
+| `formatSlotClock(time)` | Zero-padded `HH:MM` for `<input type="time">` value |
+| `formatSlotSummary(time, g)` | `HH:MM · Ng` headline for schedule cards (matches Next feed detail) |
 | `weekdayFromLocalTime(local_time)` | Mon=0 … Sun=6 from feeder `local_time` date |
 | `slotDayBadges(repeat_days, todayIndex?)` | Per-day `{letter, label, on, today}` for schedule cards |
 | `dayDotClass(d)` | CSS classes for a day-dot badge |
+| `slotCardMuted(slot)` | `true` when card body should mute (`!enabled` or `to_be_skipped`) |
 | `formatSlotState(state)` / `slotStateTone(state)` | Slot state badge |
-| `slotSkipControl(slot, local_time)` | Skip-today button (`null` hides control); uses API `today` + feeder time |
+| `slotSkipControl(slot, local_time)` | Skip-today icon (`null` hides control); requires `enabled`, `today`, not past, not terminal |
 | `parseApiResponse(text)` | JSON object or plain string (feed mode GET) |
 | `apiContentType(body)` | `application/json` vs `text/plain` for POST |
 | `mutationMessage(r, okText, failPrefix?)` | User-visible result from `{ok, error?}` |
@@ -107,20 +108,20 @@ Poll `/api/status` every 5 s; do not add per-topic GETs in v0.
 
 | Block | Behavior |
 |-------|----------|
-| Master toggles | Automatic schedule / feeds today |
+| Master toggles | Schedule / Today |
 | **+ Add feed** | Opens bottom-sheet editor with empty form |
-| Slot cards | Time · grams · day letters · **`state` from API**; pen opens editor |
-| Day letters | Plain when scheduled; **today** gets bordered on/off badge (`slotDayBadges`) |
-| Row actions | Disable/Enable, **Skip today** (today, not yet passed, `pending` only), **Unskip** (`to_be_skipped` only), delete |
+| Slot cards | `HH:MM · Ng` headline · day letters · **`state` from API**; `.slot-main` at 55% opacity when disabled or `to_be_skipped`; row actions stay full contrast |
+| Day letters | Off days plain text; scheduled days filled accent dot; **today** when off gets bordered badge |
+| Row actions | Enable switch (`.tog`), **skip-today** icon (active when `to_be_skipped`), delete |
 | Add/edit sheet | Hidden until **+ Add feed** or pen on a card; Save upserts by time; Cancel closes without save |
-| Slot enable/disable | Card **Disable** / **Enable** action only — not in the editor |
+| Slot enable/disable | Card enable switch only — not in the editor |
 
 **Add/edit sheet fields** (no enabled toggle; new slots save as enabled, edits preserve existing enabled state):
 
 | Field | Control |
 |-------|---------|
-| Time | HH:MM number inputs |
-| Days | M–S day toggles |
+| Time | Required `<input type="time">` |
+| Days | M–S toggles; hidden `#daysGate` input (`required`) synced from bitmask |
 | Amount | Grams (5–150) |
 
 ### Settings tab
@@ -136,7 +137,8 @@ Header: title · feeder `local_time` (`formatDeviceTime`) · refresh control.
 
 | Rule | When | Message |
 |------|------|---------|
-| At least one weekday | Save slot | `Pick at least one day` |
+| Time + grams | Save slot | Native `required` / `min` / `max`; invalid fields use `:user-invalid` styling |
+| At least one weekday | Save slot | Hidden `#daysGate` cleared when day mask is zero |
 
 Server validation and NVDM writes are unchanged; failed POSTs show `error` from
 the JSON response in the toast (`ok` / `err` classes).

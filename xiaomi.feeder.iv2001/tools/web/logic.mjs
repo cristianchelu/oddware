@@ -90,10 +90,6 @@ export function sortSlotsByTime(slots) {
     });
 }
 
-export function formatEditorTitle(time) {
-    return time ? `Edit ${time}` : 'New feeding time';
-}
-
 export function formatStatusAlerts(st) {
     const out = [];
     if (!st.time_synced) out.push({ text: 'Time not synced', tone: 'warn' });
@@ -183,6 +179,10 @@ export function formatSlotClock(time) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+export function formatSlotSummary(time, g) {
+    return `${formatSlotClock(time)} · ${g}g`;
+}
+
 export function weekdayFromLocalTime(local_time) {
     if (!local_time || local_time.length < 10) return null;
     const parts = local_time.slice(0, 10).split('-').map(Number);
@@ -206,6 +206,10 @@ export function dayDotClass(d) {
     if (d.on) cls += ' on';
     if (d.today) cls += ' today';
     return cls;
+}
+
+export function slotCardMuted(slot) {
+    return !slot?.enabled || slot?.state === 'to_be_skipped';
 }
 
 export function formatSlotState(state) {
@@ -233,9 +237,13 @@ export function slotIsPastToday(slot, local_time) {
 }
 
 export function slotSkipControl(slot, local_time) {
-    if (!slot?.today || slotIsPastToday(slot, local_time) || SKIP_HIDE.has(slot.state)) return null;
-    if (slot.state === 'to_be_skipped') return { label: 'Unskip', skip: false };
-    return { label: 'Skip today', skip: true };
+    if (slot?.enabled === false || !slot?.today || slotIsPastToday(slot, local_time) || SKIP_HIDE.has(slot.state)) return null;
+    const active = slot.state === 'to_be_skipped';
+    return {
+        skip: !active,
+        active,
+        label: active ? 'Unskip today' : 'Skip today',
+    };
 }
 
 export function parseApiResponse(text) {

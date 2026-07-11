@@ -162,7 +162,7 @@ h1 {
   }
 }
 
-.eyebrow, .panel > h2, .slot-form-title {
+.eyebrow, .panel > h2 {
   font-size: .7rem;
   font-weight: 700;
   letter-spacing: .06em;
@@ -170,7 +170,7 @@ h1 {
   color: var(--muted);
 }
 
-.panel > h2, .slot-form-title {
+.panel > h2 {
   margin: 0 0 14px;
 }
 
@@ -179,13 +179,16 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-.next-main {
+.next-main, .slot-when {
   font-size: 1.5rem;
   font-weight: 700;
-  margin: 6px 0 0;
   letter-spacing: -.03em;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+}
+
+.next-main {
+  margin: 6px 0 0;
 }
 
 .alerts {
@@ -273,7 +276,7 @@ input, select, button {
   font: inherit;
 }
 
-:is(input[type=number], input[type=text], select) {
+:is(input[type=number], input[type=text], input[type=time], select) {
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -287,6 +290,16 @@ input, select, button {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-ring);
   }
+
+  &:user-invalid {
+    border-color: var(--bad);
+    box-shadow: 0 0 0 3px var(--bad-bd);
+  }
+}
+
+input[type=time] {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 input:disabled {
@@ -295,8 +308,21 @@ input:disabled {
   cursor: not-allowed;
 }
 
-.amt-in {
-  width: 4.5em;
+.dispense-amt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .88rem;
+  color: var(--muted);
+  font-weight: 500;
+
+  & input {
+    width: 4.5em;
+    padding: 9px 8px;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 button {
@@ -351,41 +377,43 @@ button {
     min-height: 36px;
   }
 
-  &.ghost, &.icon {
+  &.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     background: transparent;
     color: var(--muted);
     box-shadow: none;
-    border-color: transparent;
-  }
-
-  &.ghost {
-    padding: 6px;
-    line-height: 0;
-    min-height: auto;
-  }
-
-  &.icon {
-    padding: 8px;
-    min-width: 40px;
-    min-height: 40px;
     border: none;
+
+    &:hover:not(:disabled) {
+      background: var(--muted-bg);
+      color: var(--fg);
+    }
 
     &[data-del]:hover:not(:disabled) {
       background: var(--bad-bg);
       color: var(--bad);
     }
-  }
 
-  &.ghost:hover:not(:disabled),
-  &.icon:hover:not(:disabled) {
-    background: var(--muted-bg);
-    color: var(--fg);
-  }
+    &.skip.on {
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
 
-  &.ghost svg, &.icon svg {
-    display: block;
-    width: 1.1rem;
-    height: 1.1rem;
+    &.skip.on:hover:not(:disabled) {
+      background: var(--warn-bd);
+      color: var(--warn);
+    }
+
+    & svg {
+      display: block;
+      width: 1.1rem;
+      height: 1.1rem;
+    }
   }
 }
 
@@ -395,35 +423,6 @@ button {
   &:last-child {
     margin-bottom: 0;
   }
-}
-
-.time-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-
-  & input {
-    width: 3.6em;
-    padding: 10px 8px;
-    font-size: 1.25rem;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    border: 1px solid var(--line);
-    background: var(--card);
-    border-radius: var(--r-sm);
-
-    &:focus-visible {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-ring);
-    }
-  }
-}
-
-.time-sep {
-  color: var(--muted);
-  font-size: 1.25rem;
-  font-weight: 300;
 }
 
 .sched-summary {
@@ -440,40 +439,29 @@ button {
 }
 
 .slot-card {
+  padding: 0;
+  overflow: hidden;
   transition: box-shadow var(--dur) var(--ease);
 
   &.sel {
     box-shadow: 0 0 0 2px var(--accent-ring), var(--shadow);
   }
 
-  &.off {
-    opacity: .55;
+  &.muted .slot-main {
+    opacity: .33;
   }
+}
+
+.slot-main {
+  padding: 18px 20px 0;
+  background: var(--card);
 }
 
 .slot-top {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.slot-when {
-  font-size: 1.15rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.slot-amt {
-  color: var(--muted);
-  font-size: .88rem;
-  margin: 0 0 12px;
-  font-weight: 500;
-
-  & strong {
-    color: var(--fg);
-    font-weight: 700;
-  }
-}
-
-.day-dot, .chip span {
+.chip span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -483,12 +471,17 @@ button {
 }
 
 .day-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 1.85em;
   height: 1.85em;
+  border-radius: 50%;
   font-size: .72rem;
+  font-weight: 700;
   color: var(--muted);
-  background: var(--card);
   opacity: .45;
+  border: 1px solid transparent;
 
   &.on {
     opacity: 1;
@@ -514,6 +507,8 @@ button {
 
 .slot-foot {
   gap: 8px;
+  padding: 0 20px 18px;
+  background: var(--card);
 }
 
 .slot-tools {
@@ -525,6 +520,7 @@ button {
 .slot-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   flex: 1;
 
@@ -541,21 +537,6 @@ button {
   gap: 12px;
 }
 
-.dispense-amt {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: .88rem;
-  color: var(--muted);
-  font-weight: 500;
-
-  & input {
-    width: 3.5em;
-    text-align: center;
-    font-weight: 700;
-  }
-}
-
 .form-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -566,6 +547,12 @@ button {
     width: 100%;
     min-height: 44px;
   }
+}
+
+#slotEditorForm:has(:invalid) button[type=submit] {
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .editor-overlay {
@@ -710,6 +697,17 @@ button {
   }
 }
 
+#daysGate {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 .amt-row {
   display: flex;
   flex-wrap: wrap;
@@ -814,7 +812,7 @@ button {
 <h1>Pet Feeder</h1>
 <div class="hdr-tools">
 <time id="deviceTime" title="Feeder time">—</time>
-<button type="button" class="ghost" id="refreshBtn" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+<button type="button" class="icon" id="refreshBtn" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
 </div>
 </header>
 <div id="toast"></div>
@@ -840,7 +838,7 @@ button {
 <section class="panel action">
 <h2>Manual dispense</h2>
 <div class="dispense-row">
-<label class="dispense-amt">Amount <input id="dispG" type="number" min="5" max="150" value="30" class="amt-in" aria-label="Grams"> g</label>
+<label class="dispense-amt"><input id="dispG" type="number" min="5" max="150" value="10" aria-label="Grams" inputmode="numeric"> g</label>
 <button class="pri" id="dispBtn">Dispense</button>
 </div>
 </section>
@@ -849,8 +847,8 @@ button {
 <section class="panel sched-summary">
 <div class="row between">
 <div class="row sched-toggles">
-<label class="tog"><input type="checkbox" id="schedEn"> Automatic feeds</label>
-<label class="tog"><input type="checkbox" id="todayEn"> Feeds today</label>
+<label class="tog"><input type="checkbox" id="schedEn"> Schedule</label>
+<label class="tog"><input type="checkbox" id="todayEn"> Today</label>
 </div>
 <button type="button" class="pri sm" id="addSlotBtn">+ Add feed</button>
 </div>
@@ -892,30 +890,28 @@ button {
 </div>
 <div id="slotEditor" class="editor-overlay" hidden>
 <div class="editor-backdrop" id="editorBackdrop"></div>
-<section class="panel editor-sheet" id="slotForm" role="dialog" aria-modal="true" aria-labelledby="slotFormTitle">
-<h2 class="slot-form-title eyebrow" id="slotFormTitle">New feeding time</h2>
+<section class="panel editor-sheet" id="slotForm" role="dialog" aria-modal="true" aria-label="Feeding time">
+<form id="slotEditorForm">
 <div class="field">
-<span class="lbl">Time</span>
-<div class="time-row">
-<input id="slotH" type="number" min="0" max="23" placeholder="HH" aria-label="Hour" inputmode="numeric">
-<span class="time-sep" aria-hidden="true">:</span>
-<input id="slotM" type="number" min="0" max="59" placeholder="MM" aria-label="Minute" inputmode="numeric">
-</div>
+<label class="lbl" for="slotTime">Time</label>
+<input id="slotTime" type="time" required>
 </div>
 <div class="field">
 <span class="lbl">Days</span>
+<input type="text" id="daysGate" required tabindex="-1" aria-hidden="true">
 <div class="chips" id="days"></div>
 </div>
 <div class="field">
-<span class="lbl">Amount</span>
+<label class="lbl" for="slotG">Amount</label>
 <div class="amt-row">
-<label>Amount <input id="slotG" type="number" min="5" max="150" value="30" aria-label="Grams" inputmode="numeric"> g</label>
+<input id="slotG" type="number" min="5" max="150" value="30" required aria-label="Grams" inputmode="numeric"> g
 </div>
 </div>
 <div class="form-actions">
-<button class="pri" id="saveSlot">Save</button>
+<button type="submit" class="pri" id="saveSlot">Save</button>
 <button type="button" id="clearSlot">Cancel</button>
 </div>
+</form>
 </section>
 </div>
 <script>
@@ -924,10 +920,10 @@ const $ = (id) => document.getElementById(id);
 const SVG = {
   pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+  skip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l9 6-9 6z"/><path d="M19 5v14"/></svg>',
 };
 let editKey = null, editSlotEnabled = true, todayDow = null, deviceLocalTime = null;
 const editorOverlay = $('slotEditor');
-const slotFormTitle = $('slotFormTitle');
 DAYS.forEach((d, i) => {
   const l = document.createElement('label');
   l.className = 'chip';
@@ -947,23 +943,20 @@ function showTab(name) {
   if (el) el.checked = true;
 }
 function slotKey(h, m) {
-  return `${h}:${m}`;
+  return `${Number(h)}:${String(Number(m)).padStart(2, '0')}`;
 }
 function syncRowSelection() {
-  const h = $('slotH').value, m = $('slotM').value;
-  const key = h !== '' && m !== '' ? slotKey(h, m) : null;
+  const v = $('slotTime').value;
+  const key = v ? slotKey(...v.split(':')) : null;
   editKey = editorOverlay.classList.contains('open') ? key : null;
   document.querySelectorAll('#slotList .slot-card').forEach((card) => {
     card.classList.toggle('sel', key && card.dataset.key === key);
   });
 }
-function setEditorTitle(time) {
-  slotFormTitle.textContent = formatEditorTitle(time ? formatSlotClock(time) : null);
-}
 function openEditor() {
   editorOverlay.hidden = false;
   requestAnimationFrame(() => editorOverlay.classList.add('open'));
-  $('slotH').focus();
+  $('slotTime').focus();
 }
 function closeEditor() {
   editorOverlay.classList.remove('open');
@@ -972,22 +965,17 @@ function closeEditor() {
   setTimeout(() => { if (!editorOverlay.classList.contains('open')) editorOverlay.hidden = true; }, 200);
 }
 function fillSlotFormData(s) {
-  const t = s.time.split(':');
-  $('slotH').value = t[0];
-  $('slotM').value = t[1];
+  $('slotTime').value = formatSlotClock(s.time);
   $('slotG').value = s.g;
   editSlotEnabled = !!s.enabled;
   renderDays(indicesToMask(s.repeat_days || []));
-  setEditorTitle(s.time);
   syncRowSelection();
 }
 function clearSlotFormData() {
-  $('slotH').value = '';
-  $('slotM').value = '';
+  $('slotTime').value = '';
   $('slotG').value = 30;
   editSlotEnabled = true;
   renderDays(ALL_DAYS_MASK);
-  setEditorTitle(null);
   syncRowSelection();
 }
 function openNewSlotEditor() {
@@ -1026,11 +1014,15 @@ function daysToMask() {
 }
 function renderDays(mask) {
   document.querySelectorAll('.day').forEach((c) => { c.checked = !!(mask & (1 << c.value)); });
+  $('daysGate').value = mask ? '1' : '';
 }
 function bindSlotActions(card, s, skipCtrl) {
   const t = s.time.split(':');
   const body = () => JSON.stringify(buildScheduleToggleBody(t[0], t[1]));
-  card.querySelector('[data-toggle]').onclick = async (e) => {
+  const toggleLbl = card.querySelector('.slot-en');
+  const toggle = card.querySelector('[data-toggle]');
+  toggleLbl.onclick = (e) => e.stopPropagation();
+  toggle.onchange = async (e) => {
     e.stopPropagation();
     await api('POST', '/api/schedule/toggle', body());
     loadAll();
@@ -1071,20 +1063,21 @@ async function loadSchedule() {
     const t = s.time.split(':');
     const key = slotKey(t[0], t[1]);
     const card = document.createElement('article');
-    card.className = 'slot-card' + (s.enabled ? '' : ' off') + (editKey === key ? ' sel' : '');
+    card.className = 'slot-card' + (slotCardMuted(s) ? ' muted' : '') + (editKey === key ? ' sel' : '');
     card.dataset.key = key;
     const skipCtrl = slotSkipControl(s, deviceLocalTime);
-    card.innerHTML = `<div class="slot-top row between">
-<span class="slot-when">${formatSlotClock(s.time)}</span>
+    card.innerHTML = `<div class="slot-main">
+<div class="slot-top row between">
+<span class="slot-when">${formatSlotSummary(s.time, s.g)}</span>
 ${badge(formatSlotState(s.state), slotStateTone(s.state))}
 </div>
-<p class="slot-amt"><strong>${s.g} g</strong> per feed</p>
 <div class="day-dots">${slotDayBadges(s.repeat_days, todayDow).map((d) =>
   `<span class="${dayDotClass(d)}" title="${d.today ? d.label + ' (today)' : d.label}">${d.letter}</span>`).join('')}</div>
+</div>
 <div class="slot-foot row between">
 <div class="slot-actions">
-<button type=button data-toggle>${s.enabled ? 'Disable' : 'Enable'}</button>
-${skipCtrl ? `<button type=button data-skip>${skipCtrl.label}</button>` : ''}
+<label class="tog slot-en"><input type=checkbox data-toggle${s.enabled ? ' checked' : ''} aria-label=Enabled></label>
+${skipCtrl ? `<button type=button class="icon skip${skipCtrl.active ? ' on' : ''}" data-skip aria-label="${skipCtrl.label}" title="${skipCtrl.label}">${SVG.skip}</button>` : ''}
 </div>
 <div class="slot-tools">
 <button type=button class="icon" data-edit aria-label="Edit">${SVG.pen}</button>
@@ -1137,7 +1130,8 @@ document.querySelectorAll('.tab-radios').forEach((tab) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && editorOverlay.classList.contains('open')) closeEditor();
 });
-['slotH', 'slotM'].forEach((id) => $(id).addEventListener('input', syncRowSelection));
+$('slotTime').addEventListener('input', syncRowSelection);
+$('days').addEventListener('change', () => { $('daysGate').value = daysToMask() ? '1' : ''; });
 $('dispBtn').onclick = async () => {
   const btn = $('dispBtn');
   btn.disabled = true;
@@ -1153,16 +1147,15 @@ $('todayEn').onchange = async (e) => {
   await api('POST', '/api/schedule/today', JSON.stringify(buildScheduleTodayBody(e.target.checked)));
   loadAll();
 };
-$('saveSlot').onclick = async () => {
-  const mask = daysToMask();
-  const v = validateScheduleMask(mask);
-  if (!v.ok) { toast(v.error, false); return; }
+$('slotEditorForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const [hour, min] = $('slotTime').value.split(':').map(Number);
   const ok = await postSave('/api/schedule/set', buildScheduleSetBody({
-    hour: $('slotH').value, min: $('slotM').value, mask, g: $('slotG').value, enabled: editSlotEnabled,
+    hour, min, mask: daysToMask(), g: $('slotG').value, enabled: editSlotEnabled,
   }), 'Feeding time saved');
   if (ok) closeEditor();
   loadAll();
-};
+});
 $('saveMode').onclick = () => postSave('/api/feed/mode', $('feedMode').value, 'Feed mode saved');
 $('overfillEn').onchange = () => { $('overfillG').disabled = !$('overfillEn').checked; };
 $('saveOverfill').onclick = () => postSave('/api/feed/overfill', buildFeedOverfillBody({
