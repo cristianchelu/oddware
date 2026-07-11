@@ -12,16 +12,17 @@
   --line: #ebe6de;
   --card: #fff;
   --accent: #2a9d8f;
-  --accent-soft: #e8f5f2;
   --accent-deep: #1f7a6f;
   --accent-ring: #b8e0d8;
-  --af: #fff;
   --ok: #2d6a4f;
   --ok-bg: #e8f3ec;
+  --ok-bd: #c5e0d0;
   --warn: #b45309;
   --warn-bg: #fef6e8;
+  --warn-bd: #f5ddb8;
   --bad: #b42318;
   --bad-bg: #fcecea;
+  --bad-bd: #f5c4c0;
   --muted-bg: #f0ece4;
   --r: 16px;
   --r-sm: 10px;
@@ -31,7 +32,11 @@
   --ease: cubic-bezier(.2, .8, .2, 1);
   --dur: .18s;
 }
-* { box-sizing: border-box; }
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font: 15px/1.5 var(--sans);
@@ -40,11 +45,18 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
-.wrap { max-width: 36rem; margin: 0 auto; padding: 20px 18px 36px; }
+
+.wrap {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 20px 18px 36px;
+}
+
 header {
   margin-bottom: 16px;
   align-items: center;
 }
+
 h1 {
   font-size: 1.35rem;
   font-weight: 700;
@@ -53,9 +65,29 @@ h1 {
   flex: 1;
   min-width: 0;
 }
-.hdr-tools { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.hdr-tools time { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.tab-radios { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+.hdr-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+
+  & time {
+    font-size: .78rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Tabs — sibling combinators stay top-level (native nesting can't express these) */
+.tab-radios {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
 .tabs {
   display: flex;
   gap: 6px;
@@ -67,19 +99,24 @@ h1 {
   top: 8px;
   z-index: 2;
   box-shadow: var(--shadow-sm);
+
+  & label {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 999px;
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      color var(--dur) var(--ease),
+      background var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease);
+  }
 }
-.tabs label {
-  flex: 1;
-  text-align: center;
-  padding: 10px 8px;
-  border-radius: 999px;
-  font-size: .84rem;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  user-select: none;
-  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-}
+
 #tab-now:checked ~ .tabs label[for="tab-now"],
 #tab-sched:checked ~ .tabs label[for="tab-sched"],
 #tab-settings:checked ~ .tabs label[for="tab-settings"] {
@@ -87,7 +124,11 @@ h1 {
   color: var(--fg);
   box-shadow: var(--shadow-sm);
 }
-.tab-pane { display: none; }
+
+.tab-pane {
+  display: none;
+}
+
 #tab-now:checked ~ .tab-body #pane-now,
 #tab-sched:checked ~ .tab-body #pane-sched,
 #tab-settings:checked ~ .tab-body #pane-settings {
@@ -95,38 +136,49 @@ h1 {
   flex-direction: column;
   gap: 12px;
 }
-.panel,
-.slot-card {
+
+.panel, .slot-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 18px 20px;
   box-shadow: var(--shadow-sm);
 }
-.panel > h2,
-.slot-form-title {
-  font-size: .72rem;
-  margin: 0 0 14px;
+
+.panel {
+  &.hero {
+    padding: 16px 18px;
+  }
+
+  &.action {
+    & > h2 {
+      margin-bottom: 10px;
+    }
+
+    & .pri {
+      flex-shrink: 0;
+      min-height: 44px;
+    }
+  }
+}
+
+.eyebrow, .panel > h2, .slot-form-title {
+  font-size: .7rem;
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.panel.hero {
-  padding: 16px 18px;
-  background: var(--card);
+
+.panel > h2, .slot-form-title {
+  margin: 0 0 14px;
 }
-.panel.action { background: var(--card); }
-.panel.action > h2 { margin-bottom: 10px; }
-.stat-lbl {
-  color: var(--muted);
-  font-size: .7rem;
+
+.eyebrow {
   margin: 0;
   font-variant-numeric: tabular-nums;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 700;
 }
+
 .next-main {
   font-size: 1.5rem;
   font-weight: 700;
@@ -135,38 +187,61 @@ h1 {
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
-.alerts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
-.alerts:empty { display: none; }
+
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+
+  &:empty {
+    display: none;
+  }
+}
+
 .state-grid {
   margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+
 .state-item {
   padding: 14px;
   background: var(--muted-bg);
   border-radius: var(--r-sm);
+
+  & dt {
+    margin: 0 0 6px;
+    font-size: .68rem;
+  }
+
+  & dd {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.2;
+
+    &.muted {
+      color: var(--muted);
+      font-size: .95rem;
+      font-weight: 600;
+    }
+
+    &.ok {
+      color: var(--ok);
+    }
+
+    &.warn {
+      color: var(--warn);
+    }
+
+    &.bad {
+      color: var(--bad);
+    }
+  }
 }
-.state-item dt {
-  color: var(--muted);
-  margin: 0 0 6px;
-  font-size: .68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-}
-.state-item dd {
-  margin: 0;
-  font-weight: 700;
-  font-size: 1.05rem;
-  line-height: 1.2;
-}
-.state-item dd.ok { color: var(--ok); }
-.state-item dd.warn { color: var(--warn); }
-.state-item dd.bad { color: var(--bad); }
-.state-item dd.muted { color: var(--muted); font-size: .95rem; font-weight: 600; }
-#toast:empty { display: none; }
+
 #toast {
   font-size: .85rem;
   margin: 0 0 12px;
@@ -177,40 +252,53 @@ h1 {
   color: var(--fg);
   font-weight: 500;
   box-shadow: var(--shadow-sm);
+
+  &:empty {
+    display: none;
+  }
 }
-#toast.ok {
-  color: var(--ok);
-  background: var(--ok-bg);
-  border-color: #c5e0d0;
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+
+  &.between {
+    justify-content: space-between;
+  }
 }
-#toast.err {
-  color: var(--bad);
-  background: var(--bad-bg);
-  border-color: #f5c4c0;
+
+input, select, button {
+  font: inherit;
 }
-.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.row.between { justify-content: space-between; }
-.row.end { margin-top: 12px; }
-input, select, button { font: inherit; }
-input[type=number], input[type=text], select {
+
+:is(input[type=number], input[type=text], select) {
   padding: 9px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--card);
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  transition:
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+  }
 }
-input[type=number]:focus-visible, input[type=text]:focus-visible, select:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-ring);
-}
+
 input:disabled {
   opacity: .5;
   background: var(--muted-bg);
   cursor: not-allowed;
 }
-input.tin { width: 5em; text-align: center; }
-.amt-in { width: 4.5em; }
+
+.amt-in {
+  width: 4.5em;
+}
+
 button {
   padding: 9px 16px;
   min-height: 40px;
@@ -219,122 +307,240 @@ button {
   background: var(--card);
   color: var(--fg);
   cursor: pointer;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+
+  &:hover:not(:disabled) {
+    border-color: #d4cfc6;
+    box-shadow: var(--shadow-sm);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(.98);
+  }
+
+  &:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  &.pri {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(42, 157, 143, .22);
+
+    &:hover:not(:disabled) {
+      background: var(--accent-deep);
+      border-color: var(--accent-deep);
+    }
+
+    &.sm {
+      flex-shrink: 0;
+    }
+  }
+
+  &.sm {
+    padding: 7px 14px;
+    font-size: .82rem;
+    min-height: 36px;
+  }
+
+  &.ghost, &.icon {
+    background: transparent;
+    color: var(--muted);
+    box-shadow: none;
+    border-color: transparent;
+  }
+
+  &.ghost {
+    padding: 6px;
+    line-height: 0;
+    min-height: auto;
+  }
+
+  &.icon {
+    padding: 8px;
+    min-width: 40px;
+    min-height: 40px;
+    border: none;
+
+    &[data-del]:hover:not(:disabled) {
+      background: var(--bad-bg);
+      color: var(--bad);
+    }
+  }
+
+  &.ghost:hover:not(:disabled),
+  &.icon:hover:not(:disabled) {
+    background: var(--muted-bg);
+    color: var(--fg);
+  }
+
+  &.ghost svg, &.icon svg {
+    display: block;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
 }
-button:hover:not(:disabled) { border-color: #d4cfc6; box-shadow: var(--shadow-sm); }
-button:active:not(:disabled) { transform: scale(.98); }
-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-button.pri {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--af);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(42, 157, 143, .22);
+
+.field {
+  margin: 0 0 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
-button.pri:hover:not(:disabled) { background: var(--accent-deep); border-color: var(--accent-deep); }
-button.pri.sm { flex-shrink: 0; }
-button.soft {
-  flex-shrink: 0;
-  font-size: .85rem;
-  font-weight: 600;
-  color: var(--accent-deep);
-  border-color: var(--accent-ring);
-  background: var(--accent-soft);
+
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  & input {
+    width: 3.6em;
+    padding: 10px 8px;
+    font-size: 1.25rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: var(--r-sm);
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-ring);
+    }
+  }
 }
-button.soft:hover:not(:disabled) { background: var(--accent); color: var(--af); border-color: var(--accent); }
-button.sm { padding: 7px 14px; font-size: .82rem; min-height: 36px; }
-button.ghost, button.icon { background: transparent; color: var(--muted); box-shadow: none; }
-button.ghost { border-color: transparent; padding: 6px; line-height: 0; min-height: auto; }
-button.icon { padding: 8px; min-width: 40px; min-height: 40px; border: none; }
-button.ghost:hover:not(:disabled), button.icon:hover:not(:disabled) {
-  background: var(--muted-bg);
-  color: var(--fg);
-  box-shadow: none;
-}
-button.ghost:hover:not(:disabled) { border-color: transparent; }
-button.icon[data-del]:hover:not(:disabled) { background: var(--bad-bg); color: var(--bad); }
-button.ghost svg, button.icon svg { display: block; width: 1.1rem; height: 1.1rem; }
-.hint { color: var(--muted); font-size: .82rem; margin: 0 0 10px; }
-.field { margin: 0 0 20px; }
-.field:last-child { margin-bottom: 0; }
-.lbl {
-  display: block;
-  font-size: .7rem;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+
+.time-sep {
   color: var(--muted);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-.time-row input {
-  width: 3.6em;
-  padding: 10px 8px;
   font-size: 1.25rem;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  border: 1px solid var(--line);
-  background: var(--card);
-  border-radius: var(--r-sm);
+  font-weight: 300;
 }
-.time-row input:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); border-color: var(--accent); }
-.sched-summary .row { gap: 20px; flex-wrap: wrap; }
-.sched-summary .row.between { align-items: center; }
-.slot-list { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+
+.sched-summary {
+  & .row {
+    gap: 20px;
+  }
+}
+
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
 .slot-card {
   transition: box-shadow var(--dur) var(--ease);
+
+  &.sel {
+    box-shadow: 0 0 0 2px var(--accent-ring), var(--shadow);
+  }
+
+  &.off {
+    opacity: .55;
+  }
 }
-.slot-card.sel { box-shadow: 0 0 0 2px var(--accent-ring), var(--shadow); }
-.slot-card.off { opacity: .55; }
-.slot-top { margin-bottom: 10px; }
-.slot-when { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.slot-amt { color: var(--muted); font-size: .88rem; margin: 0 0 12px; font-weight: 500; }
-.slot-amt strong { color: var(--fg); font-weight: 700; }
-.day-dots { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-.day-dot {
+
+.slot-top {
+  margin-bottom: 10px;
+}
+
+.slot-when {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-amt {
+  color: var(--muted);
+  font-size: .88rem;
+  margin: 0 0 12px;
+  font-weight: 500;
+
+  & strong {
+    color: var(--fg);
+    font-weight: 700;
+  }
+}
+
+.day-dot, .chip span {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  border: 1px solid var(--line);
+}
+
+.day-dot {
   width: 1.85em;
   height: 1.85em;
-  border-radius: 50%;
   font-size: .72rem;
-  font-weight: 700;
   color: var(--muted);
   background: var(--card);
-  border: 1px solid var(--line);
   opacity: .45;
+
+  &.on {
+    opacity: 1;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  &.today:not(.on) {
+    opacity: 1;
+    background: var(--card);
+    border-color: var(--line);
+    color: var(--muted);
+  }
 }
-.day-dot.sched {
-  opacity: 1;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--af);
+
+.day-dots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
-.day-dot.today {
-  opacity: 1;
-  font-weight: 700;
+
+.slot-foot {
+  gap: 8px;
 }
-.day-dot.today.on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--af);
+
+.slot-tools {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
 }
-.day-dot.today.off {
-  background: var(--card);
-  border-color: var(--line);
-  color: var(--muted);
+
+.slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+
+  & button {
+    padding: 8px 12px;
+    font-size: .8rem;
+  }
 }
-.slot-foot { gap: 8px; }
-.slot-tools { display: flex; gap: 4px; flex-shrink: 0; }
-.slot-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
-.slot-actions button { padding: 8px 12px; font-size: .8rem; }
+
 .dispense-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+
 .dispense-amt {
   display: flex;
   align-items: center;
@@ -342,11 +548,26 @@ button.ghost svg, button.icon svg { display: block; width: 1.1rem; height: 1.1re
   font-size: .88rem;
   color: var(--muted);
   font-weight: 500;
+
+  & input {
+    width: 3.5em;
+    text-align: center;
+    font-weight: 700;
+  }
 }
-.dispense-amt input { width: 3.5em; text-align: center; font-weight: 700; }
-.form-actions button, .panel.action .pri { min-height: 44px; }
-.form-actions button { width: 100%; }
-.panel.action .pri { flex-shrink: 0; }
+
+.form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+
+  & button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
 .editor-overlay {
   position: fixed;
   inset: 0;
@@ -357,107 +578,169 @@ button.ghost svg, button.icon svg { display: block; width: 1.1rem; height: 1.1re
   pointer-events: none;
   visibility: hidden;
   transition: visibility var(--dur) var(--ease);
+
+  &.open {
+    pointer-events: auto;
+    visibility: visible;
+
+    & .editor-backdrop {
+      opacity: 1;
+    }
+
+    & .editor-sheet {
+      transform: translateY(0);
+    }
+  }
+
+  & .editor-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 24, 20, .38);
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  & .editor-sheet {
+    position: relative;
+    width: 100%;
+    max-width: 36rem;
+    margin: 0 auto;
+    max-height: min(90vh, 36rem);
+    overflow: auto;
+    border-radius: var(--r) var(--r) 0 0;
+    transform: translateY(100%);
+    transition: transform var(--dur) var(--ease);
+    box-shadow: 0 -8px 32px rgba(26, 24, 20, .12);
+  }
 }
-.editor-overlay.open {
-  pointer-events: auto;
-  visibility: visible;
-}
-.editor-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(26, 24, 20, .38);
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease);
-}
-.editor-overlay.open .editor-backdrop { opacity: 1; }
-.editor-sheet {
-  position: relative;
-  width: 100%;
-  max-width: 36rem;
-  margin: 0 auto;
-  max-height: min(90vh, 36rem);
-  overflow: auto;
-  border-radius: var(--r) var(--r) 0 0;
-  transform: translateY(100%);
-  transition: transform var(--dur) var(--ease);
-  box-shadow: 0 -8px 32px rgba(26, 24, 20, .12);
-}
-.editor-overlay.open .editor-sheet { transform: translateY(0); }
+
 .tog {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: .9rem;
   cursor: pointer;
+
+  & input[type=checkbox] {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+    width: 2.6em;
+    height: 1.45em;
+    margin: 0;
+    background: #d4cfc6;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background var(--dur) var(--ease);
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: calc(1.45em - 4px);
+      height: calc(1.45em - 4px);
+      background: var(--card);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(26, 24, 20, .18);
+      transition: transform var(--dur) var(--ease);
+    }
+
+    &:checked {
+      background: var(--accent);
+
+      &::before {
+        transform: translateX(calc(2.6em - 1.45em));
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+  }
 }
-.tog input[type=checkbox] {
-  appearance: none;
-  -webkit-appearance: none;
-  flex-shrink: 0;
-  width: 2.6em;
-  height: 1.45em;
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 0;
-  background: #d4cfc6;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
+}
+
+.chip {
   position: relative;
-  transition: background var(--dur) var(--ease);
+
+  & input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:focus-visible + span {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-color: var(--accent);
+      box-shadow: none;
+    }
+
+    &:checked + span {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+  }
+
+  & span {
+    width: 2.9em;
+    height: 2.9em;
+    font-size: .82rem;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background var(--dur) var(--ease),
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+
+    &:hover {
+      border-color: var(--accent-ring);
+    }
+  }
 }
-.tog input[type=checkbox]::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: calc(1.45em - 4px);
-  height: calc(1.45em - 4px);
-  background: var(--card);
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(26, 24, 20, .18);
-  transition: transform var(--dur) var(--ease);
-}
-.tog input[type=checkbox]:checked { background: var(--accent); }
-.tog input[type=checkbox]:checked::before { transform: translateX(calc(2.6em - 1.45em)); }
-.tog input[type=checkbox]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
-.chip { position: relative; }
-.chip input { position: absolute; opacity: 0; width: 0; height: 0; }
-.chip span {
-  display: inline-flex;
+
+.amt-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  width: 2.9em;
-  height: 2.9em;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  font-size: .82rem;
-  font-weight: 700;
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+  gap: 14px 18px;
+
+  & input {
+    width: 4.5em;
+  }
 }
-.chip span:hover { border-color: var(--accent-ring); }
-.chip input:checked + span {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--af);
+
+:is(.badge, #toast) {
+  &.ok {
+    color: var(--ok);
+    background: var(--ok-bg);
+    border-color: var(--ok-bd);
+  }
+
+  &.warn {
+    color: var(--warn);
+    background: var(--warn-bg);
+    border-color: var(--warn-bd);
+  }
+
+  &.bad, &.err {
+    color: var(--bad);
+    background: var(--bad-bg);
+    border-color: var(--bad-bd);
+  }
 }
-.time-sep { color: var(--muted); font-size: 1.25rem; font-weight: 300; }
-.time-row { display: flex; align-items: center; gap: 6px; }
-.form-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
-.amt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
-.amt-row input { width: 4.5em; }
-.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-top: 4px; }
-th, td { padding: 10px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
-th {
-  font-size: .7rem;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--muted);
-  font-weight: 600;
-}
+
 .badge {
   display: inline-block;
   padding: 3px 9px;
@@ -466,27 +749,62 @@ th {
   font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
+
+  &.muted {
+    background: var(--muted-bg);
+    color: var(--muted);
+    border-color: var(--line);
+  }
 }
-.badge.ok { background: var(--ok-bg); color: var(--ok); border-color: #c5e0d0; }
-.badge.warn { background: var(--warn-bg); color: var(--warn); border-color: #f5ddb8; }
-.badge.bad { background: var(--bad-bg); color: var(--bad); border-color: #f5c4c0; }
-.badge.muted { background: var(--muted-bg); color: var(--muted); border-color: var(--line); }
-.empty { color: var(--muted); font-size: .9rem; padding: 20px 0; text-align: center; }
-.set-block { padding: 4px 0; }
-.set-block + .set-block {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+
+.empty {
+  color: var(--muted);
+  font-size: .9rem;
+  padding: 20px 0;
+  text-align: center;
 }
-.set-block .row.between { gap: 12px; }
+
+.set-block {
+  padding: 4px 0;
+
+  & + & {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  & .row.between {
+    gap: 12px;
+  }
+}
+
+.lbl {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: .01ms !important;
     animation-duration: .01ms !important;
   }
-  button:active:not(:disabled) { transform: none; }
-  .editor-sheet { transition: none; transform: none; }
-  .editor-backdrop { transition: none; }
+
+  button {
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+
+  .editor-overlay {
+    & .editor-sheet, & .editor-backdrop {
+      transition: none;
+    }
+
+    & .editor-sheet {
+      transform: none;
+    }
+  }
 }
 </style>
 </head>
@@ -511,7 +829,7 @@ th {
 <div class="tab-body">
 <div id="pane-now" class="tab-pane">
 <section class="panel hero" aria-live="polite">
-<p class="stat-lbl" id="nextMeta">—</p>
+<p class="eyebrow" id="nextMeta">—</p>
 <p class="next-main" id="nextMain" hidden></p>
 <div class="alerts" id="statusAlerts"></div>
 </section>
@@ -550,7 +868,7 @@ th {
 <option value="compensated">Compensated</option>
 </select>
 </label>
-<button id="saveMode" class="soft">Save</button>
+<button id="saveMode" class="pri sm">Save</button>
 </div>
 </div>
 <div class="set-block">
@@ -559,13 +877,13 @@ th {
 </div>
 <div class="row between">
 <label>Full bowl threshold (g) <input type="number" id="overfillG" min="30" max="100" value="50"></label>
-<button id="saveOverfill" class="soft">Save</button>
+<button id="saveOverfill" class="pri sm">Save</button>
 </div>
 </div>
 <div class="set-block">
 <div class="row between">
 <label>Timezone <input id="tzRule" size="20" placeholder="UTC0"></label>
-<button id="saveTz" class="soft">Save</button>
+<button id="saveTz" class="pri sm">Save</button>
 </div>
 </div>
 </section>
@@ -575,7 +893,7 @@ th {
 <div id="slotEditor" class="editor-overlay" hidden>
 <div class="editor-backdrop" id="editorBackdrop"></div>
 <section class="panel editor-sheet" id="slotForm" role="dialog" aria-modal="true" aria-labelledby="slotFormTitle">
-<h2 class="slot-form-title" id="slotFormTitle">New feeding time</h2>
+<h2 class="slot-form-title eyebrow" id="slotFormTitle">New feeding time</h2>
 <div class="field">
 <span class="lbl">Time</span>
 <div class="time-row">
@@ -602,49 +920,37 @@ th {
 </div>
 <script>
 <!-- INJECT_LOGIC -->
-let editKey = null;
-let editSlotEnabled = true;
-let todayDow = null;
-let deviceLocalTime = null;
-const dayBox = document.getElementById('days');
-const editorOverlay = document.getElementById('slotEditor');
-const slotFormTitle = document.getElementById('slotFormTitle');
-const PEN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const $ = (id) => document.getElementById(id);
+const SVG = {
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
+};
+let editKey = null, editSlotEnabled = true, todayDow = null, deviceLocalTime = null;
+const editorOverlay = $('slotEditor');
+const slotFormTitle = $('slotFormTitle');
 DAYS.forEach((d, i) => {
   const l = document.createElement('label');
   l.className = 'chip';
   l.innerHTML = `<input type=checkbox class=day value=${i}><span title="${d}">${d[0]}</span>`;
-  dayBox.appendChild(l);
+  $('days').appendChild(l);
 });
 function toast(text, ok) {
-  const s = document.getElementById('toast');
+  const s = $('toast');
   s.textContent = text || '';
   s.className = ok ? 'ok' : text ? 'err' : '';
 }
 function badge(text, tone) {
   return `<span class="badge ${tone}">${text}</span>`;
 }
-function renderDayDots(repeat_days) {
-  return slotDayBadges(repeat_days, todayDow)
-    .map((d) => {
-      let cls = 'day-dot';
-      if (d.today) cls += d.on ? ' today on' : ' today off';
-      else if (d.on) cls += ' sched';
-      const hint = d.today ? `${d.label} (today)` : d.label;
-      return `<span class="${cls}" title="${hint}">${d.letter}</span>`;
-    })
-    .join('');
-}
 function showTab(name) {
-  const el = document.getElementById('tab-' + name);
+  const el = $('tab-' + name);
   if (el) el.checked = true;
 }
 function slotKey(h, m) {
   return `${h}:${m}`;
 }
 function syncRowSelection() {
-  const h = document.getElementById('slotH').value;
-  const m = document.getElementById('slotM').value;
+  const h = $('slotH').value, m = $('slotM').value;
   const key = h !== '' && m !== '' ? slotKey(h, m) : null;
   editKey = editorOverlay.classList.contains('open') ? key : null;
   document.querySelectorAll('#slotList .slot-card').forEach((card) => {
@@ -657,27 +963,28 @@ function setEditorTitle(time) {
 function openEditor() {
   editorOverlay.hidden = false;
   requestAnimationFrame(() => editorOverlay.classList.add('open'));
-  document.getElementById('slotH').focus();
+  $('slotH').focus();
 }
 function closeEditor() {
   editorOverlay.classList.remove('open');
   editKey = null;
-  document.querySelectorAll('#slotList .slot-card').forEach((card) => card.classList.remove('sel'));
+  document.querySelectorAll('#slotList .slot-card').forEach((c) => c.classList.remove('sel'));
   setTimeout(() => { if (!editorOverlay.classList.contains('open')) editorOverlay.hidden = true; }, 200);
 }
 function fillSlotFormData(s) {
   const t = s.time.split(':');
-  document.getElementById('slotH').value = t[0];
-  document.getElementById('slotM').value = t[1];
-  document.getElementById('slotG').value = s.g;
+  $('slotH').value = t[0];
+  $('slotM').value = t[1];
+  $('slotG').value = s.g;
   editSlotEnabled = !!s.enabled;
   renderDays(indicesToMask(s.repeat_days || []));
   setEditorTitle(s.time);
   syncRowSelection();
 }
 function clearSlotFormData() {
-  ['slotH', 'slotM'].forEach((id) => { document.getElementById(id).value = ''; });
-  document.getElementById('slotG').value = 30;
+  $('slotH').value = '';
+  $('slotM').value = '';
+  $('slotG').value = 30;
   editSlotEnabled = true;
   renderDays(ALL_DAYS_MASK);
   setEditorTitle(null);
@@ -695,21 +1002,15 @@ function openEditSlotEditor(s) {
 }
 function renderStatus(st) {
   const parts = formatNextFeedParts(st.next);
-  document.getElementById('nextMeta').textContent = parts.headline;
-  const main = document.getElementById('nextMain');
-  if (parts.detail) {
-    main.textContent = parts.detail;
-    main.hidden = false;
-  } else {
-    main.hidden = true;
-  }
-  document.getElementById('statusAlerts').innerHTML = formatStatusAlerts(st)
-    .map((a) => badge(a.text, a.tone))
-    .join(' ');
-  document.getElementById('stateGrid').innerHTML = statusStateRows(st)
-    .map((r) => `<div class="state-item"><dt>${r.label}</dt><dd class="${r.tone}">${r.value}</dd></div>`)
+  $('nextMeta').textContent = parts.headline;
+  const main = $('nextMain');
+  main.textContent = parts.detail || '';
+  main.hidden = !parts.detail;
+  $('statusAlerts').innerHTML = formatStatusAlerts(st).map((a) => badge(a.text, a.tone)).join(' ');
+  $('stateGrid').innerHTML = statusStateRows(st)
+    .map((r) => `<div class="state-item"><dt class="eyebrow">${r.label}</dt><dd class="${r.tone}">${r.value}</dd></div>`)
     .join('');
-  document.getElementById('deviceTime').textContent = formatDeviceTime(st);
+  $('deviceTime').textContent = formatDeviceTime(st);
 }
 async function api(method, path, body) {
   const o = { method };
@@ -724,15 +1025,14 @@ function daysToMask() {
   return readMaskFromCheckedValues([...document.querySelectorAll('.day:checked')].map((c) => c.value));
 }
 function renderDays(mask) {
-  document.querySelectorAll('.day').forEach((c) => {
-    c.checked = !!(mask & (1 << c.value));
-  });
+  document.querySelectorAll('.day').forEach((c) => { c.checked = !!(mask & (1 << c.value)); });
 }
 function bindSlotActions(card, s, skipCtrl) {
   const t = s.time.split(':');
+  const body = () => JSON.stringify(buildScheduleToggleBody(t[0], t[1]));
   card.querySelector('[data-toggle]').onclick = async (e) => {
     e.stopPropagation();
-    await api('POST', '/api/schedule/toggle', JSON.stringify(buildScheduleToggleBody(t[0], t[1])));
+    await api('POST', '/api/schedule/toggle', body());
     loadAll();
   };
   const skipBtn = card.querySelector('[data-skip]');
@@ -757,61 +1057,52 @@ async function loadStatus() {
   todayDow = newDow;
   deviceLocalTime = st.time_synced ? st.local_time : null;
   renderStatus(st);
-  document.getElementById('schedEn').checked = !!st.schedule_enabled;
-  document.getElementById('todayEn').checked = !!st.today_enabled;
-  if (dowChanged && document.getElementById('tab-sched').checked) {
-    await loadSchedule();
-  }
+  $('schedEn').checked = !!st.schedule_enabled;
+  $('todayEn').checked = !!st.today_enabled;
+  if (dowChanged && $('tab-sched').checked) await loadSchedule();
 }
 async function loadSchedule() {
   const doc = await api('GET', '/api/schedule/state');
   const rows = sortSlotsByTime(doc.schedule || []);
-  const list = document.getElementById('slotList');
+  const list = $('slotList');
   list.innerHTML = '';
-  document.getElementById('noSlots').hidden = rows.length > 0;
+  $('noSlots').hidden = rows.length > 0;
   rows.forEach((s) => {
-    const card = document.createElement('article');
-    card.className = 'slot-card';
     const t = s.time.split(':');
     const key = slotKey(t[0], t[1]);
+    const card = document.createElement('article');
+    card.className = 'slot-card' + (s.enabled ? '' : ' off') + (editKey === key ? ' sel' : '');
     card.dataset.key = key;
-    if (!s.enabled) card.classList.add('off');
-    if (editKey === key) card.classList.add('sel');
-    const toggleLabel = s.enabled ? 'Disable' : 'Enable';
     const skipCtrl = slotSkipControl(s, deviceLocalTime);
     card.innerHTML = `<div class="slot-top row between">
 <span class="slot-when">${formatSlotClock(s.time)}</span>
-<span class="slot-status">${badge(formatSlotState(s.state), slotStateTone(s.state))}</span>
+${badge(formatSlotState(s.state), slotStateTone(s.state))}
 </div>
 <p class="slot-amt"><strong>${s.g} g</strong> per feed</p>
-<div class="day-dots">${renderDayDots(s.repeat_days)}</div>
+<div class="day-dots">${slotDayBadges(s.repeat_days, todayDow).map((d) =>
+  `<span class="${dayDotClass(d)}" title="${d.today ? d.label + ' (today)' : d.label}">${d.letter}</span>`).join('')}</div>
 <div class="slot-foot row between">
 <div class="slot-actions">
-<button type=button data-toggle>${toggleLabel}</button>
+<button type=button data-toggle>${s.enabled ? 'Disable' : 'Enable'}</button>
 ${skipCtrl ? `<button type=button data-skip>${skipCtrl.label}</button>` : ''}
 </div>
 <div class="slot-tools">
-<button type=button class="icon" data-edit aria-label="Edit">${PEN_SVG}</button>
-<button type=button class="icon" data-del aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+<button type=button class="icon" data-edit aria-label="Edit">${SVG.pen}</button>
+<button type=button class="icon" data-del aria-label="Delete">${SVG.del}</button>
 </div>
 </div>`;
-    card.querySelector('[data-edit]').onclick = (e) => {
-      e.stopPropagation();
-      openEditSlotEditor(s);
-    };
+    card.querySelector('[data-edit]').onclick = (e) => { e.stopPropagation(); openEditSlotEditor(s); };
     bindSlotActions(card, s, skipCtrl);
     list.appendChild(card);
   });
 }
 async function loadMode() {
   const m = await api('GET', '/api/feed/mode');
-  const v = typeof m === 'string' && m.trim ? m.trim() : m;
-  document.getElementById('feedMode').value = v;
+  $('feedMode').value = typeof m === 'string' && m.trim ? m.trim() : m;
 }
 async function loadOverfill() {
   const o = await api('GET', '/api/feed/overfill');
-  const en = document.getElementById('overfillEn');
-  const g = document.getElementById('overfillG');
+  const en = $('overfillEn'), g = $('overfillG');
   if (o && typeof o === 'object') {
     en.checked = Boolean(o.enabled);
     if (o.threshold_g !== undefined) g.value = o.threshold_g;
@@ -820,7 +1111,7 @@ async function loadOverfill() {
 }
 async function loadConfig() {
   const c = await api('GET', '/api/config');
-  if (c.tz_rule) document.getElementById('tzRule').value = c.tz_rule;
+  if (c.tz_rule) $('tzRule').value = c.tz_rule;
 }
 async function loadAll() {
   toast('', true);
@@ -830,77 +1121,54 @@ async function loadAll() {
   await loadOverfill();
   await loadConfig();
 }
-document.getElementById('refreshBtn').onclick = loadAll;
-document.getElementById('addSlotBtn').onclick = openNewSlotEditor;
-document.getElementById('editorBackdrop').onclick = closeEditor;
-document.getElementById('clearSlot').onclick = closeEditor;
+async function postSave(path, body, okMsg, failMsg) {
+  const r = await api('POST', path, typeof body === 'string' ? body : JSON.stringify(body));
+  const m = mutationMessage(r, okMsg, failMsg);
+  toast(m.text, m.ok);
+  return m.ok;
+}
+$('refreshBtn').onclick = loadAll;
+$('addSlotBtn').onclick = openNewSlotEditor;
+$('editorBackdrop').onclick = closeEditor;
+$('clearSlot').onclick = closeEditor;
 document.querySelectorAll('.tab-radios').forEach((tab) => {
-  tab.addEventListener('change', () => {
-    if (!document.getElementById('tab-sched').checked) closeEditor();
-  });
+  tab.addEventListener('change', () => { if (!$('tab-sched').checked) closeEditor(); });
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && editorOverlay.classList.contains('open')) closeEditor();
 });
-['slotH', 'slotM'].forEach((id) => {
-  document.getElementById(id).addEventListener('input', syncRowSelection);
-});
-document.getElementById('dispBtn').onclick = async () => {
-  const btn = document.getElementById('dispBtn');
+['slotH', 'slotM'].forEach((id) => $(id).addEventListener('input', syncRowSelection));
+$('dispBtn').onclick = async () => {
+  const btn = $('dispBtn');
   btn.disabled = true;
-  const r = await api('POST', '/api/dispense', JSON.stringify(buildDispenseBody(document.getElementById('dispG').value)));
-  const m = mutationMessage(r, 'Dispense started', 'Dispense failed');
-  toast(m.text, m.ok);
+  await postSave('/api/dispense', buildDispenseBody($('dispG').value), 'Dispense started', 'Dispense failed');
   btn.disabled = false;
   loadStatus();
 };
-document.getElementById('schedEn').onchange = async (e) => {
+$('schedEn').onchange = async (e) => {
   await api('POST', '/api/schedule/enable', JSON.stringify(buildScheduleEnableBody(e.target.checked)));
   loadAll();
 };
-document.getElementById('todayEn').onchange = async (e) => {
+$('todayEn').onchange = async (e) => {
   await api('POST', '/api/schedule/today', JSON.stringify(buildScheduleTodayBody(e.target.checked)));
   loadAll();
 };
-document.getElementById('saveSlot').onclick = async () => {
+$('saveSlot').onclick = async () => {
   const mask = daysToMask();
   const v = validateScheduleMask(mask);
   if (!v.ok) { toast(v.error, false); return; }
-  const body = buildScheduleSetBody({
-    hour: document.getElementById('slotH').value,
-    min: document.getElementById('slotM').value,
-    mask,
-    g: document.getElementById('slotG').value,
-    enabled: editSlotEnabled,
-  });
-  const r = await api('POST', '/api/schedule/set', JSON.stringify(body));
-  const m = mutationMessage(r, 'Feeding time saved');
-  toast(m.text, m.ok);
-  if (m.ok) closeEditor();
+  const ok = await postSave('/api/schedule/set', buildScheduleSetBody({
+    hour: $('slotH').value, min: $('slotM').value, mask, g: $('slotG').value, enabled: editSlotEnabled,
+  }), 'Feeding time saved');
+  if (ok) closeEditor();
   loadAll();
 };
-document.getElementById('saveMode').onclick = async () => {
-  const r = await api('POST', '/api/feed/mode', document.getElementById('feedMode').value);
-  const m = mutationMessage(r, 'Feed mode saved');
-  toast(m.text, m.ok);
-};
-document.getElementById('overfillEn').onchange = () => {
-  document.getElementById('overfillG').disabled = !document.getElementById('overfillEn').checked;
-};
-document.getElementById('saveOverfill').onclick = async () => {
-  const body = buildFeedOverfillBody({
-    enabled: document.getElementById('overfillEn').checked,
-    threshold_g: document.getElementById('overfillG').value,
-  });
-  const r = await api('POST', '/api/feed/overfill', JSON.stringify(body));
-  const m = mutationMessage(r, 'Overfill settings saved');
-  toast(m.text, m.ok);
-};
-document.getElementById('saveTz').onclick = async () => {
-  const r = await api('POST', '/api/config', JSON.stringify(buildConfigTzBody(document.getElementById('tzRule').value)));
-  const m = mutationMessage(r, 'Timezone saved');
-  toast(m.text, m.ok);
-};
+$('saveMode').onclick = () => postSave('/api/feed/mode', $('feedMode').value, 'Feed mode saved');
+$('overfillEn').onchange = () => { $('overfillG').disabled = !$('overfillEn').checked; };
+$('saveOverfill').onclick = () => postSave('/api/feed/overfill', buildFeedOverfillBody({
+  enabled: $('overfillEn').checked, threshold_g: $('overfillG').value,
+}), 'Overfill settings saved');
+$('saveTz').onclick = () => postSave('/api/config', buildConfigTzBody($('tzRule').value), 'Timezone saved');
 loadAll();
 setInterval(loadStatus, 5000);
 </script>

@@ -26,6 +26,29 @@ Pipeline: inline `logic.mjs` into `index.html`, minify the full page with
 Sources stay readable; only the firmware bundle is minified. The script prints
 raw and gzipped byte counts (minified and unminified) after each run.
 
+### CSS: native nesting
+
+`index.html` styles use **native CSS nesting** (`&` for compounds and
+pseudos, implicit descendants where the spec allows). This is intentional:
+`html-minifier-terser` keeps nested rules in the shipped bundle, so `&` costs
+less than repeating selector prefixes — a real gzipped-size win.
+
+- Write **native** nesting only (CSS Nesting Module). No PostCSS, Sass, or
+  Less semantics (`&-suffix`, `@nest`, etc.).
+- Use `&.modifier` for compound classes (`button.pri`), not a bare `.modifier`
+  nested under `button` (that would mean a descendant).
+- Tab-radio sibling rules (`#tab-…:checked ~ …`) stay at top level; they do not
+  nest cleanly.
+- Browsers that load the admin UI must support baseline nesting (2023+). The MCU
+  does not parse CSS — only the user's browser does.
+
+Do not flatten nested CSS back to repeated flat selectors without re-running
+`build.sh` and comparing gzipped bytes.
+
+Source CSS in `index.html` is formatted for humans (one property per line,
+indented nesting). `build.sh` minifies it — do not compress the source to save
+flash bytes.
+
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `HTML_MINIFIER_VERSION` | `7.2.0` | Pin for `npx html-minifier-terser@…` |

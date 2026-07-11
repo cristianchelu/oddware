@@ -223,6 +223,15 @@ Read `spec/40-architecture/build-integration.md` and
 8. **Toolchain.** `arm-none-eabi-gcc` from distro or standalone install — not
    bundled with LinkIt on Linux.
 
+### LAN web UI (`tools/web/`)
+
+The admin panel is a single gzipped HTML file in flash. **`index.html` CSS uses
+native nesting** (`&` compounds/pseudos) on purpose: `html-minifier-terser` keeps
+nested rules in the shipped bundle, which reduces gzipped size. Use native CSS
+Nesting Module syntax only — not Sass/PostCSS/Less. Do not flatten styles back
+to repeated flat selectors without re-running `tools/web/build.sh` and comparing
+byte counts. Details: `tools/web/README.md` § CSS: native nesting.
+
 ## Bench flashing
 
 Linux UART tooling (`tools/iot-flash.sh`, `tools/uart-console.sh`) requires

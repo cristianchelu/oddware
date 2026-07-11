@@ -25,6 +25,11 @@ tested in `test_web_api.c` and `test_schedule_cmd.c`; this document covers
 `build.sh` strips `export` keywords so inlined functions are global inside the
 page `<script>`. The flash image still receives one gzipped HTML file.
 
+Styles in `index.html` use **native CSS nesting** for smaller gzipped output
+(see `tools/web/README.md` § CSS: native nesting). Do not flatten to repeated
+flat selectors or switch to a CSS preprocessor without measuring `build.sh`
+byte counts.
+
 ## Weekday model
 
 | UI | Wire format |
@@ -53,22 +58,18 @@ produces the sorted `repeat_days` array for the POST body.
 | `buildScheduleTodayBody(enabled)` | `POST /api/schedule/today` |
 | `buildConfigTzBody(tz_rule)` | `POST /api/config` time slice |
 | `buildFeedOverfillBody({enabled, threshold_g})` | `POST /api/feed/overfill` |
-| `formatNextFeed(next)` | Next-feed summary line |
 | `formatNextFeedParts(next)` | Two-line next feed (`Next feed · in N min` / `HH:MM · Ng`) |
 | `formatDeviceTime(st)` | Feeder `local_time` in header (or `—` if unsynced) |
 | `formatStatusAlerts(st)` | Problem badges (time sync, bowl error) |
 | `statusStateRows(st)` | Current-state label/value rows for the Now tab |
 | `formatBowlWeightWire(wire)` | MQTT `bowl_weight` string → display |
 | `formatEditorTitle(time)` | Slot editor heading (`New feeding time` / `Edit HH:MM`) |
-| `sortSlotsByTime(slots)` | Client-side table sort by clock time |
+| `sortSlotsByTime(slots)` | Client-side card sort by clock time |
 | `ALL_DAYS_MASK` | Default day mask when opening **+ Add feed** |
-| `formatRefreshTime(date)` / `formatMetaLine(st, at)` | Host tests only; not shown in UI |
-| `formatFeedModeLabel(mode)` | Human-readable feed mode (settings select uses same labels) |
-| `formatSlotDayLetters(repeat_days)` | One-letter column in the slot table |
 | `formatSlotClock(time)` | Zero-padded `HH:MM` for card column alignment |
 | `weekdayFromLocalTime(local_time)` | Mon=0 … Sun=6 from feeder `local_time` date |
 | `slotDayBadges(repeat_days, todayIndex?)` | Per-day `{letter, label, on, today}` for schedule cards |
-| `formatSlotDays(repeat_days)` | Full weekday list (`title` on table cell) |
+| `dayDotClass(d)` | CSS classes for a day-dot badge |
 | `formatSlotState(state)` / `slotStateTone(state)` | Slot state badge |
 | `slotSkipControl(slot, local_time)` | Skip-today button (`null` hides control); uses API `today` + feeder time |
 | `parseApiResponse(text)` | JSON object or plain string (feed mode GET) |

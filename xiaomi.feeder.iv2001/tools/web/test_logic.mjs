@@ -3,27 +3,22 @@ import { describe, it } from 'node:test';
 
 import {
     DAYS,
+    ALL_DAYS_MASK,
     apiContentType,
     buildDispenseBody,
     buildFeedOverfillBody,
     buildScheduleSetBody,
     buildScheduleToggleBody,
     busyTone,
+    dayDotClass,
     formatBusy,
     formatDeviceTime,
-    formatFeedModeLabel,
-    formatHopper,
-    formatMetaLine,
-    formatNextFeed,
+    formatHopperLevel,
     formatNextFeedParts,
-    formatRefreshTime,
     formatSlotClock,
-    formatSlotDayLetters,
-    formatSlotDays,
     weekdayFromLocalTime,
     formatSlotState,
     formatStatusAlerts,
-    formatStatusMessage,
     hopperTone,
     indicesToMask,
     maskToIndices,
@@ -37,8 +32,6 @@ import {
     sortSlotsByTime,
     statusStateRows,
     validateScheduleMask,
-    WEEKDAY_MASK,
-    ALL_DAYS_MASK,
     formatEditorTitle,
 } from './logic.mjs';
 
@@ -90,15 +83,6 @@ describe('buildScheduleSetBody', () => {
 });
 
 describe('formatters', () => {
-    it('formatNextFeed with next object', () => {
-        const line = formatNextFeed({ hour: 7, min: 5, g: 40, in_min: 12 });
-        assert.equal(line, '7:05 · 40g · 12m');
-    });
-
-    it('formatNextFeed without next', () => {
-        assert.equal(formatNextFeed(null), 'No upcoming feed');
-    });
-
     it('formatNextFeedParts', () => {
         assert.deepEqual(formatNextFeedParts({ hour: 7, min: 0, g: 30, in_min: 47 }), {
             headline: 'Next feed · in 47 min',
@@ -128,19 +112,8 @@ describe('formatters', () => {
         assert.equal(formatEditorTitle('07:15'), 'Edit 07:15');
     });
 
-    it('day presets', () => {
-        assert.equal(WEEKDAY_MASK, 31);
+    it('ALL_DAYS_MASK', () => {
         assert.equal(ALL_DAYS_MASK, 127);
-    });
-
-    it('formatStatusMessage', () => {
-        const line = formatStatusMessage({
-            time_synced: true,
-            local_time: '2026-07-05 19:00',
-            hopper: 'ok',
-            dispense_busy: false,
-        });
-        assert.equal(line, '2026-07-05 19:00 | hopper ok | busy false');
     });
 
     it('formatDeviceTime', () => {
@@ -183,24 +156,14 @@ describe('formatters', () => {
         assert.equal(rows[5].value, 'Mains');
     });
 
-    it('formatRefreshTime and formatMetaLine', () => {
-        const at = new Date('2026-07-05T19:42:00');
-        assert.match(formatRefreshTime(at), /19:42/);
-        const line = formatMetaLine(
-            { hopper: 'normal', dispense_busy: false },
-            at,
-        );
-        assert.match(line, /hopper ok · idle/);
-    });
-
     it('buildScheduleToggleBody', () => {
         assert.deepEqual(buildScheduleToggleBody(7, 15), { hour: 7, min: 15 });
     });
 
-    it('formatHopper and hopperTone', () => {
-        assert.equal(formatHopper('empty'), 'Empty');
+    it('formatHopperLevel and hopperTone', () => {
+        assert.equal(formatHopperLevel('empty'), 'Empty');
         assert.equal(hopperTone('empty'), 'bad');
-        assert.equal(formatHopper('low'), 'Low');
+        assert.equal(formatHopperLevel('low'), 'Low');
         assert.equal(hopperTone('normal'), 'ok');
     });
 
@@ -210,15 +173,11 @@ describe('formatters', () => {
         assert.equal(formatBusy(false), 'Idle');
     });
 
-    it('formatFeedModeLabel', () => {
-        assert.equal(formatFeedModeLabel('compensated'), 'Compensated');
-        assert.equal(formatFeedModeLabel('open_loop'), 'Open loop');
-    });
-
-    it('formatSlotDayLetters and formatSlotDays', () => {
-        assert.equal(formatSlotDayLetters([0, 2, 4]), 'MWF');
-        assert.equal(formatSlotDays([0, 2, 4]), 'Mon, Wed, Fri');
-        assert.equal(DAYS.length, 7);
+    it('dayDotClass', () => {
+        assert.equal(dayDotClass({ on: false, today: false }), 'day-dot');
+        assert.equal(dayDotClass({ on: true, today: false }), 'day-dot on');
+        assert.equal(dayDotClass({ on: false, today: true }), 'day-dot today');
+        assert.equal(dayDotClass({ on: true, today: true }), 'day-dot on today');
     });
 
     it('slotDayBadges', () => {
