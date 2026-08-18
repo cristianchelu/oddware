@@ -5,7 +5,9 @@ weighs the whole fountain and logs every drink to Home Assistant. The fountain
 itself is untouched — it sits on the new base and gets its power the same way
 it always did, inductively, through its own coil.
 
-![The assembled base](docs/build-assembled-top.jpg)
+| In service | A drink, logged |
+|:---:|:---:|
+| ![The fountain running on the base](docs/build-in-service.jpg) | ![cat-health recording Jazz drinking](docs/cat-health-water-intake.png) |
 
 ## Why
 
