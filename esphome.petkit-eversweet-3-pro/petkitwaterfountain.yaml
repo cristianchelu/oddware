@@ -1,0 +1,1055 @@
+substitutions:
+  name: "petkitfountain"
+  friendly_name: "PetKitFountain"
+
+  # Bowl and water - tune for your PetKit fountain (grams / mL)
+  # bowl_weight is the dry weight of bowl + pump + spout (everything that
+  # sits on the load cell when the reservoir is empty). It is subtracted
+  # from the stable scale reading to compute Water Amount.
+  bowl_weight: "1135"
+  water_mark_min: "500"    # mL - reading at/below this is shown as 0%
+  water_mark_max: "1700"   # mL - reading at/above this is shown as 100%
+  water_level_red_max: "25"      # 0-25% -> red
+  water_level_yellow_max: "50"   # 26-50% -> yellow, 51-100% -> green
+  led_breath_wifi_s: "2"         # WiFi connecting / disconnected
+  led_breath_slow_s: "3"         # water overdue
+  led_breath_fast_s: "1"         # filter overdue
+  led_strobe_tare_ms: "500"      # purple slow strobe (tare)
+  led_strobe_cal_ms: "200"       # purple fast strobe (calibration)
+  led_brightness_low: "0.30"
+  led_brightness_medium: "0.65"
+  led_brightness_high: "1.00"
+
+  # Drinking detection
+  drinking_rate_threshold: "15"   # mL/min to flag as drinking activity
+  drinking_rate_interval: "2"     # seconds, rate computation period
+  drinking_timeout: "10"          # seconds, stay-on after last drinking
+  start_level_offset_s: "5"       # seconds, lookback for start water level
+
+  # Drink-event filters
+  min_drink_event_amount: "4"     # mL
+  min_drink_event_duration: "5"   # seconds
+
+  # Calibration stability
+  stability_threshold: "2"        # g, threshold for vibration detection
+  stability_timeout: "5"          # seconds, debounce for "stable"
+
+  # Operation modes (used by global + LED logic + UI text sensor)
+  operation_mode_normal: "0"
+  operation_mode_tare: "1"
+  operation_mode_calibration: "2"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: update_status_led
+      
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret petkitwaterfountain_api_key
+  actions:
+    # Manually overwrite the persisted HX711 calibration. Useful for
+    # restoring a known-good calibration without re-running the physical
+    # tare + known-weight flow.
+    - action: set_calibration
+      variables:
+        tare: int
+        coefficient: float
+      then:
+        - lambda: !lambda |-
+            if (coefficient == 0.0f || !std::isfinite(coefficient)) {
+              ESP_LOGE("calibration",
+                       "set_calibration ignored: invalid coefficient %.3f",
+                       coefficient);
+              return;
+            }
+            id(scale_tare) = tare;
+            id(scale_coefficient) = coefficient;
+            id(calibration_timestamp) = id(ha_time).now().timestamp;
+            ESP_LOGI("calibration",
+                     "Manually set tare=%d, coefficient=%.3f",
+                     id(scale_tare), id(scale_coefficient));
+        - component.update: calibration_last_performed
+        - component.update: scale_tare_offset_sensor
+        - component.update: scale_coefficient_sensor
+        - script.execute: flash_success
+
+ota:
+  - platform: esphome
+    password: !secret petkitwaterfountain_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback Hotspot"
+    password: !secret petkitwaterfountain_ap_password
+  on_connect:
+    then:
+      - script.execute: update_status_led
+  on_disconnect:
+    then:
+      - script.execute: update_status_led
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+globals:
+  - id: operation_mode
+    type: int
+    restore_value: False
+    initial_value: "${operation_mode_normal}"
+
+  - id: status_led_brightness_level
+    type: float
+    restore_value: True
+    initial_value: "${led_brightness_high}"
+
+  # HX711 calibration values - persisted across reboots.
+  # scale_tare is the raw HX711 reading with the empty bowl removed.
+  # scale_coefficient converts (raw - tare) -> grams.
+  - id: scale_tare
+    type: int
+    restore_value: True
+    initial_value: "726000"
+
+  - id: scale_tare_temp
+    type: int
+    restore_value: False
+    initial_value: "0"
+
+  - id: scale_raw_value_temp
+    type: int
+    restore_value: False
+    initial_value: "0"
+
+  - id: scale_coefficient
+    type: float
+    restore_value: True
+    initial_value: "-282.8"
+
+  # Consumable timers
+  - id: filter_last_changed
+    type: time_t
+    restore_value: True
+    initial_value: "0"
+
+  - id: water_last_changed
+    type: time_t
+    restore_value: True
+    initial_value: "0"
+
+  - id: calibration_timestamp
+    type: time_t
+    restore_value: True
+    initial_value: "0"
+
+  # Drinking-event tracking
+  - id: water_level_history
+    type: std::vector<float>
+    restore_value: False
+
+  - id: water_level_start
+    type: float
+    restore_value: False
+    initial_value: "NAN"
+
+  - id: activity_start_time
+    type: time_t
+    restore_value: False
+    initial_value: "0"
+
+i2c:
+  scl: GPIO6
+  sda: GPIO7
+  scan: true
+  id: bus_a
+  frequency: 400kHz
+
+number:
+  - platform: template
+    name: "Calibration Known Weight"
+    id: calibration_known_weight
+    optimistic: true
+    min_value: 10
+    max_value: 3000
+    step: 1
+    mode: box
+    initial_value: ${bowl_weight}
+    unit_of_measurement: "g"
+    entity_category: config
+    icon: mdi:weight-gram
+
+  - platform: template
+    name: "Water Change Interval"
+    id: water_change_interval
+    optimistic: true
+    restore_value: true
+    min_value: 1
+    max_value: 14
+    step: 1
+    mode: box
+    initial_value: 5
+    unit_of_measurement: "d"
+    entity_category: config
+    icon: mdi:water-sync
+    set_action:
+      then:
+        - component.update: water_change_days_remaining
+        - component.update: water_next_change_date
+        - script.execute: update_status_led
+
+  - platform: template
+    name: "Filter Change Interval"
+    id: filter_change_interval
+    optimistic: true
+    restore_value: true
+    min_value: 1
+    max_value: 31
+    step: 1
+    mode: box
+    initial_value: 14
+    unit_of_measurement: "d"
+    entity_category: config
+    icon: mdi:air-filter
+    set_action:
+      then:
+        - component.update: filter_change_days_remaining
+        - component.update: filter_next_change_date
+        - script.execute: update_status_led
+
+select:
+  - platform: template
+    name: "Status LED Brightness"
+    id: status_led_brightness
+    icon: mdi:brightness-6
+    entity_category: config
+    options:
+      - "Low"
+      - "Medium"
+      - "High"
+    lambda: !lambda |-
+      if (id(status_led_brightness_level) <= ${led_brightness_low}) {
+        return {"Low"};
+      }
+      if (id(status_led_brightness_level) <= ${led_brightness_medium}) {
+        return {"Medium"};
+      }
+      return {"High"};
+    set_action:
+      then:
+        - lambda: !lambda |-
+            if (x == "Low") {
+              id(status_led_brightness_level) = ${led_brightness_low};
+            } else if (x == "Medium") {
+              id(status_led_brightness_level) = ${led_brightness_medium};
+            } else {
+              id(status_led_brightness_level) = ${led_brightness_high};
+            }
+        - component.update: status_led_brightness
+        - script.execute: update_status_led
+
+sensor:
+  # ── INA219 power monitoring of the pump coil ──
+  - platform: ina219
+    address: 0x40
+    shunt_resistance: 0.1 ohm
+    current:
+      name: "Coil Current"
+      id: coil_current
+      accuracy_decimals: 3
+      unit_of_measurement: "A"
+      disabled_by_default: True
+      internal: true
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 5
+    power:
+      name: "Coil Power"
+      id: coil_power
+      accuracy_decimals: 2
+      unit_of_measurement: "W"
+      filters:
+        - sliding_window_moving_average:
+            window_size: 5
+            send_every: 5
+    bus_voltage:
+      name: "Bus Voltage"
+      id: bus_voltage
+      accuracy_decimals: 2
+      unit_of_measurement: "V"
+      disabled_by_default: True
+      internal: true
+    shunt_voltage:
+      name: "Shunt Voltage"
+      id: shunt_voltage
+      accuracy_decimals: 4
+      unit_of_measurement: "V"
+      internal: True
+    max_voltage: 16V
+    max_current: 3.2A
+    update_interval: 1s
+
+  # ── HX711 load cell with runtime tare + calibration ──
+  - platform: hx711
+    name: "Scale"
+    id: scale_sensor
+    entity_category: diagnostic
+    dout_pin:
+      number: GPIO9
+      mode:
+        pullup: True
+        input: True
+    clk_pin:
+      number: GPIO10
+      mode:
+        pullup: True
+        output: True
+    gain: 128
+    update_interval: 100ms
+    icon: mdi:scale
+    accuracy_decimals: 0
+    unit_of_measurement: "g"
+    state_class: measurement
+    internal: True
+    filters:
+      - lambda: !lambda |-
+          return (x - id(scale_tare)) / id(scale_coefficient);
+
+  # Median-filtered copy used for stability detection and water calculations.
+  - platform: copy
+    id: scale_stable
+    source_id: scale_sensor
+    internal: False
+    filters:
+      - median:
+          window_size: 20
+          send_every: 1
+      - sliding_window_moving_average:
+          window_size: 30
+          send_every: 1
+          
+    on_value:
+      then:
+        - lambda: !lambda |-
+            static float prev_value = 0.0;
+            if (abs(x - prev_value) < ${stability_threshold}) {
+              id(vibration_detected).publish_state(false);
+            } else {
+              id(vibration_detected).publish_state(true);
+            }
+            prev_value = x;
+
+  # Tared + calibrated 10 Hz copy, only published during activity.
+  - platform: copy
+    id: scale_unfiltered
+    name: "Unfiltered Weight"
+    icon: mdi:scale-unbalanced
+    entity_category: diagnostic
+    source_id: scale_stable
+    unit_of_measurement: "g"
+    accuracy_decimals: 0
+    internal: False
+    disabled_by_default: True
+    # filters:
+    #   - lambda: !lambda |-
+    #       if (id(activity).state) {
+    #         return x;
+    #       } else {
+    #         return {};
+    #       }
+
+  - platform: template
+    name: "Water Amount"
+    id: water_amount
+    icon: mdi:water
+    unit_of_measurement: "mL"
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: volume_storage
+    update_interval: 1s
+    lambda: !lambda |-
+      auto value = id(scale_stable).state - ${bowl_weight};
+      return value < 0 ? NAN : value;
+    on_value:
+      - lambda: !lambda |-
+          if (!isnan(x)) {
+            id(water_level_history).push_back(x);
+            if (id(water_level_history).size() > ${start_level_offset_s}) {
+              id(water_level_history).erase(id(water_level_history).begin());
+            }
+          }
+
+  - platform: template
+    name: "Water Level"
+    id: water_level
+    icon: mdi:cup-water
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    state_class: measurement
+    update_interval: 60s
+    lambda: !lambda |-
+      if (isnan(id(water_amount).state)) {
+        return NAN;
+      }
+      float water = id(water_amount).state;
+      if (water < ${water_mark_min}) {
+        return 0;
+      }
+      if (water > ${water_mark_max}) {
+        return 100;
+      }
+      return (water - ${water_mark_min}) * 100.0 / (${water_mark_max} - ${water_mark_min});
+    on_value:
+      then:
+        - script.execute: update_status_led
+
+  - platform: template
+    name: "Water Rate of Change"
+    id: water_rate_change
+    unit_of_measurement: "ml/min"
+    entity_category: diagnostic
+    icon: mdi:delta
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: ${drinking_rate_interval}s
+    lambda: !lambda |-
+      static float prev_amount = NAN;
+      static unsigned long prev_time = 0;
+
+      if (isnan(id(water_amount).state)) {
+        return NAN;
+      }
+
+      unsigned long current_time = millis();
+      float current_amount = id(water_amount).state;
+
+      if (isnan(prev_amount) || prev_time == 0) {
+        prev_amount = current_amount;
+        prev_time = current_time;
+        return 0.0;
+      }
+
+      float time_diff = (current_time - prev_time) / 1000.0 / 60.0;
+      float amount_diff = prev_amount - current_amount;
+
+      prev_amount = current_amount;
+      prev_time = current_time;
+
+      if (time_diff > 0) {
+        return amount_diff / time_diff;
+      }
+      return 0.0;
+
+  - platform: template
+    name: "Calibration Last Performed"
+    id: calibration_last_performed
+    icon: mdi:scale-unbalanced
+    device_class: timestamp
+    entity_category: diagnostic
+    lambda: !lambda |-
+      time_t t = id(calibration_timestamp);
+      return t == 0 ? NAN : t;
+
+  - platform: template
+    name: "Water Change Due"
+    id: water_next_change_date
+    icon: mdi:water-sync
+    device_class: timestamp
+    update_interval: 60s
+    lambda: !lambda |-
+      if (!id(ha_time).now().is_valid() || id(water_last_changed) == 0) {
+        return NAN;
+      }
+      int interval = id(water_change_interval).state;
+      return id(water_last_changed) + (interval * 86400);
+
+  - platform: template
+    name: "Filter Change Due"
+    id: filter_next_change_date
+    icon: mdi:air-filter
+    device_class: timestamp
+    update_interval: 60s
+    lambda: !lambda |-
+      if (!id(ha_time).now().is_valid() || id(filter_last_changed) == 0) {
+        return NAN;
+      }
+      int interval = id(filter_change_interval).state;
+      return id(filter_last_changed) + (interval * 86400);
+
+  - platform: template
+    name: "Water Time Remaining"
+    id: water_change_days_remaining
+    unit_of_measurement: "d"
+    icon: mdi:water-sync
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: duration
+    update_interval: 60s
+    lambda: !lambda |-
+      if (!id(ha_time).now().is_valid() || id(water_last_changed) == 0) {
+        return NAN;
+      }
+      int interval = id(water_change_interval).state;
+      int days_passed = (id(ha_time).now().timestamp - id(water_last_changed)) / 86400;
+      int days_remaining = interval - days_passed;
+      if (days_remaining < 0) {
+        return 0;
+      }
+      return days_remaining;
+    on_value:
+      then:
+        - script.execute: update_status_led
+
+  - platform: template
+    name: "Filter Time Remaining"
+    id: filter_change_days_remaining
+    unit_of_measurement: "d"
+    icon: mdi:air-filter
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: duration
+    update_interval: 60s
+    lambda: !lambda |-
+      if (!id(ha_time).now().is_valid() || id(filter_last_changed) == 0) {
+        return NAN;
+      }
+      int interval = id(filter_change_interval).state;
+      int days_passed = (id(ha_time).now().timestamp - id(filter_last_changed)) / 86400;
+      int days_remaining = interval - days_passed;
+      if (days_remaining < 0) {
+        return 0;
+      }
+      return days_remaining;
+    on_value:
+      then:
+        - script.execute: update_status_led
+
+  - platform: template
+    name: "Last drink amount"
+    id: last_drink_amount
+    unit_of_measurement: "mL"
+    state_class: measurement
+    device_class: volume
+    icon: mdi:cup-water
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    name: "Last drink duration"
+    id: last_drink_duration
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    icon: mdi:timer
+    accuracy_decimals: 0
+    update_interval: never
+
+  # Expose stored calibration values for diagnostics.
+  - platform: template
+    name: "Scale Tare Offset"
+    id: scale_tare_offset_sensor
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 60s
+    disabled_by_default: True
+    lambda: 'return (float) id(scale_tare);'
+
+  - platform: template
+    name: "Scale Coefficient"
+    id: scale_coefficient_sensor
+    entity_category: diagnostic
+    accuracy_decimals: 3
+    update_interval: 60s
+    disabled_by_default: True
+    lambda: 'return id(scale_coefficient);'
+
+text_sensor:
+  - platform: template
+    name: "Operation Mode"
+    id: operation_mode_text
+    icon: mdi:gesture-tap
+    update_interval: 1s
+    entity_category: diagnostic
+    lambda: !lambda |-
+      if (id(operation_mode) == ${operation_mode_normal}) {
+        return {"Normal"};
+      } else if (id(operation_mode) == ${operation_mode_tare}) {
+        return {"Tare"};
+      } else if (id(operation_mode) == ${operation_mode_calibration}) {
+        return {"Calibration"};
+      } else {
+        return {"Unknown"};
+      }
+
+binary_sensor:
+  - platform: template
+    name: "Activity"
+    id: activity
+    icon: mdi:cat
+    device_class: motion
+    lambda: !lambda |-
+      bool drinking = id(water_rate_change).state > ${drinking_rate_threshold};
+      bool normal_mode = id(operation_mode) == ${operation_mode_normal};
+      return drinking && normal_mode;
+    filters:
+      delayed_off: ${drinking_timeout}s
+    on_press:
+      then:
+        - lambda: !lambda |-
+            id(activity_start_time) = id(ha_time).now().timestamp - ${drinking_rate_interval};
+            if (!isnan(id(water_amount).state) && !id(water_level_history).empty()) {
+              id(water_level_start) = *(id(water_level_history).begin());
+            }
+    on_release:
+      then:
+        - lambda: !lambda |-
+            if (isnan(id(water_level_start))) {
+              return;
+            }
+            auto activity_end_time = id(ha_time).now().timestamp - ${drinking_timeout};
+            float event_duration = activity_end_time - id(activity_start_time);
+            float water_used = id(water_level_start) - id(water_amount).state;
+
+            if (water_used > ${min_drink_event_amount} && event_duration > ${min_drink_event_duration}) {
+              id(last_drink_amount).publish_state(water_used);
+              id(last_drink_duration).publish_state(event_duration);
+              id(pet_drinking_event).trigger("pet_drinking");
+            }
+
+            id(water_level_start) = NAN;
+            id(activity_start_time) = 0;
+
+  - platform: template
+    name: "Vibration Detected"
+    id: vibration_detected
+    icon: mdi:vibrate
+    device_class: vibration
+    entity_category: diagnostic
+    disabled_by_default: True
+    filters:
+      delayed_off: ${stability_timeout}s
+
+switch:
+  - platform: gpio
+    name: "Pump"
+    id: pump
+    icon: mdi:pump
+    pin: GPIO5
+    restore_mode: ALWAYS_ON
+
+# ── Single onboard WS2812 RGB LED on GPIO8 ──
+# In normal mode, color shows water level (red/yellow/green) and breathing
+# speed shows consumable status. Blue breathing means WiFi is disconnected.
+# Purple strobes indicate tare/calibration. Brightness is configurable via
+# Status LED Brightness. Brief green/red flashes signal success/failure.
+light:
+  - platform: esp32_rmt_led_strip
+    pin: GPIO8
+    num_leds: 1
+    rgb_order: GRB
+    chipset: WS2812
+    name: "Status LED"
+    id: status_led
+    default_transition_length: 0s
+    effects:
+      - pulse:
+          name: "WiFi Breathing"
+          transition_length: ${led_breath_wifi_s}s
+          update_interval: ${led_breath_wifi_s}s
+      - pulse:
+          name: "Slow Breathing"
+          transition_length: ${led_breath_slow_s}s
+          update_interval: ${led_breath_slow_s}s
+      - pulse:
+          name: "Fast Breathing"
+          transition_length: ${led_breath_fast_s}s
+          update_interval: ${led_breath_fast_s}s
+      - strobe:
+          name: "Tare Mode"
+          colors:
+            - state: true
+              red: 100%
+              green: 0%
+              blue: 100%
+              duration: ${led_strobe_tare_ms}ms
+            - state: false
+              duration: ${led_strobe_tare_ms}ms
+      - strobe:
+          name: "Calibration Mode"
+          colors:
+            - state: true
+              red: 100%
+              green: 0%
+              blue: 100%
+              duration: ${led_strobe_cal_ms}ms
+            - state: false
+              duration: ${led_strobe_cal_ms}ms
+      - strobe:
+          name: "Flash Success"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 0%
+              green: 100%
+              blue: 0%
+              duration: 300ms
+            - state: false
+              duration: 200ms
+      - strobe:
+          name: "Flash Error"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 300ms
+            - state: false
+              duration: 200ms
+
+button:
+  - platform: template
+    name: "Water Changed"
+    id: reset_water_change_interval
+    icon: mdi:water-sync
+    on_press:
+      then:
+        - script.execute: reset_water
+        - script.execute: flash_success
+
+  - platform: template
+    name: "Filter Changed"
+    id: reset_filter_change_interval
+    icon: mdi:air-filter
+    on_press:
+      then:
+        - script.execute: reset_filter
+        - script.execute: flash_success
+
+  - platform: template
+    name: "Tare Scale"
+    id: btn_tare_scale
+    icon: mdi:scale-balance
+    entity_category: config
+    on_press:
+      then:
+        - script.execute: start_tare
+
+  - platform: template
+    name: "Calibrate Scale"
+    id: btn_calibrate_scale
+    icon: mdi:scale-unbalanced
+    entity_category: config
+    on_press:
+      then:
+        - script.execute: start_calibration
+
+  - platform: template
+    name: "Cancel Calibration"
+    id: btn_cancel_calibration
+    icon: mdi:cancel
+    entity_category: config
+    on_press:
+      then:
+        - script.stop: start_tare
+        - script.stop: start_calibration
+        - script.stop: perform_calibration
+        - script.execute: enter_normal_mode
+
+event:
+  - platform: template
+    name: "Pet Drinking"
+    id: pet_drinking_event
+    event_types:
+      - pet_drinking
+
+script:
+  # ─── LED state machine ─────────────────────────────────────────────
+  - id: update_status_led
+    then:
+      - if:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - lambda: !lambda |-
+                auto call = id(status_led).turn_on();
+                call.set_brightness(id(status_led_brightness_level));
+                call.set_rgb(0.0f, 0.0f, 1.0f);
+                call.set_effect("WiFi Breathing");
+                call.perform();
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(operation_mode) == ${operation_mode_tare};'
+                then:
+                  - lambda: !lambda |-
+                      auto call = id(status_led).turn_on();
+                      call.set_brightness(id(status_led_brightness_level));
+                      call.set_rgb(1.0f, 0.0f, 1.0f);
+                      call.set_effect("Tare Mode");
+                      call.perform();
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(operation_mode) == ${operation_mode_calibration};'
+                      then:
+                        - lambda: !lambda |-
+                            auto call = id(status_led).turn_on();
+                            call.set_brightness(id(status_led_brightness_level));
+                            call.set_rgb(1.0f, 0.0f, 1.0f);
+                            call.set_effect("Calibration Mode");
+                            call.perform();
+                      else:
+                        - lambda: !lambda |-
+                            auto call = id(status_led).turn_on();
+                            call.set_brightness(id(status_led_brightness_level));
+
+                            float level = id(water_level).state;
+                            if (isnan(level) || level <= ${water_level_red_max}) {
+                              call.set_rgb(1.0f, 0.0f, 0.0f);
+                            } else if (level <= ${water_level_yellow_max}) {
+                              call.set_rgb(1.0f, 0.8f, 0.0f);
+                            } else {
+                              call.set_rgb(0.0f, 1.0f, 0.0f);
+                            }
+
+                            bool water_due = false;
+                            bool filter_due = false;
+                            if (id(ha_time).now().is_valid()) {
+                              time_t now = id(ha_time).now().timestamp;
+                              if (id(water_last_changed) != 0) {
+                                int interval = id(water_change_interval).state;
+                                int days_passed = (now - id(water_last_changed)) / 86400;
+                                water_due = days_passed >= interval;
+                              }
+                              if (id(filter_last_changed) != 0) {
+                                int interval = id(filter_change_interval).state;
+                                int days_passed = (now - id(filter_last_changed)) / 86400;
+                                filter_due = days_passed >= interval;
+                              }
+                            }
+
+                            if (filter_due) {
+                              call.set_effect("Fast Breathing");
+                            } else if (water_due) {
+                              call.set_effect("Slow Breathing");
+                            } else {
+                              call.set_effect("None");
+                            }
+                            call.perform();
+
+  - id: flash_success
+    mode: restart
+    then:
+      - light.turn_on:
+          id: status_led
+          effect: "Flash Success"
+      - delay: 1500ms
+      - script.execute: update_status_led
+
+  - id: flash_error
+    mode: restart
+    then:
+      - light.turn_on:
+          id: status_led
+          effect: "Flash Error"
+      - delay: 2000ms
+      - script.execute: update_status_led
+
+  # ─── Consumable reset ──────────────────────────────────────────────
+  - id: reset_water
+    then:
+      - globals.set:
+          id: water_last_changed
+          value: !lambda 'return id(ha_time).now().timestamp;'
+      - component.update: water_change_days_remaining
+      - component.update: water_next_change_date
+      - script.execute: update_status_led
+
+  - id: reset_filter
+    then:
+      - globals.set:
+          id: filter_last_changed
+          value: !lambda 'return id(ha_time).now().timestamp;'
+      - component.update: filter_change_days_remaining
+      - component.update: filter_next_change_date
+      - script.execute: update_status_led
+
+  - id: enter_normal_mode
+    then:
+      - logger.log:
+          level: INFO
+          format: "Entering normal mode..."
+      - globals.set:
+          id: operation_mode
+          value: "${operation_mode_normal}"
+      - script.execute: update_status_led
+
+  # ─── Tare (run with bowl/pump removed) ─────────────────────────────
+  # The user must remove the bowl/pump from the scale, then press
+  # "Tare Scale" in HA. The script waits for vibration to settle and
+  # then captures the current raw HX711 reading as the tare offset.
+  - id: start_tare
+    mode: restart
+    then:
+      - logger.log:
+          level: INFO
+          format: "Tare requested - remove bowl/pump, waiting for stability..."
+      - globals.set:
+          id: operation_mode
+          value: "${operation_mode_tare}"
+      - script.execute: update_status_led
+      - delay: 1s
+      - wait_until:
+          condition:
+            binary_sensor.is_off: vibration_detected
+          timeout: 15s
+      - if:
+          condition:
+            binary_sensor.is_off: vibration_detected
+          then:
+            - lambda: !lambda |-
+                id(scale_tare) = (int) id(scale_sensor).get_raw_state();
+                id(calibration_timestamp) = id(ha_time).now().timestamp;
+                ESP_LOGI("tare", "New scale_tare = %d", id(scale_tare));
+            - component.update: calibration_last_performed
+            - component.update: scale_tare_offset_sensor
+            - script.execute: enter_normal_mode
+            - script.execute: flash_success
+          else:
+            - logger.log:
+                level: ERROR
+                format: "Tare failed - scale not stable in time."
+            - script.execute: enter_normal_mode
+            - script.execute: flash_error
+
+  # ─── Full calibration (tare + known-weight coefficient) ────────────
+  # 1. User removes bowl/pump and presses "Calibrate Scale".
+  # 2. Script waits for stability, captures a temporary tare.
+  # 3. User places the known weight (matching "Calibration Known Weight").
+  # 4. Script waits for the raw reading to change and stabilise,
+  #    then computes coefficient = (raw - tare) / known_weight.
+  # 5. New tare + coefficient are committed and persisted.
+  - id: start_calibration
+    mode: restart
+    then:
+      - logger.log:
+          level: INFO
+          format: "Calibration requested - remove bowl/pump first."
+      - globals.set:
+          id: operation_mode
+          value: "${operation_mode_calibration}"
+      - script.execute: update_status_led
+      - delay: 1s
+      - wait_until:
+          condition:
+            binary_sensor.is_off: vibration_detected
+          timeout: 15s
+      - if:
+          condition:
+            binary_sensor.is_off: vibration_detected
+          then:
+            - lambda: !lambda |-
+                id(scale_tare_temp) = (int) id(scale_sensor).get_raw_state();
+                id(scale_raw_value_temp) = (int) id(scale_sensor).get_raw_state();
+                ESP_LOGI("calibration",
+                         "Captured tare_temp = %d. Now place known weight.",
+                         id(scale_tare_temp));
+            - script.execute: perform_calibration
+          else:
+            - logger.log:
+                level: ERROR
+                format: "Calibration failed - scale not stable before weight."
+            - script.execute: enter_normal_mode
+            - script.execute: flash_error
+
+  - id: perform_calibration
+    then:
+      - logger.log:
+          level: INFO
+          format: "Waiting for known weight to be placed on the scale..."
+      - wait_until:
+          condition:
+            lambda: !lambda |-
+              return abs(id(scale_sensor).get_raw_state() - id(scale_raw_value_temp)) > 1000000;
+          timeout: 30s
+      - if:
+          condition:
+            lambda: !lambda |-
+              return abs(id(scale_sensor).get_raw_state() - id(scale_raw_value_temp)) > 1000000;
+          then:
+            - logger.log:
+                level: INFO
+                format: "Weight detected. Waiting for stability..."
+            - delay: 1s
+            - wait_until:
+                condition:
+                  binary_sensor.is_off: vibration_detected
+                timeout: 15s
+            - if:
+                condition:
+                  binary_sensor.is_off: vibration_detected
+                then:
+                  - script.execute: store_calibration
+                  - script.execute: enter_normal_mode
+                  - script.execute: flash_success
+                else:
+                  - logger.log:
+                      level: ERROR
+                      format: "Calibration failed - not stable after weight placed."
+                  - script.execute: enter_normal_mode
+                  - script.execute: flash_error
+          else:
+            - logger.log:
+                level: ERROR
+                format: "Calibration failed - weight not detected in time."
+            - script.execute: enter_normal_mode
+            - script.execute: flash_error
+
+  - id: store_calibration
+    then:
+      - lambda: !lambda |-
+          float known_weight = id(calibration_known_weight).state;
+          if (known_weight <= 0) {
+            ESP_LOGE("calibration", "Known weight is zero/invalid; aborting.");
+            return;
+          }
+          float measured_raw =
+              id(scale_sensor).get_raw_state() - (float) id(scale_tare_temp);
+          float new_coefficient = measured_raw / known_weight;
+          if (new_coefficient == 0.0f || !std::isfinite(new_coefficient)) {
+            ESP_LOGE("calibration",
+                     "Computed coefficient invalid (%.3f); aborting.",
+                     new_coefficient);
+            return;
+          }
+
+          id(scale_tare) = id(scale_tare_temp);
+          id(scale_coefficient) = new_coefficient;
+          id(scale_tare_temp) = 0;
+          id(calibration_timestamp) = id(ha_time).now().timestamp;
+
+          ESP_LOGI("calibration",
+                   "Stored tare=%d, coefficient=%.3f (known=%.1fg).",
+                   id(scale_tare), new_coefficient, known_weight);
+      - component.update: calibration_last_performed
+      - component.update: scale_tare_offset_sensor
+      - component.update: scale_coefficient_sensor
