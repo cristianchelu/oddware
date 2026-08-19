@@ -81,7 +81,7 @@ globals:
   - id: scale_tare
     type: int
     restore_value: True
-    initial_value: "-326800"
+    initial_value: "-326800" # factory fallback, from the stock firmware image
 
   - id: scale_tare_temp
     type: int
@@ -96,7 +96,7 @@ globals:
   - id: scale_coefficient
     type: float
     restore_value: True
-    initial_value: "318.7"
+    initial_value: "318.7" # factory fallback, from the stock firmware image
 
   - id: filter_last_changed
     type: time_t

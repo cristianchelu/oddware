@@ -34,8 +34,9 @@ events into per-cat intake instead of a graph of bowl weights.
 
 ## The front button
 
-Stock firmware uses the button for Wi-Fi pairing. Here it runs everything:
-hold it, the LEDs announce each mode in turn, release on the one you want.
+Stock firmware uses the button for Wi-Fi pairing. This firmware runs
+everything through it. Hold the button; the LEDs show each mode in turn.
+Release to enter the mode shown.
 
 | Hold for | LEDs | Mode |
 |----------|------|------|
@@ -43,9 +44,12 @@ hold it, the LEDs announce each mode in turn, release on the one you want.
 | 2–5 s | slow status pulse | consumable reset |
 | over 5 s | both alternating slowly | tare & calibrate |
 
-In consumable reset mode you have 10 seconds: a short click marks the
-water changed, holding 2 seconds marks the filter changed. A bright strobe
-confirms either; the mode times out back to normal on its own.
+In consumable reset mode:
+
+- Short click — water changed.
+- Hold 2 s — filter changed.
+- Bright strobe — reset stored.
+- No input for 10 s — back to normal.
 
 ## Flash
 
@@ -72,22 +76,27 @@ First flash over serial, OTA after that.
 
 ## Calibrate
 
-The default tare and coefficient are from my unit; run a calibration once
-after flashing. The known weight is the bowl assembly itself — bowl, pump,
-spout, pump filter, filter cover, water tray, completely dry, no water
-filter — which every fountain ships with. That's the `bowl_weight`
-substitution (525 g), also subtracted from the scale to get Water Amount.
+The known weight is the dry bowl assembly: bowl, pump, spout, pump
+filter, filter cover, water tray. No water filter, no water. Every
+fountain ships with one; it is the `bowl_weight` substitution (525 g),
+also subtracted from the scale to get Water Amount.
 
-1. Hold the front button until both LEDs alternate slowly (past 5 s),
-   then release.
+The default tare and coefficient are the factory fallback values from the
+stock firmware image, calibrated against a flat 500 g reference — close,
+not exact. Run one calibration after flashing.
+
+1. Hold the front button past 5 s. Release when both LEDs alternate
+   slowly.
 2. Lift the bowl assembly off. The firmware waits for the readings to
    settle, then tares the empty base.
-3. When the LEDs switch to a fast alternate, put the dry assembly back on.
-   That's the known weight; the coefficient is computed from it.
+3. Wait for the LEDs to alternate fast. Put the dry assembly back on.
+   The coefficient is computed from it.
 
-A bright strobe means the new values stuck; a fast error pulse means it
-gave up (nothing removed, nothing placed, or too much wobble) and nothing
-changed. Calibration survives reboots.
+Results:
+
+- Bright strobe — new values stored. They survive reboots.
+- Fast error pulse — failed: nothing removed, nothing placed, or too
+  much wobble. Nothing changed.
 
 `water_mark_min` and `water_mark_max` set which mL readings show as 0 %
 and 100 % — defaults match the bowl's 500 mL MIN line and 2300 mL brim.
