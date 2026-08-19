@@ -85,6 +85,7 @@ monitoring.
 | Calibration Last Performed | sensor, timestamp | Diagnostic |
 | Scale / Unfiltered Weight | sensor, g | Diagnostic, disabled by default |
 | Scale Tare Offset / Coefficient | sensor | Diagnostic, disabled by default |
+| WiFi Signal | sensor, dBm | Diagnostic; median of four samples, once a minute |
 | Activity | binary_sensor | Motion class, `delayed_off` 10 s |
 | Vibration Detected | binary_sensor | Diagnostic; gates tare and calibration |
 | Operation Mode | text_sensor | Normal / Tare / Calibration |

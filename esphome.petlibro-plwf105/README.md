@@ -125,6 +125,7 @@ thresholds are substitutions.
 | Calibration Last Performed | sensor, timestamp | Diagnostic |
 | Calibration Known Weight | number, g | Diagnostic, disabled by default |
 | Scale / Unfiltered Weight | sensor, g | Diagnostic; Unfiltered disabled by default |
+| WiFi Signal | sensor, dBm | Diagnostic; median of four samples, once a minute |
 | Operation Mode | text_sensor | Normal / Consumable Reset / Tare / Calibration |
 | Activity | binary_sensor | Motion class, `delayed_off` 10 s |
 | Pump Status | binary_sensor | Problem class, from the pump's fault signal |
