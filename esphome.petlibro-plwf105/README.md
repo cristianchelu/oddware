@@ -9,13 +9,11 @@ duration, and the front button doing more than Wi-Fi pairing. No cloud,
 no account.
 
 This is my take on
-[taylorfinnell/petlibro-esphome](https://github.com/taylorfinnell/petlibro-esphome),
-which did the hard part — the pin map and the flashing procedure. That
-config calibrates by capturing raw ADC counts at the two fill lines; this
-one calibrates the scale in grams with a tare and a known weight, which is
-what makes per-drink volumes possible. The other changes are drinking
-detection, water/filter reminders, and an on-device button-and-LED UX so
-routine chores don't need a phone or a dashboard.
+[taylorfinnell/petlibro-esphome](https://github.com/taylorfinnell/petlibro-esphome)
+— same pin map, different firmware: scale calibration by tare and known
+weight instead of two fill-line captures, per-drink events with volume
+and duration, water/filter reminders, and a button-and-LED UX for the
+routine chores.
 
 ## What it does
 
@@ -28,9 +26,6 @@ routine chores don't need a phone or a dashboard.
   drives the error LED
 - Tare and known-weight calibration from the front button, vibration-gated,
   persisted across reboots
-- Optionally, load-cell temperature from a DS18B20 soldered to the RX
-  flashing pad (GPIO20, free after flashing since the UART logger is off).
-  Without one the sensor simply never reports.
 
 Somewhere for the data to go: Home Assistant works, but
 [cat-health](https://github.com/cristianchelu/cat-health) pairs better —
@@ -78,10 +73,10 @@ First flash over serial, OTA after that.
 ## Calibrate
 
 The default tare and coefficient are from my unit; run a calibration once
-after flashing. First weigh your bowl assembly — bowl, pump, spout, pump
-filter, filter cover, water tray, completely dry, no water filter — and
-set the `bowl_weight` substitution. It's subtracted from the scale to get
-Water Amount, and it's also the known weight the calibration expects.
+after flashing. The known weight is the bowl assembly itself — bowl, pump,
+spout, pump filter, filter cover, water tray, completely dry, no water
+filter — which every fountain ships with. That's the `bowl_weight`
+substitution (525 g), also subtracted from the scale to get Water Amount.
 
 1. Hold the front button until both LEDs alternate slowly (past 5 s),
    then release.
@@ -118,7 +113,6 @@ thresholds are substitutions.
 | Water / Filter Change Due | sensor, timestamp | |
 | Water / Filter Change Interval | number, days | |
 | Water Changed / Filter Changed | button | Resets the corresponding timer |
-| Load Cell Temperature | sensor, °C | Only reports with a DS18B20 fitted |
 | Calibration Last Performed | sensor, timestamp | Diagnostic |
 | Calibration Known Weight | number, g | Diagnostic, disabled by default |
 | Scale / Unfiltered Weight | sensor, g | Diagnostic; Unfiltered disabled by default |
@@ -130,9 +124,3 @@ thresholds are substitutions.
 | Pump | switch | `restore_mode: ALWAYS_ON` |
 | Status LED / Error LED | light | The two stock front LEDs |
 | Pet Drinking | event | Fired per qualifying drink |
-
-## Roadmap
-
-- [ ] Temperature compensation for the scale. The DS18B20 sits on the load
-  cell and averages over two minutes precisely to watch this drift; so far
-  it's observed, not corrected.

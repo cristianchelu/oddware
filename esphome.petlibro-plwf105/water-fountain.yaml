@@ -127,10 +127,6 @@ globals:
     restore_value: False
     initial_value: "0"
 
-one_wire:
-  - platform: gpio
-    pin: GPIO20
-
 number:
   - platform: template
     name: "Calibration Known Weight"
@@ -172,15 +168,6 @@ number:
     disabled_by_default: False
 
 sensor:
-  - platform: dallas_temp
-    resolution: 12
-    update_interval: 1s
-    name: "Load Cell Temperature"
-    filters: 
-      - sliding_window_moving_average:
-          window_size: 120
-          send_every: 1
-      
   - platform: template
     name: "Calibration Last Performed"
     id: calibration_last_performed
