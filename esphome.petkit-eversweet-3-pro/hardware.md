@@ -171,7 +171,7 @@ Pin assignments are the ones the firmware uses, from
 | I²C SDA (INA219) | GPIO7 |
 | HX711 DOUT | GPIO9 |
 | HX711 SCK | GPIO10 |
-| LR7843 gate (pump switch) | GPIO5 |
+| LR7843 gate (coil power) | GPIO5 |
 | Onboard WS2812 status LED | GPIO8 |
 
 I²C runs at 400 kHz, HX711 pins with pullups. The INA219 is wired supply
@@ -198,9 +198,12 @@ with everything — that's the whole point of using a low-side part here.
 
 Two things worth knowing: the whole fountain's power passes through the
 SuperMini's USB-C connector and 5 V trace, so think twice before swapping in
-a hungrier pump or coil driver. And the `Pump` switch has `restore_mode:
-ALWAYS_ON`, so a reboot or firmware crash leaves the water running rather
-than silently turning it off.
+a hungrier pump or coil driver. And GPIO5 follows the `Pump` switch, which
+has `restore_mode: ALWAYS_ON`, so a reboot or firmware crash leaves the
+water running rather than silently turning it off. The one time the
+firmware overrides the switch is a foreign object on the coil: it holds the
+gate low and probes for 1.5 s every 5 s until the draw is back to normal
+(see the [README](README.md#uvc-and-foreign-objects)).
 
 ### LR7843: bridge the grounds
 

@@ -16,6 +16,7 @@ substitutions:
   led_breath_fast_s: "1"         # filter overdue
   led_strobe_tare_ms: "500"      # purple slow strobe (tare)
   led_strobe_cal_ms: "200"       # purple fast strobe (calibration)
+  led_strobe_panic_ms: "170"     # red ~3 Hz strobe (foreign object on the coil)
   led_brightness_low: "0.30"
   led_brightness_medium: "0.65"
   led_brightness_high: "1.00"
@@ -34,6 +35,27 @@ substitutions:
   stability_threshold: "2"        # g, threshold for vibration detection
   stability_timeout: "5"          # seconds, debounce for "stable"
 
+  # Coil supervision. The INA219 samples the coil supply every
+  # coil_sample_interval; Coil Power in HA is a 5 s average of that.
+  coil_sample_interval: "200ms"   # INA219 needs ~136 ms per conversion
+  fod_power_threshold: "1.0"      # W - anything above is a foreign object
+  fod_confirm_samples: "2"        # consecutive samples over threshold
+  fod_settle_ms: "500"            # ignore samples this long after energize
+  fod_retry_off_s: "5"            # coil off between probes
+  fod_probe_s: "1.5"              # coil on per probe (settle + a few samples)
+  pump_absent_below: "0.33"       # W - empty coil measures 0.27 W
+  pump_present_above: "0.38"      # W - seated pump, UVC off, is 0.40 W+
+  pump_missing_debounce_s: "10"
+
+  # UVC lamp schedule of the pump's own controller, from pump power-up:
+  # uvc_first_on_h on, uvc_off_h off, then uvc_repeat_on_h on / uvc_off_h off.
+  uvc_first_on_h: "3"
+  uvc_off_h: "3"
+  uvc_repeat_on_h: "1"
+  uvc_step_w: "0.05"              # W - lamp edge is ~0.10 W on Coil Power
+  uvc_step_max_w: "0.25"          # W - bigger steps are not the lamp
+  uvc_grace_min: "15"             # minutes an expected edge may be late (off-phase measured ~3 h 05)
+
   # Operation modes (used by global + LED logic + UI text sensor)
   operation_mode_normal: "0"
   operation_mode_tare: "1"
@@ -45,8 +67,8 @@ esphome:
   on_boot:
     priority: -100
     then:
+      - script.execute: coil_apply
       - script.execute: update_status_led
-      
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -174,6 +196,79 @@ globals:
     restore_value: False
     initial_value: "0"
 
+  # Coil supervision. coil_on mirrors the GPIO (output: gpio has no getter).
+  - id: coil_on
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  - id: coil_on_since_ms
+    type: uint32_t
+    restore_value: False
+    initial_value: "0"
+
+  - id: fod_active
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  - id: fod_hits
+    type: int
+    restore_value: False
+    initial_value: "0"
+
+  - id: fod_probe_tripped
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  # UVC clock: millis_64() at the pump's last power-up. uvc_eval turns it
+  # into the three values below.
+  - id: uvc_clock_valid
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  - id: uvc_anchor_ms
+    type: uint64_t
+    restore_value: False
+    initial_value: "0"
+
+  # Lamp state as sensed: set on power-up (the pump always starts lit) and
+  # flipped by every edge the detector sees. This is what UVC On shows.
+  - id: uvc_lamp_on
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  # Outputs of uvc_eval: predicted lamp state, and the most recent schedule
+  # transition in ms after power-up (0 while still in the first phase)
+  - id: uvc_state_now
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  - id: uvc_last_transition
+    type: uint64_t
+    restore_value: False
+    initial_value: "0"
+
+  # Schedule transition (ms after power-up) last confirmed by a power edge
+  - id: uvc_confirmed_transition
+    type: uint64_t
+    restore_value: False
+    initial_value: "0"
+
+  - id: uvc_fault
+    type: bool
+    restore_value: False
+    initial_value: "false"
+
+  # Last 60 s of Coil Power (5 s samples) for the edge detector
+  - id: uvc_history
+    type: std::vector<float>
+    restore_value: False
+
 i2c:
   scl: GPIO6
   sda: GPIO7
@@ -277,18 +372,32 @@ sensor:
       disabled_by_default: True
       internal: true
       filters:
-        - sliding_window_moving_average:
-            window_size: 5
-            send_every: 5
+        - throttle_average: 5s
     power:
       name: "Coil Power"
       id: coil_power
       accuracy_decimals: 2
       unit_of_measurement: "W"
       filters:
-        - sliding_window_moving_average:
-            window_size: 5
-            send_every: 5
+        - throttle_average: 5s
+      # Foreign-object check on every raw sample: kill first, ask later.
+      on_raw_value:
+        then:
+          - lambda: !lambda |-
+              if (!id(coil_on) || std::isnan(x)) return;
+              if ((uint32_t)(millis() - id(coil_on_since_ms)) < ${fod_settle_ms}) return;
+              if (x > ${fod_power_threshold}) {
+                id(fod_hits)++;
+              } else {
+                id(fod_hits) = 0;
+              }
+              if (id(fod_hits) >= ${fod_confirm_samples}) {
+                id(fod_hits) = 0;
+                id(fod_trip).execute();
+              }
+      on_value:
+        then:
+          - script.execute: uvc_tick
     bus_voltage:
       name: "Bus Voltage"
       id: bus_voltage
@@ -304,7 +413,7 @@ sensor:
       internal: True
     max_voltage: 16V
     max_current: 3.2A
-    update_interval: 1s
+    update_interval: ${coil_sample_interval}
 
   # ── HX711 load cell with runtime tare + calibration ──
   - platform: hx711
@@ -659,19 +768,89 @@ binary_sensor:
     filters:
       delayed_off: ${stability_timeout}s
 
-switch:
+  # ── Coil supervision ──
+  - platform: template
+    name: "Coil Energized"
+    id: coil_energized
+    icon: mdi:flash
+    device_class: power
+    entity_category: diagnostic
+    lambda: !lambda return id(coil_on);
+
+  - platform: template
+    name: "Foreign Object"
+    id: foreign_object
+    icon: mdi:magnet-on
+    device_class: problem
+    lambda: !lambda return id(fod_active);
+
+  # Empty coil draws 0.27 W; a seated pump never less than 0.40 W.
+  - platform: template
+    name: "Pump Missing"
+    id: pump_missing
+    icon: mdi:pump-off
+    device_class: problem
+    lambda: !lambda |-
+      if (!id(coil_on) || id(fod_active) || id(fod_retry).is_running()) return false;
+      float p = id(coil_power).state;
+      if (std::isnan(p)) return {};
+      if (p < ${pump_absent_below}) return true;
+      if (p > ${pump_present_above}) return false;
+      return {};
+    filters:
+      - delayed_on: ${pump_missing_debounce_s}s
+      - delayed_off: ${pump_missing_debounce_s}s
+    on_release:
+      then:
+        # Re-seated on a live coil: the pump's controller restarts its clock.
+        - if:
+            condition:
+              lambda: return id(coil_on) && !id(fod_active);
+            then:
+              - script.execute: uvc_clock_reset
+
+  # ── UVC lamp, as sensed on Coil Power ──
+  - platform: template
+    name: "UVC On"
+    id: uvc_on
+    icon: mdi:sun-wireless
+    lambda: !lambda return id(coil_on) && id(uvc_lamp_on);
+
+  - platform: template
+    name: "UVC Lamp Fault"
+    id: uvc_lamp_fault
+    icon: mdi:lightbulb-alert
+    device_class: problem
+    lambda: !lambda return id(uvc_fault);
+
+# LR7843 gate, the coil's low-side switch. Only coil_energize/coil_deenergize
+# touch it, so the Pump switch can stay "what the user wants" while a
+# foreign object holds the coil off.
+output:
   - platform: gpio
+    id: coil_gpio
+    pin: GPIO5
+
+switch:
+  - platform: template
     name: "Pump"
     id: pump
     icon: mdi:pump
-    pin: GPIO5
+    optimistic: true
     restore_mode: ALWAYS_ON
+    on_turn_on:
+      then:
+        - script.execute: coil_apply
+    on_turn_off:
+      then:
+        - script.execute: coil_apply
 
 # ── Single onboard WS2812 RGB LED on GPIO8 ──
 # In normal mode, color shows water level (red/yellow/green) and breathing
 # speed shows consumable status. Blue breathing means WiFi is disconnected.
-# Purple strobes indicate tare/calibration. Brightness is configurable via
-# Status LED Brightness. Brief green/red flashes signal success/failure.
+# Purple strobes indicate tare/calibration, a fast red strobe a foreign
+# object on the coil. Brightness is configurable via Status LED Brightness.
+# Brief green/red flashes signal success/failure.
 light:
   - platform: esp32_rmt_led_strip
     pin: GPIO8
@@ -725,6 +904,17 @@ light:
               duration: 300ms
             - state: false
               duration: 200ms
+      - strobe:
+          name: "Panic"
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: ${led_strobe_panic_ms}ms
+            - state: false
+              duration: ${led_strobe_panic_ms}ms
       - strobe:
           name: "Flash Error"
           colors:
@@ -811,63 +1001,74 @@ script:
           else:
             - if:
                 condition:
-                  lambda: 'return id(operation_mode) == ${operation_mode_tare};'
+                  lambda: 'return id(fod_active);'
                 then:
                   - lambda: !lambda |-
                       auto call = id(status_led).turn_on();
-                      call.set_brightness(id(status_led_brightness_level));
-                      call.set_rgb(1.0f, 0.0f, 1.0f);
-                      call.set_effect("Tare Mode");
+                      call.set_brightness(1.0f);
+                      call.set_rgb(1.0f, 0.0f, 0.0f);
+                      call.set_effect("Panic");
                       call.perform();
                 else:
                   - if:
                       condition:
-                        lambda: 'return id(operation_mode) == ${operation_mode_calibration};'
+                        lambda: 'return id(operation_mode) == ${operation_mode_tare};'
                       then:
                         - lambda: !lambda |-
                             auto call = id(status_led).turn_on();
                             call.set_brightness(id(status_led_brightness_level));
                             call.set_rgb(1.0f, 0.0f, 1.0f);
-                            call.set_effect("Calibration Mode");
+                            call.set_effect("Tare Mode");
                             call.perform();
                       else:
-                        - lambda: !lambda |-
-                            auto call = id(status_led).turn_on();
-                            call.set_brightness(id(status_led_brightness_level));
+                        - if:
+                            condition:
+                              lambda: 'return id(operation_mode) == ${operation_mode_calibration};'
+                            then:
+                              - lambda: !lambda |-
+                                  auto call = id(status_led).turn_on();
+                                  call.set_brightness(id(status_led_brightness_level));
+                                  call.set_rgb(1.0f, 0.0f, 1.0f);
+                                  call.set_effect("Calibration Mode");
+                                  call.perform();
+                            else:
+                              - lambda: !lambda |-
+                                  auto call = id(status_led).turn_on();
+                                  call.set_brightness(id(status_led_brightness_level));
 
-                            float level = id(water_level).state;
-                            if (isnan(level) || level <= ${water_level_red_max}) {
-                              call.set_rgb(1.0f, 0.0f, 0.0f);
-                            } else if (level <= ${water_level_yellow_max}) {
-                              call.set_rgb(1.0f, 0.8f, 0.0f);
-                            } else {
-                              call.set_rgb(0.0f, 1.0f, 0.0f);
-                            }
+                                  float level = id(water_level).state;
+                                  if (isnan(level) || level <= ${water_level_red_max}) {
+                                    call.set_rgb(1.0f, 0.0f, 0.0f);
+                                  } else if (level <= ${water_level_yellow_max}) {
+                                    call.set_rgb(1.0f, 0.8f, 0.0f);
+                                  } else {
+                                    call.set_rgb(0.0f, 1.0f, 0.0f);
+                                  }
 
-                            bool water_due = false;
-                            bool filter_due = false;
-                            if (id(ha_time).now().is_valid()) {
-                              time_t now = id(ha_time).now().timestamp;
-                              if (id(water_last_changed) != 0) {
-                                int interval = id(water_change_interval).state;
-                                int days_passed = (now - id(water_last_changed)) / 86400;
-                                water_due = days_passed >= interval;
-                              }
-                              if (id(filter_last_changed) != 0) {
-                                int interval = id(filter_change_interval).state;
-                                int days_passed = (now - id(filter_last_changed)) / 86400;
-                                filter_due = days_passed >= interval;
-                              }
-                            }
+                                  bool water_due = false;
+                                  bool filter_due = false;
+                                  if (id(ha_time).now().is_valid()) {
+                                    time_t now = id(ha_time).now().timestamp;
+                                    if (id(water_last_changed) != 0) {
+                                      int interval = id(water_change_interval).state;
+                                      int days_passed = (now - id(water_last_changed)) / 86400;
+                                      water_due = days_passed >= interval;
+                                    }
+                                    if (id(filter_last_changed) != 0) {
+                                      int interval = id(filter_change_interval).state;
+                                      int days_passed = (now - id(filter_last_changed)) / 86400;
+                                      filter_due = days_passed >= interval;
+                                    }
+                                  }
 
-                            if (filter_due) {
-                              call.set_effect("Fast Breathing");
-                            } else if (water_due) {
-                              call.set_effect("Slow Breathing");
-                            } else {
-                              call.set_effect("None");
-                            }
-                            call.perform();
+                                  if (filter_due) {
+                                    call.set_effect("Fast Breathing");
+                                  } else if (water_due) {
+                                    call.set_effect("Slow Breathing");
+                                  } else {
+                                    call.set_effect("None");
+                                  }
+                                  call.perform();
 
   - id: flash_success
     mode: restart
@@ -1066,3 +1267,199 @@ script:
       - component.update: calibration_last_performed
       - component.update: scale_tare_offset_sensor
       - component.update: scale_coefficient_sensor
+
+  # ─── Coil supervision ──────────────────────────────────────────────
+  # The Pump switch is intent. The GPIO follows it unless a foreign object
+  # is holding the coil off, in which case fod_retry owns the coil.
+  - id: coil_apply
+    then:
+      - lambda: !lambda |-
+          if (!id(pump).state) {
+            id(fod_retry).stop();
+            id(fod_active) = false;
+            if (id(coil_on)) id(coil_deenergize).execute();
+            id(uvc_clock_valid) = false;
+            id(uvc_fault) = false;
+            id(uvc_history).clear();
+            return;
+          }
+          if (id(fod_active) || id(coil_on)) return;
+          id(coil_energize).execute();
+          id(uvc_clock_reset).execute();
+
+  - id: coil_energize
+    then:
+      - lambda: !lambda |-
+          id(coil_gpio).turn_on();
+          id(coil_on) = true;
+          id(coil_on_since_ms) = millis();
+          id(fod_hits) = 0;
+
+  - id: coil_deenergize
+    then:
+      - lambda: !lambda |-
+          id(coil_gpio).turn_off();
+          id(coil_on) = false;
+          id(fod_hits) = 0;
+
+  # Runs synchronously from the INA219 raw-sample handler.
+  - id: fod_trip
+    then:
+      - script.execute: coil_deenergize
+      - lambda: !lambda |-
+          id(fod_active) = true;
+          id(fod_probe_tripped) = true;
+          id(uvc_clock_valid) = false;
+          id(uvc_history).clear();
+          ESP_LOGW("fod", "Coil draw %.2f W over %.2f W - coil off, probing every %d s",
+                   id(coil_power).get_raw_state(), (float) ${fod_power_threshold},
+                   ${fod_retry_off_s});
+      - if:
+          condition:
+            not:
+              script.is_running: fod_retry
+          then:
+            - script.execute: fod_retry
+      - script.execute: update_status_led
+
+  # Coil off for fod_retry_off_s, on for fod_probe_s, until a probe passes
+  # without the raw handler tripping it again. Worst case a 2 W object
+  # averages ~0.5 W over the cycle.
+  - id: fod_retry
+    mode: single
+    then:
+      - while:
+          condition:
+            lambda: return id(pump).state && id(fod_active);
+          then:
+            - delay: ${fod_retry_off_s}s
+            - if:
+                condition:
+                  lambda: return id(pump).state && id(fod_active);
+                then:
+                  - lambda: !lambda |-
+                      id(fod_probe_tripped) = false;
+                      id(coil_energize).execute();
+                  - delay: ${fod_probe_s}s
+                  - if:
+                      condition:
+                        lambda: return !id(fod_probe_tripped) && id(coil_on);
+                      then:
+                        - lambda: !lambda |-
+                            id(fod_active) = false;
+                            ESP_LOGI("fod", "Coil draw %.2f W - foreign object cleared",
+                                     id(coil_power).get_raw_state());
+                        - script.execute: uvc_clock_reset
+                        - script.execute: update_status_led
+
+  # ─── UVC schedule clock ────────────────────────────────────────────
+  # Called whenever the pump gets power: energize, FOD cleared, re-seated.
+  - id: uvc_clock_reset
+    then:
+      - lambda: !lambda |-
+          id(uvc_anchor_ms) = millis_64();
+          id(uvc_clock_valid) = true;
+          id(uvc_confirmed_transition) = 0;
+          id(uvc_lamp_on) = true;
+          id(uvc_fault) = false;
+          id(uvc_history).clear();
+          ESP_LOGI("uvc", "Pump powered - UVC clock restarted, %d h on first",
+                   ${uvc_first_on_h});
+      - script.execute: uvc_eval
+
+  # Where the pump's schedule stands right now: uvc_first_on_h on, uvc_off_h
+  # off, then uvc_repeat_on_h on / uvc_off_h off forever. Fills uvc_state_now
+  # and the last transition time (ms after power-up).
+  - id: uvc_eval
+    then:
+      - lambda: !lambda |-
+          const uint64_t H = 3600000ULL;
+          const uint64_t FIRST_ON = ${uvc_first_on_h} * H;
+          const uint64_t PREAMBLE = FIRST_ON + ${uvc_off_h} * H;
+          const uint64_t REPEAT_ON = ${uvc_repeat_on_h} * H;
+          const uint64_t PERIOD = REPEAT_ON + ${uvc_off_h} * H;
+          if (!id(uvc_clock_valid)) {
+            id(uvc_state_now) = false;
+            id(uvc_last_transition) = 0;
+            return;
+          }
+          uint64_t t = millis_64() - id(uvc_anchor_ms);
+          if (t < FIRST_ON) {
+            id(uvc_state_now) = true;
+            id(uvc_last_transition) = 0;
+          } else if (t < PREAMBLE) {
+            id(uvc_state_now) = false;
+            id(uvc_last_transition) = FIRST_ON;
+          } else {
+            uint64_t base = PREAMBLE + ((t - PREAMBLE) / PERIOD) * PERIOD;
+            bool on = (t - base) < REPEAT_ON;
+            id(uvc_state_now) = on;
+            id(uvc_last_transition) = on ? base : base + REPEAT_ON;
+          }
+
+  # Every Coil Power sample (5 s): edge detector + schedule bookkeeping.
+  # Mean of the last 30 s against the 30 s before it; a +/-uvc_step_w step
+  # is a lamp edge. Every edge sets the sensed state and re-anchors the
+  # clock, so the pump's real phase lengths (a few minutes off nominal)
+  # never accumulate: after any off-edge the future is always uvc_off_h
+  # off / uvc_repeat_on_h on, so a falling edge pins the clock exactly; a
+  # rising edge is taken as the start of a repeat on-phase. The schedule
+  # only decides whether an edge was due: overdue by uvc_grace_min with
+  # none seen -> lamp fault.
+  - id: uvc_tick
+    then:
+      - lambda: !lambda |-
+          const size_t HALF = 6;
+          const uint64_t GRACE = ${uvc_grace_min} * 60000ULL;
+          float p = id(coil_power).state;
+          auto &h = id(uvc_history);
+          bool gated = !id(coil_on) || id(fod_active) || id(fod_retry).is_running() ||
+                       id(pump_missing).state || std::isnan(p) || p < ${pump_present_above};
+          if (gated || !id(uvc_clock_valid)) {
+            h.clear();
+            return;
+          }
+          id(uvc_eval).execute();
+          uint64_t now = millis_64();
+          uint64_t t = now - id(uvc_anchor_ms);
+          uint64_t last = id(uvc_last_transition);
+
+          h.push_back(p);
+          if (h.size() > 2 * HALF) h.erase(h.begin());
+          if (h.size() == 2 * HALF) {
+            float a = 0, b = 0;
+            for (size_t i = 0; i < HALF; i++) {
+              a += h[i];
+              b += h[i + HALF];
+            }
+            float d = (b - a) / HALF;
+            if (std::fabs(d) > ${uvc_step_w} && std::fabs(d) < ${uvc_step_max_w}) {
+              bool rising = d > 0;
+              h.clear();
+              id(uvc_lamp_on) = rising;
+              // The step crosses uvc_step_w when about half of the recent
+              // window is past it, so the edge itself is ~HALF/2 samples old.
+              uint64_t edge_ms = now - (HALF / 2) * 5000ULL;
+              uint64_t phase = (rising ? ${uvc_first_on_h} + ${uvc_off_h} : ${uvc_first_on_h}) * 3600000ULL;
+              long off_by_min = (long) ((int64_t) (edge_ms - id(uvc_anchor_ms)) - (int64_t) last) / 60000;
+              bool was_due = last != 0 && (uint64_t) std::llabs((int64_t) (edge_ms - id(uvc_anchor_ms)) - (int64_t) last) <= GRACE;
+              id(uvc_anchor_ms) = edge_ms - phase;
+              id(uvc_confirmed_transition) = phase;
+              id(uvc_fault) = false;
+              if (was_due) {
+                ESP_LOGI("uvc", "UVC %s edge (%+.3f W), %+ld min from schedule - clock re-anchored",
+                         rising ? "on" : "off", d, off_by_min);
+              } else {
+                ESP_LOGW("uvc", "Unexpected UVC %s edge (%+.3f W) at %lu min - clock re-anchored",
+                         rising ? "on" : "off", d, (unsigned long) (t / 60000));
+              }
+              return;
+            }
+          }
+
+          if (last != 0 && (t - last) > GRACE && id(uvc_confirmed_transition) != last &&
+              !id(uvc_fault)) {
+            id(uvc_fault) = true;
+            ESP_LOGW("uvc", "Expected UVC %s edge %lu min ago, none seen - lamp fault",
+                     id(uvc_state_now) ? "on" : "off", (unsigned long) ((t - last) / 60000));
+          }

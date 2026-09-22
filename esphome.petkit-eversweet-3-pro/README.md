@@ -36,10 +36,15 @@ stock if you ever want out.
 - Water volume and fill level (mL and %) from 4 load cells + HX711
 - Drinking events with volume and duration, plus an `Activity` binary sensor
 - Pump on/off as a Home Assistant switch, and pump power draw from the INA219
+- UVC lamp state, sensed from coil power, with a lamp-fault flag when the
+  pump's schedule says an edge is overdue
+- Foreign-object detection: coil power cut within half a second, probed
+  again every 5 s
 - Water-change and filter-change reminders with configurable intervals and
   reset buttons
 - RGB status LED through a light guide: colour = water level, breathing =
-  consumable overdue, blue = Wi-Fi down, purple strobe = tare/calibration
+  consumable overdue, blue = Wi-Fi down, purple strobe = tare/calibration,
+  red 3 Hz strobe = foreign object on the coil
 - Runtime tare and known-weight calibration from Home Assistant, persisted
   across reboots
 
@@ -78,7 +83,7 @@ monitoring.
 | Water Amount | sensor, mL | Stable weight minus `bowl_weight` |
 | Water Level | sensor, % | Scaled between `water_mark_min` and `water_mark_max` |
 | Water Rate of Change | sensor, mL/min | Diagnostic; drives drinking detection |
-| Coil Power | sensor, W | INA219 on the transmitter supply |
+| Coil Power | sensor, W | INA219 on the transmitter supply, 5 s average |
 | Last drink amount / duration | sensor | Published on each qualifying drink event |
 | Water / Filter Time Remaining | sensor, days | |
 | Water / Filter Change Due | sensor, timestamp | |
@@ -87,9 +92,14 @@ monitoring.
 | Scale Tare Offset / Coefficient | sensor | Diagnostic, disabled by default |
 | WiFi Signal | sensor, dBm | Diagnostic; median of four samples, once a minute |
 | Activity | binary_sensor | Motion class, `delayed_off` 10 s |
+| UVC On | binary_sensor | Sensed: lit at power-up, then follows the edges in Coil Power |
+| UVC Lamp Fault | binary_sensor | Problem class; the schedule expected an edge and none showed |
+| Foreign Object | binary_sensor | Problem class; coil held off, probed every 5 s |
+| Pump Missing | binary_sensor | Problem class; coil draw at the empty-coil level |
+| Coil Energized | binary_sensor | Diagnostic; the actual GPIO state |
 | Vibration Detected | binary_sensor | Diagnostic; gates tare and calibration |
 | Operation Mode | text_sensor | Normal / Tare / Calibration |
-| Pump | switch | Gates the wireless transmitter. `restore_mode: ALWAYS_ON` |
+| Pump | switch | What you want; the coil follows unless a foreign object holds it off. `restore_mode: ALWAYS_ON` |
 | Status LED | light | Single WS2812 |
 | Status LED Brightness | select | Low / Medium / High |
 | Calibration Known Weight | number, g | |
@@ -145,6 +155,56 @@ The default `scale_coefficient` is negative (`-282.8`). The sign only
 depends on which way round the load-cell bridge was wired; the firmware
 handles either.
 
+## UVC and foreign objects
+
+The pump's own controller runs the UVC lamp, and the coil only carries
+power, so both features come from the INA219 alone. The lamp shows up as a
+~0.1 W step on the pump's draw. Metal on the coil shows up as excess draw.
+
+| On the coil | Coil Power |
+|-------------|------------|
+| Nothing | 0.27 W |
+| Pump, lamp off | 0.40–0.70 W, depending on how it seats on the spout |
+| Pump, lamp on | 0.10 W more |
+| A foreign object | over 1.0 W |
+
+`UVC On` is what the coil sees. The pump starts lit every time it gets
+power, and after that every step of 0.05 W or more in Coil Power, up or
+down, flips it. The detector compares the last 30 s against the 30 s
+before, so it reports an edge about 15 s late.
+
+The pump's own schedule, nominally:
+
+| Phase | Lamp |
+|-------|------|
+| First 3 h | on |
+| Next 3 h | off |
+| Then, repeating | 1 h on, 3 h off |
+
+The firmware replays that clock only to know when an edge is due. Every
+edge it sees re-anchors the clock, so the pump's real phase lengths (the
+off-phase measures closer to 3 h 05) never add up:
+
+- Falling edge — the clock is pinned exactly: every off-phase is 3 h, then
+  1 h on.
+- Rising edge — taken as the start of a 1 h phase.
+- Edge due, none seen for 15 min — `UVC Lamp Fault`. The next edge clears
+  it.
+- Coil Power under 0.33 W for 10 s — `Pump Missing`. Back over 0.38 W for
+  10 s — clears, and the clock restarts.
+
+Foreign objects:
+
+- Two raw samples over 1.0 W, 200 ms apart — coil off, `Foreign Object` on,
+  LED strobes red at 3 Hz. About half a second from contact to cut.
+- Every 5 s — the coil comes back for 1.5 s. Still over — off again.
+  Clear — normal running, and the UVC clock restarts.
+- `Pump` switched off — the retry stops and the flag clears.
+
+The threshold sits 0.2 W above the highest legitimate draw, so a small
+screw or an off-centre coin adds too little to trip it. It catches keys and
+cutlery, not a paperclip.
+
 ## Build
 
 Print the parts, order the rest, and assemble per [hardware.md](hardware.md).
@@ -157,12 +217,5 @@ power-test everything first.
 
 - [ ] A capacitive button on the base to mark water/filter changed without
   reaching for Home Assistant.
-- [ ] Foreign-object detection via the INA219 — needs auto-calibration of
-  what normal draw looks like first.
-- [ ] UVC state as a sensor. The fountain's UVC LED is visible in coil
-  power as a ~80 mW step over the ~0.63 W pump baseline, and its schedule
-  is deterministic: 3 h on at power-on, then 3 h off / 1 h on repeating.
-  Since the firmware controls the fountain's power, it knows when that
-  clock started — so a timer replaying the pattern predicts UVC state
-  open-loop, and the power reading only has to confirm it. Two known-when
-  states to tell apart beats detecting edges blind.
+- [ ] A foreign-object threshold relative to the learned seated baseline,
+  to catch smaller objects than the fixed 1.0 W does.
