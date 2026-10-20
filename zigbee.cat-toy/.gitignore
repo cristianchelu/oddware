@@ -1,0 +1,18 @@
+# Generated outputs: rebuild with hardware/tools/*.sh and hardware/mech/*.sh
+build/
+__pycache__/
+*.pyc
+
+# KiCad local state
+*.lck
+*.kicad_prl
+fp-info-cache
+*-backups/
+_autosave-*
+
+# Editor/script backups
+*.bak
+*.FCBak
+
+# Third-party datasheets (link them instead)
+docs/*.pdf

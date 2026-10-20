@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "zigbee_toy")(type "KiCad")(uri "${KIPRJMOD}/zigbee_toy.pretty")(options "")(descr "zigbee_toy project footprints"))
+)
