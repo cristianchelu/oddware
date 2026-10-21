@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """One-off: turn the autorouted (unlocked) copper of the current board into tools/routes_frozen.py.
 Run on a board that has hand routes + an imported SES but no stitching:
-    gen_pcb.py layout && gen_pcb.py ses && freeze_routes.py
+    gen_pcb.py layout && gen_pcb.py ses && freeze_routes.py [append]
+With "append", the new (unlocked) copper is added to the existing routes_frozen.py instead of replacing it:
+for re-routing a few nets with everything else locked.
 """
+import sys
 import os
 import pcbnew
 
@@ -39,7 +42,7 @@ def chains(edges):
     return out
 
 
-lines = ['"""Frozen copy of the Freerouting result (2026-10-20, rev A floorplan v9). GENERATED ONCE by',
+lines = ['"""Frozen copy of the Freerouting result (2026-10-20, rev B). GENERATED ONCE by',
          'freeze_routes.py; edit by hand from here on. Loaded after routes.py\'s hand routes."""',
          '', 'ROUTES = [']
 n = 0
@@ -51,5 +54,16 @@ lines += [']', '', 'VIAS = [']
 for v in sorted(vias):
     lines.append(f'    {v!r},')
 lines += [']', '']
-open(os.path.join(HERE, 'routes_frozen.py'), 'w').write('\n'.join(lines))
+out = os.path.join(HERE, 'routes_frozen.py')
+if 'append' in sys.argv[1:]:
+    old = open(out).read()
+    new_r = [l for l in lines[lines.index('ROUTES = [') + 1:lines.index(']')]]
+    new_v = [l for l in lines[lines.index('VIAS = [') + 1:-2]]
+    i = old.index(']\n\nVIAS = [')
+    old = old[:i] + '\n'.join(new_r) + '\n' + old[i:]
+    j = old.rindex(']')
+    old = old[:j] + '\n'.join(new_v) + '\n' + old[j:]
+    open(out, 'w').write(old)
+else:
+    open(out, 'w').write('\n'.join(lines))
 print('frozen', n, 'polylines,', len(vias), 'vias')

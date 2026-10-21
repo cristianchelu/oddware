@@ -99,34 +99,35 @@ def build_symbol(name, ref, value, footprint, description, w, left=(), right=(),
 
 def custom_symbols():
     s = {}
-    s['E73-2G4M08S1C'] = build_symbol(
-        'E73-2G4M08S1C', 'U', 'E73-2G4M08S1C', 'zigbee_toy:Ebyte_E73-2G4M08S1C',
-        'Ebyte nRF52840 module, ceramic antenna, 13x18 mm, 43 castellated pads',
-        w=27.94,
-        left=[(19, 'VCC(VDD)', 'power_in'), (23, 'VDDH', 'power_in'),
-              (25, 'DCCH', 'passive'), (27, 'VBUS', 'power_in'), None,
-              (31, 'D+', 'bidirectional'), (29, 'D-', 'bidirectional'), None,
-              (11, 'XL1/P0.00', 'passive'), (13, 'XL2/P0.01', 'passive'), None,
-              (26, 'P0.18/~{RESET}', 'bidirectional'), (37, 'SWDIO', 'bidirectional'),
-              (39, 'SWDCLK', 'input'), None,
-              (41, 'P0.09/NFC1', 'passive'), (43, 'P0.10/NFC2', 'passive')],
-        right=[(7, 'P0.02/AIN0', 'bidirectional'), (3, 'P0.03/AIN1', 'bidirectional'),
-               (18, 'P0.04/AIN2', 'bidirectional'), (15, 'P0.05/AIN3', 'bidirectional'),
-               (4, 'P0.28/AIN4', 'bidirectional'), (8, 'P0.29/AIN5', 'bidirectional'),
-               (10, 'P0.30/AIN6', 'bidirectional'), (9, 'P0.31/AIN7', 'bidirectional'),
-               (14, 'P0.06', 'bidirectional'), (22, 'P0.07', 'bidirectional'),
-               (16, 'P0.08', 'bidirectional'), (20, 'P0.12', 'bidirectional'),
-               (33, 'P0.13', 'bidirectional'), (28, 'P0.15', 'bidirectional'),
-               (30, 'P0.17', 'bidirectional'), (32, 'P0.20', 'bidirectional'),
-               (34, 'P0.22', 'bidirectional'), (35, 'P0.24', 'bidirectional'),
-               (12, 'P0.26', 'bidirectional'), (36, 'P1.00', 'bidirectional'),
-               (38, 'P1.02', 'bidirectional'), (40, 'P1.04', 'bidirectional'),
-               (42, 'P1.06', 'bidirectional'), (17, 'P1.09', 'bidirectional'),
-               (2, 'P1.10', 'bidirectional'), (1, 'P1.11', 'bidirectional'),
-               (6, 'P1.13', 'bidirectional')],
-        bottom=[(5, 'GND', 'power_in'), (21, 'GND', 'passive', 'stack'),
-                (24, 'GND', 'passive', 'stack')],
-        datasheet='https://www.cdebyte.com/products/E73-2G4M08S1C')
+    gpio = 'bidirectional'
+    s['ESP32-C6-MINI-1U'] = build_symbol(
+        'ESP32-C6-MINI-1U', 'U', 'ESP32-C6-MINI-1U-H4', 'zigbee_toy:ESP32-C6-MINI-1U',
+        'Espressif ESP32-C6 module (Wi-Fi 6, BLE 5, 802.15.4), 4 MB flash, u.FL antenna, 13.2x12.5 mm',
+        w=25.4,
+        left=[(3, '3V3', 'power_in'), (8, 'EN', 'input'), None,
+              (12, 'IO0/XTAL_32K_P', gpio), (13, 'IO1/XTAL_32K_N', gpio), None,
+              (17, 'IO12/USB_D-', gpio), (18, 'IO13/USB_D+', gpio), None,
+              (30, 'RXD0/IO17', gpio), (31, 'TXD0/IO16', gpio), None,
+              (4, 'NC', 'no_connect'), (7, 'NC', 'no_connect', 'stack'), (21, 'NC', 'no_connect', 'stack'),
+              (32, 'NC', 'no_connect', 'stack'), (33, 'NC', 'no_connect', 'stack'),
+              (34, 'NC', 'no_connect', 'stack'), (35, 'NC', 'no_connect', 'stack')],
+        right=[(5, 'IO2/ADC1_2', gpio), (6, 'IO3/ADC1_3', gpio), (9, 'IO4/ADC1_4', gpio),
+               (10, 'IO5/ADC1_5', gpio), (15, 'IO6/ADC1_6', gpio), (16, 'IO7', gpio),
+               (22, 'IO8', gpio), (23, 'IO9/BOOT', gpio), (19, 'IO14', gpio), (20, 'IO15', gpio),
+               (24, 'IO18', gpio), (25, 'IO19', gpio), (26, 'IO20', gpio), (27, 'IO21', gpio),
+               (28, 'IO22', gpio), (29, 'IO23', gpio)],
+        bottom=[(1, 'GND', 'power_in')] + [(n, 'GND', 'passive', 'stack')
+                                           for n in [2, 11, 14] + list(range(36, 54))],
+        datasheet='https://www.espressif.com/sites/default/files/documentation/esp32-c6-mini-1_mini-1u_datasheet_en.pdf')
+
+    s['RT9080'] = build_symbol(
+        'RT9080', 'U', 'RT9080-33GJ5', 'Package_TO_SOT_SMD:TSOT-23-5',
+        '600 mA LDO, 2 uA quiescent, fixed 3.3 V',
+        w=12.7,
+        left=[(1, 'VIN', 'power_in'), (3, 'EN', 'input')],
+        right=[(5, 'VOUT', 'power_out'), (4, 'NC', 'no_connect')],
+        bottom=[(2, 'GND', 'power_in')],
+        datasheet='https://www.richtek.com/assets/product_file/RT9080/DS9080-04.pdf')
 
     s['DRV8213DSG'] = build_symbol(
         'DRV8213DSG', 'U', 'DRV8213DSGR',
@@ -157,15 +158,15 @@ def custom_symbols():
         right=[(3, 'BAT', 'passive'), (1, '~{CHRG}', 'open_collector'), None],
         bottom=[(2, 'GND', 'power_in')])
 
-    s['LIS2DH12'] = build_symbol(
-        'LIS2DH12', 'U', 'LIS2DH12TR', 'Package_LGA:LGA-12_2x2mm_P0.5mm',
-        'ST 3-axis accelerometer, I2C/SPI, ultra low power',
+    s['LIS2DW12TR-MS'] = build_symbol(
+        'LIS2DW12TR-MS', 'U', 'LIS2DW12TR-MS', 'Package_LGA:LGA-12_2x2mm_P0.5mm',
+        'MSKSEMI 3-axis accelerometer, I2C/SPI. NOT pin- or register-compatible with ST LIS2DW12 '
+        '(WHO_AM_I 0x11, LIS2DH-style registers)',
         w=17.78,
-        left=[(9, 'VDD', 'power_in'), (10, 'VDD_IO', 'power_in'), None,
-              (2, 'CS', 'input'), (3, 'SDO/SA0', 'input'), (5, 'Res', 'passive'), None],
-        right=[(4, 'SDA', 'bidirectional'), (1, 'SCL', 'input'), None,
-               (12, 'INT1', 'output'), (11, 'INT2', 'output')],
-        bottom=[(6, 'GND', 'power_in'), (7, 'GND', 'passive', 'stack'),
-                (8, 'GND', 'passive', 'stack')],
-        datasheet='https://www.st.com/resource/en/datasheet/lis2dh12.pdf')
+        left=[(7, 'VDD', 'power_in'), (3, 'VDDIO', 'power_in'), None,
+              (10, 'CS', 'input'), (1, 'SDO/SA0', 'input'), (4, 'NC', 'passive'), (11, 'NC', 'passive')],
+        right=[(2, 'SDA', 'bidirectional'), (12, 'SCL', 'input'), None,
+               (5, 'INT1', 'output'), (6, 'INT2', 'output')],
+        bottom=[(9, 'GND', 'power_in'), (8, 'GNDIO', 'passive', 'stack')],
+        datasheet='https://jlcpcb.com/partdetail/C50385411')
     return s

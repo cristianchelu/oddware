@@ -15,7 +15,7 @@ import pcbnew
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sexpr import parse, find, findall  # noqa: E402
-from placement import PLACE, BOARD_W, BOARD_H, CORNER_R  # noqa: E402
+from placement import PLACE, BOARD_W, BOARD_H, CORNER_R, EDGE_KEEPOUT, EDGE_PARTS  # noqa: E402
 
 PROJ = os.path.join(HERE, '..', 'zigbee_toy')
 PCB = os.path.join(PROJ, 'zigbee_toy.kicad_pcb')
@@ -33,14 +33,14 @@ NETCLASSES = {
 }
 NET_CLASS_OF = {
     'Power': ['CELL_P', 'CELL_N', 'VBAT', 'MOT_A', 'MOT_B', 'SPK_P', 'SPK_N', 'GND'],
-    'Supply': ['VBUS', 'VDD'],
+    'Supply': ['VBUS', '3V3'],
 }
 
 
 # 3D models for footprints whose library model is missing: project copies in
 # zigbee_toy.3dshapes (tools/gen_3d.sh), or an equivalent generic library body.
 PROJECT_MODELS = {
-    'U1': '${KIPRJMOD}/zigbee_toy.3dshapes/Ebyte_E73-2G4M08S1C.step',
+    'U1': '${KIPRJMOD}/zigbee_toy.3dshapes/ESP32-C6-MINI-1U.step',
     'J1': '${KIPRJMOD}/zigbee_toy.3dshapes/USB_C_Receptacle_HRO_TYPE-C-31-M-12.step',
     'SW1': '${KIPRJMOD}/zigbee_toy.3dshapes/SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010.step',
     # TI's DSG0008A is the generic 2x2 mm WSON-8 with a 0.9x1.6 mm pad
@@ -216,17 +216,43 @@ def place():
         if ref[0] in 'RC' or ref.startswith('H') or ref.startswith('TP'):
             fp.Reference().SetVisible(False)
         for pad in fp.Pads():
-            if (ref == 'J1' and pad.GetNumber() == 'SH') or ref == 'J2':
+            if ref == 'J1' and pad.GetNumber() == 'SH':
                 pad.SetLocalZoneConnection(pcbnew.ZONE_CONNECTION_FULL)
             n = pad_net.get((ref, pad.GetNumber()))
             if n:
                 pad.SetNet(netinfo[n])
     set_models(board)
+    check_edge_keepout(board, comps)
     outline(board)
     gnd_zone(board, netinfo['GND'], pcbnew.F_Cu, 0)
     gnd_zone(board, netinfo['GND'], pcbnew.B_Cu, 0)
     pcbnew.SaveBoard(PCB, board)
     print('placed', len(comps), 'footprints,', len(nets), 'nets')
+
+
+def check_edge_keepout(board, comps):
+    """JLC assembly: every assembled body >= EDGE_KEEPOUT from the board edge (F.Fab outline = body).
+    Parts in EDGE_PARTS may reach the right edge only."""
+    bad = []
+    for fp in board.GetFootprints():
+        ref = fp.GetReference()
+        if comps[ref]['excl_bom'] or fp.IsFlipped():
+            continue
+        boxes = [g.GetBoundingBox() for g in fp.GraphicalItems()
+                 if g.GetLayer() == pcbnew.F_Fab and isinstance(g, pcbnew.PCB_SHAPE)]
+        if not boxes:
+            boxes = [fp.GetCourtyard(pcbnew.F_Cu).BBox()]
+        x1 = min(pcbnew.ToMM(b.GetLeft()) for b in boxes); x2 = max(pcbnew.ToMM(b.GetRight()) for b in boxes)
+        y1 = min(pcbnew.ToMM(b.GetTop()) for b in boxes); y2 = max(pcbnew.ToMM(b.GetBottom()) for b in boxes)
+        d = {'top': y1, 'bottom': BOARD_H - y2, 'left': x1, 'right': BOARD_W - x2}
+        if ref in EDGE_PARTS:
+            d.pop('right')
+        for side, dist in d.items():
+            if dist < EDGE_KEEPOUT - 1e-3:
+                bad.append(f'{ref} body {dist:.2f} mm from the {side} edge')
+    if bad:
+        raise SystemExit('edge keepout (' + str(EDGE_KEEPOUT) + ' mm) violated:\n  ' + '\n  '.join(bad))
+    print(f'edge keepout ok: assembled bodies >= {EDGE_KEEPOUT} mm from the edges')
 
 
 _LABEL_BOXES = []
@@ -251,7 +277,7 @@ def label_boxes():
 
 def export_dsn():
     board = pcbnew.LoadBoard(PCB)
-    # Autorouter only: forbid F.Cu tracks under the module body (between its pad rows).
+    # Autorouter only: forbid F.Cu tracks over the module's centre ground pad.
     u1 = board.FindFootprintByReference('U1')
     c = u1.GetPosition()
     cx, cy = pcbnew.ToMM(c.x), pcbnew.ToMM(c.y)
@@ -265,7 +291,7 @@ def export_dsn():
     ko.SetLayer(pcbnew.F_Cu)
     o = ko.Outline()
     o.NewOutline()
-    for dx, dy in [(-5.5, -9.0), (5.5, -9.0), (5.5, 8.0), (-5.5, 8.0)]:  # stop at outer pads
+    for dx, dy in [(-3.3, -2.75), (3.3, -2.75), (3.3, 4.05), (-3.3, 4.05)]:  # the centre ground pad; the ring outside it takes escape vias
         o.Append(MM(cx + dx), MM(cy + dy))
     board.Add(ko)
 
@@ -284,6 +310,27 @@ def export_dsn():
             o.Append(MM(px), MM(py))
         board.Add(z)
 
+    # footprint keepouts (the MINI-1 antenna area under U1) as board rule areas, so the DSN carries them
+    for fp in board.GetFootprints():
+        for fz in fp.Zones():
+            if not fz.GetIsRuleArea():
+                continue
+            bb = fz.Outline().BBox()
+            for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
+                z = pcbnew.ZONE(board)
+                z.SetIsRuleArea(True)
+                z.SetDoNotAllowTracks(True)
+                z.SetDoNotAllowVias(True)
+                z.SetDoNotAllowPads(False)
+                z.SetDoNotAllowZoneFills(True)
+                z.SetDoNotAllowFootprints(False)
+                z.SetLayer(layer)
+                o = z.Outline()
+                o.NewOutline()
+                for px, py in [(bb.GetLeft(), bb.GetTop()), (bb.GetRight(), bb.GetTop()),
+                               (bb.GetRight(), bb.GetBottom()), (bb.GetLeft(), bb.GetBottom())]:
+                    o.Append(px, py)
+                board.Add(z)
     # keep autorouted copper 0.5 mm off the board edge (both layers)
     e = 0.5
     for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
@@ -291,10 +338,16 @@ def export_dsn():
         no_tracks(layer, 0, BOARD_H - e, BOARD_W, BOARD_H)
         no_tracks(layer, 0, 0, e, BOARD_H)
         no_tracks(layer, BOARD_W - e, 0, BOARD_W, BOARD_H)
-    # keep B.Cu solid under the USB-C receptacle so its shell ties into the ground plane
+    # nothing on B.Cu under the 32 kHz crystal and its traces to the module
+    y1 = board.FindFootprintByReference('Y1').GetPosition()
+    yx, yy = pcbnew.ToMM(y1.x), pcbnew.ToMM(y1.y)
+    no_tracks(pcbnew.B_Cu, yx - 1.65, cy + 5.7, yx + 2.05, yy + 1.3)
+    # nothing under the USB-C receptacle: on F.Cu only solder mask would separate a track from the
+    # shell; B.Cu stays solid so the shell ties into the ground plane
     j1 = board.FindFootprintByReference('J1').GetCourtyard(pcbnew.F_Cu).BBox()
-    no_tracks(pcbnew.B_Cu, pcbnew.ToMM(j1.GetLeft()), pcbnew.ToMM(j1.GetTop()),
-              BOARD_W, pcbnew.ToMM(j1.GetBottom()))
+    for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
+        no_tracks(layer, pcbnew.ToMM(j1.GetLeft()), pcbnew.ToMM(j1.GetTop()),
+                  BOARD_W, pcbnew.ToMM(j1.GetBottom()))
     out = os.path.join(PROJ, 'build', 'zigbee_toy.dsn')
     ok = pcbnew.ExportSpecctraDSN(board, out)
     print('dsn', ok, out)
@@ -417,12 +470,21 @@ def in_label(x, y, m=0.45):
     return any(x1 - m < x < x2 + m and y1 - m < y < y2 + m for x1, y1, x2, y2 in label_boxes())
 
 
+def via_holes_ok(board, p, drill):
+    """JLC hole-to-hole (0.5 mm) against every via already on the board."""
+    for t in board.GetTracks():
+        if t.GetClass() == 'PCB_VIA' and (t.GetPosition() - p).EuclideanNorm() < \
+                MM(drill / 2 + 0.5) + t.GetDrill() / 2:
+            return False
+    return True
+
+
 def stitch(pitch=2.5, size=0.6, drill=0.3):
     """Drop GND stitching vias on a grid wherever they clear everything else."""
     board = pcbnew.LoadBoard(PCB)
     gnd = board.GetNetsByName()['GND']
     clear = MM(0.2)
-    avoid_fp = {'U1', 'J1', 'SW1', 'J3', 'J2'}
+    avoid_fp = {'U1', 'J1', 'SW1', 'J3'}
     items = [p for fp in board.GetFootprints() for p in fp.Pads()] + list(board.GetTracks())
     keepouts = [z for z in board.Zones() if z.GetIsRuleArea()]
     for fp in board.GetFootprints():
@@ -459,7 +521,7 @@ def stitch(pitch=2.5, size=0.6, drill=0.3):
                     if fp.GetReference().startswith('H') and \
                             (fp.GetPosition() - p).EuclideanNorm() < MM(2.6):
                         ok = False
-            if ok:
+            if ok and via_holes_ok(board, p, drill):
                 via = pcbnew.PCB_VIA(board)
                 via.SetPosition(p); via.SetWidth(MM(size)); via.SetDrill(MM(drill)); via.SetNet(gnd)
                 board.Add(via)
@@ -500,7 +562,7 @@ def stitch(pitch=2.5, size=0.6, drill=0.3):
                     edge_ok = edge_dist(px, py) > size / 2 + 0.6
                     in_other = any(other.Outline(k).PointInside(p, MM(size / 2 + 0.05))
                                    for k in range(other.OutlineCount()))
-                    if edge_ok and in_other and poly.Contains(p) and poly.Outline(0).PointInside(p, MM(size / 2 + 0.05)) and \
+                    if edge_ok and in_other and via_holes_ok(board, p, drill) and poly.Contains(p) and poly.Outline(0).PointInside(p, MM(size / 2 + 0.05)) and \
                             holes_ok and not any(it.HitTest(p, MM(size / 2) + clear) for it in items):
                         via = pcbnew.PCB_VIA(board)
                         via.SetPosition(p); via.SetWidth(MM(size)); via.SetDrill(MM(drill)); via.SetNet(gnd)
@@ -512,7 +574,11 @@ def stitch(pitch=2.5, size=0.6, drill=0.3):
     for z in pours:
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
-    fixed += bridge_ground_groups(board, gnd, items, size, drill, clear)
+    # first pass with stitching-size vias; whatever stays unbridged gets a second chance with
+    # 0.5 mm vias at JLC's 0.15 mm clearance (small pockets walled in by signal tracks)
+    fixed += bridge_ground_groups(board, gnd, items, size, drill, clear, warn=False)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    fixed += bridge_ground_groups(board, gnd, items, 0.5, drill, MM(0.15))
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     # drop added vias that ended up in no pour on one of the layers (their sliver was removed)
     fills = [z.GetFilledPolysList(z.GetLayer()) for z in pours]
@@ -527,7 +593,7 @@ def stitch(pitch=2.5, size=0.6, drill=0.3):
     print('stitching vias:', added, '+ island vias:', fixed)
 
 
-def bridge_ground_groups(board, gnd, items, size, drill, clear):
+def bridge_ground_groups(board, gnd, items, size, drill, clear, warn=True):
     """Union-find over GND pour fragments joined by vias/THT pads; bridge stray groups."""
     frags = []
     for z in board.Zones():
@@ -582,7 +648,8 @@ def bridge_ground_groups(board, gnd, items, size, drill, clear):
                                     for k in range(inter.OutlineCount())) and \
                                 all((h.GetPosition() - p).EuclideanNorm() > h.GetDrillSize().x / 2 + MM(size / 2 + 0.5)
                                     for h in holes) and \
-                                not any(it.HitTest(p, MM(size / 2) + clear) for it in items):
+                                not any(it.HitTest(p, MM(size / 2) + clear) for it in items) and \
+                                via_holes_ok(board, p, drill):
                             via = pcbnew.PCB_VIA(board)
                             via.SetPosition(p); via.SetWidth(MM(size)); via.SetDrill(MM(drill)); via.SetNet(gnd)
                             board.Add(via); items.append(via)
@@ -590,7 +657,7 @@ def bridge_ground_groups(board, gnd, items, size, drill, clear):
                             done = True
                         xx += MM(0.2)
                     yy += MM(0.2)
-        if not done:
+        if not done and warn:
             for i in members:
                 bb = frags[i][1].BBox()
                 print('WARNING: unbridged GND fragment', pcbnew.LayerName(frags[i][0]),

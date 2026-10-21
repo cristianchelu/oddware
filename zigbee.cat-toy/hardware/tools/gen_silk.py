@@ -326,10 +326,10 @@ def main():
         ring = [bbox_mm(g) for g in fp.GraphicalItems() if g.GetLayer() == pcbnew.B_SilkS][0]
         e = extents(t, 0)
         cx, cy = (ring[0] + ring[2]) / 2, (ring[1] + ring[3]) / 2
-        if silk.TP_LABEL_SIDE.get(ref, 'right') == 'right':
-            x, y = ring[2] + 0.25 + (e[2] - e[0]) / 2, cy
-        else:
-            x, y = cx, ring[3] + 0.25 + (e[3] - e[1]) / 2
+        side = silk.TP_LABEL_SIDE.get(ref, 'right')
+        w, h = e[2] - e[0], e[3] - e[1]
+        x, y = {'right': (ring[2] + 0.25 + w / 2, cy), 'left': (ring[0] - 0.25 - w / 2, cy),
+                'below': (cx, ring[3] + 0.25 + h / 2), 'above': (cx, ring[1] - 0.25 - h / 2)}[side]
         r = try_at(t, x, y, 0, obs, {0: e})
         if r is None:
             print(f'WARNING: {ref} label {fp.GetValue()!r} at its spot hits {blocker(grow([x + e[0], y + e[1], x + e[2], y + e[3]], SILK_CLR / 2), obs)}')

@@ -1,27 +1,33 @@
 Comment,Designator,Footprint,LCSC Part #,JLC Library,Unit Price USD (1-9),Notes
-E73-2G4M08S1C (nRF52840 module),U1,Ebyte_E73-2G4M08S1C,C356849,Extended,7.6675,Ceramic-antenna version; NOT the -CX (IPEX)
-DRV8213DSGR,U2,WSON-8-1EP_2x2mm,C22407186,Extended,1.0401,1.65-11V H-bridge with IPROPI current sense/regulation
-LIS2DH12TR,U3,LGA-12_2x2mm,C110926,Extended,0.9307,Wake-on-motion accelerometer; I2C addr 0x19 (SA0=VDD)
-TP4054-42-SOT25R,U4,SOT-23-5,C32574,Preferred Extended,0.1318,LiPo charger 300mA (R3)
-XB5353A,U5,SOT-23-5,C80628,Extended,0.0879,1S protection w/ integrated 54mOhm FETs; 4.3V/2.4V/3A OCP
-AO3401A,Q1,SOT-23,C15127,Basic,0.1021,Reverse-polarity P-FET
-AO3400A,Q2,SOT-23,C20917,Basic,0.0972,Speaker low-side switch
+ESP32-C6-MINI-1U-H4,U1,ESP32-C6-MINI-1U,C20627095,Extended,4.2191,u.FL antenna connector; needs a 2.4 GHz FPC antenna (hand-plugged)
+DRV8213DSGR,U2,WSON-8-1EP_2x2mm,C22407186,Extended,1.0409,1.65-11V H-bridge with IPROPI current sense/regulation
+LIS2DW12TR-MS,U3,LGA-12_2x2mm,C50385411,Extended,0.67,MSKSEMI accelerometer; NOT ST-compatible: own pinout, WHO_AM_I 0x11, LIS2DH-style registers; I2C 0x19
+TP4054-42-SOT25R,U4,SOT-23-5,C32574,Preferred Extended,0.1319,LiPo charger 300mA (R3)
+XB5353A,U5,SOT-23-5,C80628,Extended,0.088,1S protection w/ integrated 54mOhm FETs; 4.3V/2.4V/3A OCP
+RT9080-33GJ5,U6,TSOT-23-5,C841192,Extended,0.1195,3.3V LDO 600mA; 2uA quiescent
+AO3401A,Q1,SOT-23,C15127,Basic,0.1022,Reverse-polarity P-FET
+AO3400A,Q2,SOT-23,C20917,Basic,0.0973,Speaker low-side switch
 B5819W,D1,SOD-123,C8598,Basic,0.0283,Speaker flyback
-LED red,D2 D3,LED_0603,C2286,Basic,0.0076,D2 charge (from VBUS); D3 status (GPIO)
-TYPE-C-31-M-12,J1,USB_C_Receptacle_HRO_TYPE-C-31-M-12,C165948,Extended,0.1865,16-pin USB-C; USB2 data to nRF
-32.768kHz 12.5pF,Y1,Crystal_SMD_3215-2Pin,C32346,Basic,0.1725,LFXO (not on E73 module)
-SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.1424,Side-push pairing button on the right board edge
+LED red,D2,LED_0603,C2286,Basic,0.0076,Status LED (IO23 high = on)
+TYPE-C-31-M-12,J1,USB_C_Receptacle_HRO_TYPE-C-31-M-12,C165948,Extended,0.1867,16-pin USB-C; USB Serial/JTAG to the C6
+32.768kHz 12.5pF,Y1,Crystal_SMD_3215-2Pin,C32346,Basic,0.1708,RTC crystal for light sleep (IO0/IO1)
+SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.1425,Side-push pairing / BOOT button (IO9)
 5.1k,R1 R2,R_0603,C23186,Basic,0.0015,USB-C CC pulldowns
 3.3k,R3,R_0603,C22978,Basic,0.0022,TP4054 PROG -> ~300mA
-1k,R4 R5,R_0603,C21190,Basic,0.003,LED resistors
+1k,R4,R_0603,C21190,Basic,0.003,Status LED series
 1.5k,R6,R_0603,C22843,Basic,0.002,R_IPROPI: limits 1.66A / 324mA / 69mA by GAINSEL
-100R,R7,R_0603,C22775,Basic,0.0025,Speaker FET gate series
-100k,R8,R_0603,C25803,Basic,0.0031,Speaker FET gate pulldown
+100R,R7,R_0603,C22775,Basic,0.0026,Speaker FET gate series
+100k,R8 R15,R_0603,C25803,Basic,0.0031,Speaker FET gate pulldown; VBUS divider bottom
+10k,R9,R_0603,C25804,Basic,0.0054,EN pull-up
 0R,R11,R_0603,C21189,Basic,0.0022,Speaker link (1A); cap PWM duty in firmware for 8-ohm speakers
-22uF 25V,C1,C_0805,C45783,Basic,0.194,VBAT bulk
-10uF 25V,C2,C_0805,C15850,Basic,0.0874,DRV8213 VM bulk
-100nF,C3 C7 C9 C10 C15,C_0603,C14663,Basic,0.0108,Decoupling; C15 = XB5353A VDD (place at pins)
-4.7uF 16V,C4 C6 C8,C_0603,C19666,Basic,0.0218,VBUS / VDDH / VDD
-20pF C0G,C12 C13,C_0603,C1648,Basic,0.0089,LFXO load caps (C = 2*CL - ~5pF)
+1M,R12 R13,R_0603,C22935,Basic,0.0021,VBAT/2 divider for the ADC (2.1uA)
+68k,R14,R_0603,C23231,Basic,0.0016,VBUS divider top (VBUS_SENSE = 0.6 x VBUS)
+4.7k,R16 R17,R_0603,C23162,Basic,0.0028,I2C pull-ups; R16 also straps IO8 high for download mode
+22uF 25V,C1 C8,C_0805,C45783,Basic,0.1943,VBAT bulk; 3V3 bulk at the regulator
+10uF 25V,C2,C_0805,C15850,Basic,0.0875,DRV8213 VM bulk
+10uF 10V,C9,C_0603,C19702,Basic,0.0171,3V3 at module pin 3 (radio TX bursts)
+100nF,C3 C10 C11 C15 C16,C_0603,C14663,Basic,0.0084,Decoupling; C15 = XB5353A VDD; C16 = ADC hold
+4.7uF 16V,C4 C6,C_0603,C19666,Basic,0.0206,VBUS; regulator input
+1uF,C5,C_0603,C15849,Basic,0.0153,EN power-on delay (10k x 1u)
+20pF C0G,C12 C13,C_0603,C1648,Basic,0.009,RTC crystal load caps
 S2B-PH-K-S,J3 J4 J5,JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal,C173752,Hand-solder,0.0396,Battery / motor / speaker; side entry; THT hand-soldered
-Pin header 1x05 1.27mm (unpopulated),J2,PinHeader_1x05_P1.27mm_Vertical,,PCB,,SWD: VDD/GND/nRESET/SWCLK/SWDIO; first flash only

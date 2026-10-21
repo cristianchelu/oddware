@@ -4,7 +4,7 @@
 JLC places a part by putting the origin of ITS library footprint (the EasyEDA/LCSC footprint for the
 LCSC number) at Mid X/Mid Y and rotating that footprint by Rotation. KiCad's footprints have different
 origins and 0-degree orientations for many packages (SOT-23 and SOT-23-5 are 180/270 degrees off, the
-HRO USB-C origin is 1.57 mm away, the E73 origin is 2 mm away, EasyEDA's LED pin 1 is the anode...).
+HRO USB-C origin is 1.57 mm away, EasyEDA's LED pin 1 is the anode...).
 This script fits each KiCad footprint's pads onto the EasyEDA footprint's pads (rotation in 90-degree
 steps plus translation) and writes the CPL in JLC's frame.
 
@@ -16,7 +16,7 @@ import pcbnew
 
 U = 0.254                      # mm per EasyEDA unit (10 mil)
 # EasyEDA numbers the LED anode as pin 1; KiCad's LED symbol/footprint has the cathode as pin 1.
-RENUMBER = {'C2286': {'1': '2', '2': '1'}, 'C2290': {'1': '2', '2': '1'}}
+RENUMBER = {'C2286': {'1': '2', '2': '1'}, 'C2290': {'1': '2', '2': '1'}}   # red / green 0603 LEDs (not on rev B)
 
 
 def easyeda_pads(path, code):

@@ -1,25 +1,23 @@
-"""Zigbee cat toy controller, rev A: component placement and nets.
+"""Zigbee cat toy controller, rev B: component placement and nets.
 
-Coordinates are sheet millimetres (A3, Y down). See docs/hardware-design.md.
+Coordinates are sheet millimetres (A3, Y down).
 """
 
 R0603 = 'Resistor_SMD:R_0603_1608Metric'
 C0603 = 'Capacitor_SMD:C_0603_1608Metric'
 C0805 = 'Capacitor_SMD:C_0805_2012Metric'
-LED0603 = 'LED_SMD:LED_0603_1608Metric'
-SOT23 = 'Package_TO_SOT_SMD:SOT-23'
 JST_PH_SIDE = 'Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal'
 
 
 # (ref, net, back-silk label): grouped on the back, see placement.py
 TEST_POINTS = [
-    ('TP1', 'VBAT', 'VBAT'), ('TP2', 'VDD', 'VDD'), ('TP3', 'VBUS', 'VBUS'),
+    ('TP1', 'VBAT', 'VBAT'), ('TP2', '3V3', '3V3'), ('TP3', 'VBUS', 'VBUS'),
     ('TP4', 'GND', 'GND'), ('TP5', 'CHG_STAT', 'nCHG'), ('TP6', 'CHG_PROG', 'PROG'),
     ('TP7', 'MOT_PWM', 'PWM'), ('TP8', 'MOT_DIR', 'DIR'), ('TP9', 'MOT_IPROPI', 'ISNS'),
     ('TP10', 'MOT_GAINSEL', 'GAIN'), ('TP11', 'SPK_PWM', 'SPK'), ('TP12', 'GND', 'GND'),
-    ('TP13', 'ACC_INT1', 'INT1'), ('TP14', 'ACC_INT2', 'INT2'), ('TP15', 'I2C_SDA', 'SDA'),
-    ('TP16', 'I2C_SCL', 'SCL'), ('TP17', 'BTN', 'BTN'), ('TP18', 'LED_STATUS', 'LED'),
-    ('TP19', 'DBG_TX', 'TX'), ('TP20', 'DBG_RX', 'RX'),          # UART ground: J2 pin 2, right beside them
+    ('TP13', 'ACC_INT1', 'INT1'), ('TP15', 'I2C_SDA', 'SDA'),
+    ('TP16', 'I2C_SCL', 'SCL'), ('TP17', 'BTN', 'BOOT'), ('TP18', 'LED_STATUS', 'LED'),
+    ('TP19', 'DBG_TX', 'TX'), ('TP20', 'DBG_RX', 'RX'), ('TP21', 'EN', 'EN'), ('TP22', 'GND', 'GND'),
 ]
 
 
@@ -28,7 +26,7 @@ def build(sh):
     sh.box(12.7, 12.7, 135, 92, 'Battery, protection, reverse polarity')
     sh.place('Connector_Generic:Conn_01x02', 'J3', 'LiPo 1S (JST-PH)', 45.72, 38.1,
              {'1': 'CELL_P', '2': 'CELL_N'},
-             fp='Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal', lcsc='C173752',
+             fp=JST_PH_SIDE, lcsc='C173752',
              props={'Note': 'Side-entry JST-PH, hand-solder (THT). Pin 1 = +'}, in_bom=False)
     sh.place('zigbee_toy:XB5353A', 'U5', 'XB5353A', 76.2, 43.18,
              {'3': 'CELL_P', '1': 'NC', '4': 'GND', '5': 'GND', '2': 'CELL_N'}, lcsc='C80628')
@@ -43,7 +41,7 @@ def build(sh):
             'Reversed cell: Q1 blocks the high side, U5 blocks the low side.', 15.24, 81.28)
 
     # ------------------------------------------------------------ USB + charger
-    sh.box(12.7, 97.79, 135, 195.58, 'USB-C (sink) and LiPo charger')
+    sh.box(12.7, 97.79, 135, 195.58, 'USB-C (sink), LiPo charger, USB detect')
     sh.place('Connector:USB_C_Receptacle_USB2.0_16P', 'J1', 'USB-C 16P', 33.02, 140.97,
              {'A1': 'GND', 'A12': 'GND', 'B1': 'GND', 'B12': 'GND', 'SH': 'GND',
               'A4': 'VBUS', 'A9': 'VBUS', 'B4': 'VBUS', 'B9': 'VBUS',
@@ -56,54 +54,57 @@ def build(sh):
              {'4': 'VBUS', '5': 'CHG_PROG', '3': 'VBAT', '1': 'CHG_STAT', '2': 'GND'},
              lcsc='C32574')
     sh.passive('R', 'R3', '3.3k', 73.66, 144.78, 'CHG_PROG', 'GND', R0603, 'C22978')
-    sh.place('Device:LED', 'D2', 'RED (charging)', 114.3, 144.78,
-             {'1': 'CHG_STAT', '2': 'CHG_LED'}, fp=LED0603, lcsc='C2286')
-    sh.passive('R', 'R4', '1k', 127, 144.78, 'VBUS', 'CHG_LED', R0603, 'C21190')
     sh.passive('C', 'C4', '4.7u', 93.98, 171.45, 'VBUS', 'GND', C0603, 'C19666')
+    sh.passive('R', 'R14', '68k', 114.3, 144.78, 'VBUS', 'VBUS_SENSE', R0603, 'C23231')
+    sh.passive('R', 'R15', '100k', 127, 144.78, 'VBUS_SENSE', 'GND', R0603, 'C25803')
     sh.flag('VBUS', 110.49, 167.64)
-    sh.text('I_chg = 1000 V / R3 = ~300 mA.  C4 sits between J1, U4 VCC and U1 VBUS.', 15.24, 186.69)
+    sh.text('I_chg = 1000 V / R3 = ~300 mA.  CHRG (open drain) -> MCU, internal pull-up.\n'
+            'VBUS_SENSE = 0.6 x VBUS (3.0 V at 5 V): plugged in, charging or full.', 15.24, 184.15)
+
+    # ------------------------------------------------------------ 3.3 V
+    sh.box(139.7, 12.7, 279.4, 59.69, '3.3 V regulator')
+    sh.place('zigbee_toy:RT9080', 'U6', 'RT9080-33GJ5', 190.5, 33.02,
+             {'1': 'VBAT', '3': 'VBAT', '5': '3V3', '4': 'NC', '2': 'GND'}, lcsc='C841192')
+    sh.passive('C', 'C6', '4.7u', 162.56, 38.1, 'VBAT', 'GND', C0603, 'C19666')
+    sh.passive('C', 'C8', '22u', 223.52, 38.1, '3V3', 'GND', C0805, 'C45783')
+    sh.passive('C', 'C9', '10u', 236.22, 38.1, '3V3', 'GND', C0603, 'C19702')
+    sh.text('2 uA quiescent, 600 mA, 0.31 V dropout at 600 mA. C8 bulk at the regulator, C9 at module pin 3.', 142.24, 53.34)
 
     # ------------------------------------------------------------ MCU
-    sh.box(139.7, 12.7, 279.4, 195.58, 'nRF52840 module (Zigbee / BLE / USB)')
-    # Pin map chosen for the two-sided floorplan (module rotated 180 deg, antenna on top):
-    # left pads -> motor driver / LED / button, bottom pads -> crystal, supplies and the two
-    # PWM outputs, right pads -> USB, SWD. Inner bottom row (via escapes) -> accelerometer, LED, button.
-    sh.place('zigbee_toy:E73-2G4M08S1C', 'U1', 'E73-2G4M08S1C', 209.55, 101.6, {
-        '19': 'VDD', '23': 'VBAT', '25': 'NC', '27': 'VBUS', '31': 'USB_DP', '29': 'USB_DN',
-        '11': 'XL1', '13': 'XL2', '26': 'nRESET', '37': 'SWDIO', '39': 'SWCLK',
-        '5': 'GND', '21': 'GND', '24': 'GND',
-        '15': 'MOT_PWM', '17': 'SPK_PWM',
-        '3': 'MOT_IPROPI', '4': 'MOT_GAINSEL', '6': 'MOT_DIR', '7': 'NC', '8': 'NC',
-        '1': 'NC', '2': 'NC', '9': 'NC', '10': 'NC',
-        '35': 'NC', '33': 'NC', '41': 'NC', '43': 'NC',
-        '36': 'NC', '34': 'NC',
-        '12': 'ACC_INT1', '14': 'I2C_SDA', '16': 'I2C_SCL', '18': 'ACC_INT2', '20': 'LED_STATUS', '22': 'BTN',
-        '28': 'DBG_TX', '30': 'DBG_RX', '32': 'NC', '38': 'NC', '40': 'NC', '42': 'NC'}, lcsc='C356849')
-    sh.place('Device:Crystal', 'Y1', '32.768k 12.5pF', 160.02, 27.94, {'1': 'XL1', '2': 'XL2'},
+    sh.box(139.7, 64.77, 279.4, 195.58, 'ESP32-C6 module (Zigbee / Thread / BLE / Wi-Fi, USB)')
+    sh.place('zigbee_toy:ESP32-C6-MINI-1U', 'U1', 'ESP32-C6-MINI-1U-H4', 209.55, 127, {
+        '3': '3V3', '8': 'EN',
+        '12': 'XTAL_P', '13': 'XTAL_N', '17': 'USB_DN', '18': 'USB_DP',
+        '30': 'DBG_RX', '31': 'DBG_TX',
+        '5': 'MOT_IPROPI', '6': 'MOT_DIR', '9': 'MOT_PWM', '10': 'SPK_PWM',
+        '15': 'VBAT_SENSE', '16': 'ACC_INT1', '22': 'I2C_SDA', '23': 'BTN',
+        '19': 'MOT_GAINSEL', '20': 'NC', '24': 'I2C_SCL',
+        '25': 'CHG_STAT', '26': 'VBUS_SENSE', '27': 'NC', '28': 'NC', '29': 'LED_STATUS',
+        **{str(n): 'NC' for n in (4, 7, 21, 32, 33, 34, 35)},
+        **{str(n): 'GND' for n in [1, 2, 11, 14] + list(range(36, 54))}}, lcsc='C20627095')
+    sh.passive('R', 'R9', '10k', 152.4, 81.28, '3V3', 'EN', R0603, 'C25804')
+    sh.passive('C', 'C5', '1u', 162.56, 81.28, 'EN', 'GND', C0603, 'C15849')
+    sh.place('Device:Crystal', 'Y1', '32.768k 12.5pF', 160.02, 160.02, {'1': 'XTAL_P', '2': 'XTAL_N'},
              fp='Crystal:Crystal_SMD_3215-2Pin_3.2x1.5mm', lcsc='C32346')
-    sh.passive('C', 'C12', '20p C0G', 152.4, 44.45, 'XL1', 'GND', C0603, 'C1648')
-    sh.passive('C', 'C13', '20p C0G', 167.64, 44.45, 'XL2', 'GND', C0603, 'C1648')
-    sh.passive('C', 'C6', '4.7u', 147.32, 171.45, 'VBAT', 'GND', C0603, 'C19666')
-    sh.passive('C', 'C7', '100n', 157.48, 171.45, 'VBAT', 'GND', C0603, 'C14663')
-    sh.passive('C', 'C8', '4.7u', 167.64, 171.45, 'VDD', 'GND', C0603, 'C19666')
-    sh.passive('C', 'C9', '100n', 177.8, 171.45, 'VDD', 'GND', C0603, 'C14663')
-    sh.flag('VDD', 205.74, 160.02)
-    sh.text('C6/C7 at VDDH, C8/C9 at VCC (VDD = REG0 output, 3.0 V via UICR.REGOUT0).\n'
-            'REG0 runs as LDO (DCCH unconnected).  No 32 kHz crystal inside the module: Y1 is required.\n'
-            'PWM nets avoid the low-frequency pins near the radio (P0.02-P0.05, P0.28-P0.31, P1.1x).',
+    sh.passive('C', 'C12', '20p C0G', 152.4, 172.72, 'XTAL_P', 'GND', C0603, 'C1648')
+    sh.passive('C', 'C13', '20p C0G', 167.64, 172.72, 'XTAL_N', 'GND', C0603, 'C1648')
+    sh.text('EN: 10k / 1u power-on delay (Espressif).  IO9 = BOOT (SW1).  IO8 strap high via R16.\n'
+            'IO0/IO1: 32.768 kHz crystal for the light-sleep RTC.  IO12/13: USB Serial/JTAG on the charging port.\n'
+            'ADC1: IO2 MOT_IPROPI, IO6 VBAT_SENSE.  LP (deep-sleep wake): IO7 ACC_INT1.',
             142.24, 182.88)
 
-    # ------------------------------------------------------------ UI / debug
-    sh.box(139.7, 200.66, 279.4, 284.48, 'Button, status LED, SWD')
-    sh.place('Switch:SW_Push', 'SW1', 'PAIR', 160.02, 220.98, {'1': 'BTN', '2': 'GND'},
+    # ------------------------------------------------------------ UI / battery sense
+    sh.box(139.7, 200.66, 220.98, 284.48, 'Button, status LED, battery sense')
+    sh.place('Switch:SW_Push', 'SW1', 'PAIR / BOOT', 160.02, 220.98, {'1': 'BTN', '2': 'GND'},
              fp='Button_Switch_SMD:SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010', lcsc='C110293')
-    sh.passive('R', 'R5', '1k', 199.39, 220.98, 'LED_STATUS', 'LED_A', R0603, 'C21190', horizontal=True)
-    sh.place('Device:LED', 'D3', 'RED (status)', 233.68, 220.98, {'1': 'GND', '2': 'LED_A'},
-             fp=LED0603, lcsc='C2286')
-    sh.place('Connector_Generic:Conn_01x05', 'J2', 'SWD', 172.72, 254,
-             {'1': 'VDD', '2': 'GND', '3': 'nRESET', '4': 'SWCLK', '5': 'SWDIO'},
-             fp='Connector_PinHeader_1.27mm:PinHeader_1x05_P1.27mm_Vertical', in_bom=False,
-             props={'Note': 'Unpopulated: pogo clip or tacked wires for the first flash'})
+    sh.passive('R', 'R4', '1k', 185.42, 220.98, 'LED_STATUS', 'LED_A', R0603, 'C21190', horizontal=True)
+    sh.place('Device:LED', 'D2', 'RED (status)', 213.36, 220.98, {'1': 'GND', '2': 'LED_A'}, rot=180,
+             fp='LED_SMD:LED_0603_1608Metric', lcsc='C2286')
+    sh.passive('R', 'R12', '1M', 180.34, 251.46, 'VBAT', 'VBAT_SENSE', R0603, 'C22935')
+    sh.passive('R', 'R13', '1M', 195.58, 251.46, 'VBAT_SENSE', 'GND', R0603, 'C22935')
+    sh.passive('C', 'C16', '100n', 208.28, 251.46, 'VBAT_SENSE', 'GND', C0603, 'C14663')
+    sh.text('D2: GPIO high = on, 1.3 mA.\n'
+            'VBAT_SENSE = VBAT / 2, 2.1 uA. C16 holds it for the ADC sample.', 142.24, 271.78)
 
     # ------------------------------------------------------------ motor
     sh.box(284.48, 12.7, 406.4, 87.63, 'Motor driver (DRV8213, current sense)')
@@ -137,24 +138,25 @@ def build(sh):
 
     # ------------------------------------------------------------ accelerometer
     sh.box(284.48, 156.21, 406.4, 233.68, 'Accelerometer (wake-on-motion)')
-    sh.place('zigbee_toy:LIS2DH12', 'U3', 'LIS2DH12TR', 340.36, 182.88,
-             {'9': 'VDD', '10': 'VDD', '2': 'VDD', '3': 'VDD', '5': 'GND',
-              '4': 'I2C_SDA', '1': 'I2C_SCL', '12': 'ACC_INT1', '11': 'ACC_INT2',
-              '6': 'GND', '7': 'GND', '8': 'GND'}, lcsc='C110926')
-    sh.passive('C', 'C10', '100n', 299.72, 213.36, 'VDD', 'GND', C0603, 'C14663')
-    sh.text('CS = VDD (I2C).  SA0 = VDD -> address 0x19.  I2C uses the nRF internal pull-ups (~13k, 100 kHz).',
-            287.02, 226.06)
+    sh.place('zigbee_toy:LIS2DW12TR-MS', 'U3', 'LIS2DW12TR-MS', 340.36, 182.88,
+             {'7': '3V3', '3': '3V3', '10': 'NC', '1': 'NC', '4': 'NC', '11': 'NC',
+              '2': 'I2C_SDA', '12': 'I2C_SCL', '5': 'ACC_INT1', '6': 'NC',
+              '9': 'GND', '8': 'GND'}, lcsc='C50385411')
+    sh.passive('C', 'C10', '100n', 299.72, 213.36, '3V3', 'GND', C0603, 'C14663')
+    sh.passive('C', 'C11', '100n', 312.42, 213.36, '3V3', 'GND', C0603, 'C14663')
+    sh.passive('R', 'R16', '4.7k', 370.84, 213.36, '3V3', 'I2C_SDA', R0603, 'C23162')
+    sh.passive('R', 'R17', '4.7k', 383.54, 213.36, '3V3', 'I2C_SCL', R0603, 'C23162')
+    sh.text('MSKSEMI part, not ST: WHO_AM_I 0x11, LIS2DH-style register map. INT2 unused: route wake and tap to INT1.\n'
+            'CS and SDO/SA0 open (internal pull-ups): I2C, address 0x19.  C10 at VDD, C11 at VDDIO.',
+            287.02, 224.79)
 
     # ------------------------------------------------------------ test points
-    sh.box(186.69, 231.14, 279.4, 284.48, 'Test points (back, 1 mm pads, not assembled)')
+    sh.box(223.52, 200.66, 279.4, 284.48, 'Test points (back)')
     for i, (ref, net, label) in enumerate(TEST_POINTS):
-        x, y = 207.01 + i // 7 * 30.48, 240.03 + i % 7 * 5.08
+        x, y = 242.57 + i // 11 * 27.94, 210.82 + i % 11 * 6.35
         sh.place('Connector:TestPoint', ref, label, x, y, {'1': net}, rot=270,
                  fp='TestPoint:TestPoint_Pad_D1.0mm', in_bom=False,
                  prop_pos={'Reference': (x + 3.81, y - 1.27, 'left'), 'Value': (x + 3.81, y + 1.27, 'left')})
-    sh.text('Value = back-silk label.  DBG_TX/RX: spare GPIOs, 3 V UART log port (P0.15 / P0.17).\n'
-            'PROG: I_chg = V x 300 mA.  ISNS: I_motor = V / (A_IPROPI x 1.5k).',
-            189.23, 278.13)
 
     # ------------------------------------------------------------ mechanical
     for i in range(2):
@@ -165,14 +167,15 @@ def build(sh):
     sh.box(12.7, 200.66, 135, 284.48, 'Notes')
     sh.text('One board for all three toys (bird / fish / ball). 1S LiPo, protected or not.\n'
             '\n'
-            'Battery voltage: SAADC VDDHDIV5 (internal), no divider.\n'
-            'Charging detect: nRF USBDETECTED (VBUS), CHRG drives D2 only.\n'
-            'Motor current: SAADC AIN1 (P0.03) on MOT_IPROPI, 0.6 V ref, gain 1.\n'
+            'Battery voltage: VBAT_SENSE (IO6, ADC1_CH6), VBAT / 2.\n'
+            'On charger: VBUS_SENSE (IO20). Charging: CHG_STAT (IO19), low = charging.\n'
+            'Motor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\n'
             'GAINSEL: drive low / drive high / input-disconnected = Hi-Z.\n'
             'Motor: DIR (IN1, static) + PWM (IN2): fwd DIR=0 PWM=duty, rev DIR=1 PWM=1-duty.\n'
-            'Speaker: PWM sample playback on SPK_PWM (~62.5 kHz carrier).\n'
+            'Motor: DIR IO3, PWM IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n'
             '\n'
+            'Test points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\n'
             'Hand-soldered, not JLC-assembled: J3 battery, J4 motor, J5 speaker.\n'
-            'J2 SWD: 1.27 mm pad row, unpopulated (first flash only, then USB DFU).\n'
+            'Antenna: 2.4 GHz FPC antenna on the module u.FL, plugged in by hand.\n'
             'H1, H2: M2 mounting holes (NPTH), diagonal corners; ISO 7380 button head (3.5 mm).',
             15.24, 208.28)

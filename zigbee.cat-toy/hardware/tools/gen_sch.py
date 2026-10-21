@@ -316,9 +316,9 @@ if __name__ == '__main__':
     sh = Sheet()
     build(sh)
     sh.write(os.path.join(PROJ_DIR, f'{PROJECT}.kicad_sch'),
-             'Zigbee cat toy controller', 'A', '2026-10-19',
-             ['nRF52840 (E73) + DRV8213 + LIS2DH12 + TP4054 + XB5353A, 1S LiPo',
-              'One board for bird / fish / ball - see docs/hardware-design.md'])
+             'Zigbee cat toy controller', 'B', '2026-10-20',
+             ['ESP32-C6-MINI-1U + RT9080 + DRV8213 + LIS2DW12TR-MS + TP4054 + XB5353A, 1S LiPo',
+              'One board for bird / fish / ball - see README.md'])
     write_project_lib(os.path.join(PROJ_DIR, f'{PROJECT}.kicad_sym'))
     with open(os.path.join(PROJ_DIR, 'netlist_intent.txt'), 'w') as f:
         for net in sorted(sh.netpins):

@@ -6,13 +6,12 @@ Runs in FreeCAD's GUI, offscreen - colours only export from view providers:
 
 KiCad model space: mm, X right, Y up (footprint Y negated), Z up from the board's top face,
 origin = footprint origin.  Dimensions:
-  * Ebyte E73-2G4M08S1C: Ebyte user manual v1.9, ch. 3 (13 x 18 x 3.0 mm, shield and antenna
-    positions scaled off the top view); castellation positions from our footprint.
+  * Espressif ESP32-C6-MINI-1U: datasheet v1.2, fig. 9 (13.2 x 12.5 x 2.4 mm, shield outline,
+    u.FL 1.70 / 1.55 mm from the top-left corner).
   * Alps SKRTLAE010: Alps dimension drawing (4.5 x 2.56 x 3.3 body, D2 plunger 0.84 proud,
     axis 1.7 above the PCB, D0.7 guide bosses 0.45 below).
 """
 import os
-import re
 import sys
 
 import FreeCAD as App
@@ -28,7 +27,6 @@ GOLD = (0.86, 0.69, 0.33)
 TIN = (0.62, 0.63, 0.66)
 STEEL = (0.72, 0.73, 0.75)
 MODULE_PCB = (0.10, 0.12, 0.16)
-CERAMIC = (0.93, 0.92, 0.88)
 BLACK = (0.12, 0.12, 0.12)
 WHITE = (0.95, 0.95, 0.93)
 V = App.Vector
@@ -61,36 +59,27 @@ def export(name, parts):
     App.closeDocument(doc.Name)
 
 
-def e73():
-    W, L, T = 13.0, 18.0, 1.0          # PCB; total height 3.0 with the shield
+def c6_mini_1u():
+    """Espressif ESP32-C6-MINI-1U: 13.2 x 12.5 mm PCB 0.8 thick, 2.4 mm overall, u.FL in the top-left notch."""
+    W, L, T, H = 13.2, 12.5, 0.8, 2.4
+
+    def m(x, y):                         # datasheet top view (origin top-left) -> footprint frame
+        return x - W / 2, y - L / 2
     pcb = box(-W / 2, -L / 2, 0, W / 2, L / 2, T)
-    # castellations: every footprint pad sitting on the module edge
-    fp = open(os.path.join(PROJ, 'zigbee_toy.pretty', 'Ebyte_E73-2G4M08S1C.kicad_mod')).read()
-    edge = []
-    for x, y in re.findall(r'\(pad "\d+" smd rect\s+\(at ([-\d.]+) ([-\d.]+)\)', fp):
-        x, y = float(x), float(y)
-        if abs(abs(x) - W / 2) < 0.1:
-            edge.append((W / 2 * (1 if x > 0 else -1), y, 'x'))
-        elif abs(y + L / 2) < 0.1:
-            edge.append((x, -L / 2, 'y'))
-    plating = None
-    for x, y, side in edge:
-        hole = cyl(0.3, x, y, -0.1, T + 0.2)
-        pcb = pcb.cut(hole)
-        if side == 'x':
-            s = 1 if x > 0 else -1
-            ring = box(x - s * 0.65, y - 0.4, -0.02, x, y + 0.4, T + 0.02)
-        else:
-            ring = box(x - 0.4, y, -0.02, x + 0.4, y + 0.65, T + 0.02)
-        ring = ring.cut(hole)
-        plating = ring if plating is None else plating.fuse(ring)
-    shield = box(-5.1, -7.6, T, 5.1, 4.45, 3.0)
-    shield = shield.cut(box(-4.9, -7.4, T, 4.9, 4.25, 2.85))      # open can, 0.15 mm walls
-    antenna = box(-3.8, 6.4, T, 4.6, 8.3, T + 0.8)
-    mark = box(-3.4, 7.1, T + 0.8, -2.6, 7.6, T + 0.82)
-    export('Ebyte_E73-2G4M08S1C', [
-        ('pcb', pcb, MODULE_PCB), ('castellations', plating.removeSplitter(), GOLD),
-        ('shield', shield, TIN), ('antenna', antenna, CERAMIC), ('antenna_mark', mark, BLACK)])
+    # shield can: 12.25 x 8.70 full width, the right 9.18 mm runs up to 11.55, leaving the u.FL corner free
+    x1, y1 = m(0.47, 3.32)
+    x2, y2 = m(12.72, 12.02)
+    shield = box(x1, y1, T, x2, y2, H)
+    x3, y3 = m(3.54, 0.47)
+    shield = shield.fuse(box(x3, y3, T, x2, y1 + 0.01, H)).removeSplitter()
+    # castellation-free LGA: show the pad row as a gold rim on the underside edge
+    rim = box(-W / 2, -L / 2, -0.02, W / 2, L / 2, 0).cut(box(-W / 2 + 0.6, -L / 2 + 0.6, -0.03, W / 2 - 0.6, L / 2 - 0.6, 0.01))
+    ux, uy = m(1.70, 1.55)
+    ufl = box(ux - 1.0, uy - 1.0, T, ux + 1.0, uy + 1.0, T + 0.2).fuse(cyl(0.95, ux, uy, T + 0.2, 1.05)).removeSplitter()
+    ufl_pin = cyl(0.25, ux, uy, T + 0.2, 1.06)
+    export('ESP32-C6-MINI-1U', [
+        ('pcb', pcb, MODULE_PCB), ('pads', rim, GOLD), ('shield', shield, TIN),
+        ('ufl', ufl, GOLD), ('ufl_pin', ufl_pin, WHITE)])
 
 
 def skrtlae010():
@@ -117,7 +106,7 @@ LOG = open(os.path.join(PROJ, 'build', 'gen_3d.log'), 'w')
 print = lambda *a: (LOG.write(' '.join(map(str, a)) + '\n'), LOG.flush())  # noqa: E731
 os.makedirs(OUT, exist_ok=True)
 try:
-    e73()
+    c6_mini_1u()
     skrtlae010()
 except Exception:
     import traceback

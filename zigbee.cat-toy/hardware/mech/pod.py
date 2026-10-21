@@ -44,12 +44,13 @@ LID_T, LIP_H, LIP_W, LIP_CLR = 1.2, 1.4, 0.8, 0.2
 BAY_L = 12.0                          # connector bay beyond the left board edge
 BOSS_D, BOSS_HOLE = 4.4, 1.7          # M2 thread-forming
 LEDGE_W = 1.0
-ANT_X = (16.0, 32.0)                  # antenna notch (module spans x 17.5..30.5)
+MINI1_ANT = (18.2, 31.4, 3.1)         # MINI-1 antenna past the top edge: board x from..to, overhang (placement.py U1)
+ANT_X = (17.5, 32.0)                  # antenna notch: the 1U's u.FL lead (x 19.9) leaves here; a MINI-1's antenna overhangs here
 
-USB_C = (-13.3, PCB_T + 3.33 / 2)     # (Y, z) centre of the receptacle face
+USB_C = (-12.9, PCB_T + 3.33 / 2)     # (Y, z) centre of the receptacle face
 USB_SLOT = (10.0, 4.6)                # w x h, full-round ends
 LED_WIN = ((-6.3, PCB_T + 0.7), (3.0, 1.6))
-BTN = (-21.6, PCB_T + 1.7)            # plunger axis (Y, z), tip at x=40.04
+BTN = (-21.2, PCB_T + 1.7)            # plunger axis (Y, z), tip at x=40.04
 TAB_W, TAB_L, TAB_T, TAB_SLOT = 5.0, 7.0, 0.6, 0.6
 TAB_NUB_D, TAB_BUMP_D, TAB_BUMP_H = 2.5, 3.0, 0.6
 WIRE_NOTCH = [(-4.0, 3.2), (-11.0, 3.2)]   # (Y centre, width) in the bay end wall: motor, speaker
@@ -106,7 +107,7 @@ def cradle():
     body = body.fuse(box(0, Y_IN0, Z_FLOOR_TOP, X_IN1, Y_IN0 + LEDGE_W, 0))
     body = body.fuse(box(0, Y_IN1 - LEDGE_W, Z_FLOOR_TOP, ANT_X[0], Y_IN1, 0))
     body = body.fuse(box(ANT_X[1], Y_IN1 - LEDGE_W, Z_FLOOR_TOP, X_IN1, Y_IN1, 0))
-    # antenna notch: no wall, no floor beyond the board edge under the ceramic antenna
+    # antenna notch: the FPC antenna cable leaves over the top edge here, or a MINI-1's antenna overhangs it
     body = body.cut(box(ANT_X[0], -0.25, Z_FLOOR_BOT - 1, ANT_X[1], Y_OUT1 + 5, Z_TOP + 1))
     # M2 bosses
     for x, y in HOLES:
@@ -212,6 +213,10 @@ def main():
         print('collision check vs board STEP:', 'CLEAN' if not hits else f'{len(hits)} HITS')
         for v, desc in sorted(hits, reverse=True):
             print(f'   {v:7.2f} mm3  {desc}')
+        # a MINI-1 (PCB antenna) on the same pads: its antenna end overhangs the top edge (not in the STEP)
+        ant = Part.makeBox(MINI1_ANT[1] - MINI1_ANT[0], MINI1_ANT[2], 0.8, V(MINI1_ANT[0], 0, 1.6))
+        v = ant.common(pod).Volume
+        print('MINI-1 antenna overhang vs pod:', 'CLEAR' if v < 0.01 else f'HITS {v:.2f} mm3')
     App.closeDocument(doc.Name)
 
 

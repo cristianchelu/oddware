@@ -370,7 +370,7 @@
       },
       {
         "netclass": "Supply",
-        "pattern": "VDD"
+        "pattern": "3V3"
       }
     ]
   },

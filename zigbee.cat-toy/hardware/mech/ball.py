@@ -59,8 +59,8 @@ CORE_HOLE_R = 14.0                                # bottom opening around dome A
 RAIL_X, RAIL_T, RAIL_CLR = 26.0, 1.2, 0.3   # cup rails: two ribs per side, the frame plate (X ±27.5) slides in from the top
 CAP_BOSSES = [(27.5 * math.cos(math.radians(a)), 27.5 * math.sin(math.radians(a))) for a in (40, 340)] + [(-27.5, 3.0)]   # clear of the tray posts and the rails
 USB_WIN = (13.0, 7.0)          # the receptacle face sits 1.7 mm behind the cap face, so the window takes the plug overmould (max 12.35 x 6.5)
-USB_PT = (40.0, -13.3, 1.6 + 3.33 / 2)   # KiCad x, y, z of the receptacle's centre at the board edge
-BTN_PT = (40.0, -21.6, 1.6 + 1.7)        # SW1 plunger axis: 1.7 mm above the board top (from the STEP)
+USB_PT = (40.0, -12.9, 1.6 + 3.33 / 2)   # KiCad x, y, z of the receptacle's centre at the board edge
+BTN_PT = (40.0, -21.2, 1.6 + 1.7)        # SW1 plunger axis: 1.7 mm above the board top (from the STEP)
 PINHOLE_D = 1.3
 # ---- motor (N20 micro metal gearmotor, 6 V 100 rpm suggested) ------------------------------------
 M_W, M_H = 12.0, 10.0
@@ -84,6 +84,7 @@ FACE_T = 1.5
 PIN_D, PIN_L, POST_Z = 4.0, 7.5, (17.0, 28.0)
 PIN_Z1 = POST_Z[1] + PIN_L                  # 35.5
 HUB_B_BORE, HUB_B_DEPTH = 4.3, 6.0
+MINI1_ANT = (18.2, 31.4, 3.1)   # MINI-1 antenna past the board's top edge: board x from..to, overhang (placement.py U1)
 BOARD_X_REF, BOARD_Y_BACK, BOARD_Z0 = -15.0, -7.5, -19.1   # KiCad y=0 edge (antenna) at X=-15 so the H2 standoff (X 6.5..10.9) clears the motor;
                                                           # back face at Y=-6; KiCad x=0 edge at Z=-19 so the USB-C face sits in the cap plate
 BOARD_HOLES = [(37.4, -2.6), (2.6, -23.7)]
@@ -389,6 +390,15 @@ def main():
                     problems.append(f'board solid at ({bb.Center.x:.1f},{bb.Center.y:.1f},{bb.Center.z:.1f}) outside the core by {v:.2f} mm3')
             if hits > 0.5:
                 problems.append(f'board STEP overlaps chassis/motor/battery/core by {hits:.2f} mm3')
+            # a MINI-1 (PCB antenna) on the same pads: its antenna end overhangs the board's top edge
+            ant = box(MINI1_ANT[0], 0, 1.6, MINI1_ANT[1], MINI1_ANT[2], 2.4)
+            ant.transformShape(board_placement().toMatrix())
+            ab = ant.BoundBox
+            print(f'MINI-1 antenna overhang envelope: X {ab.XMin:.1f}..{ab.XMax:.1f} Y {ab.YMin:.1f}..{ab.YMax:.1f} Z {ab.ZMin:.1f}..{ab.ZMax:.1f}')
+            for on in ('frame', 'tray', 'motor', 'battery', 'core_cup', 'core_cap'):
+                v = ant.common(P[on]).Volume
+                if v > 0.01:
+                    problems.append(f'MINI-1 antenna overhang x {on}: {v:.2f} mm3')
             MeshPart.meshFromShape(Shape=brd, LinearDeflection=0.1, AngularDeflection=0.5, Relative=False).write(os.path.join(outdir, 'board_full.stl'))
         print('checks:', 'CLEAN' if not problems else 'PROBLEMS')
         for p in problems:

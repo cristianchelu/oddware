@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 K="flatpak run --command=kicad-cli org.kicad.kicad"
-python3 gen_fp_e73.py
+python3 gen_fp.py
 python3 gen_sch.py
 cd ../zigbee_toy
 mkdir -p build
