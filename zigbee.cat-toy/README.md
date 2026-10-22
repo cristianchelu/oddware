@@ -20,9 +20,8 @@ three connectors.
 - **Rev B** (this tree) — ESP32-C6. Every assembled part is eligible for
   JLC Economic PCBA. DRC-clean, not ordered yet.
 - No firmware yet.
-- Open for the next revision (from the datasheet review): 100 nF at module
-  pin 3, an external 10 k pull-up on IO9, the accelerometer's pad 4 to GND,
-  ground vias under the charger.
+- Every fix from the [datasheet review](docs/design_review_rev_b.md) is in
+  this tree.
 
 ## The toys
 
@@ -77,7 +76,8 @@ bulk capacitors 0603/0805.
 "LIS2DW12TR-MS", but the pinout and register map are its own: WHO_AM_I
 reads 0x11 and the registers follow the LIS2DH layout (CTRL_REG1 at 0x20,
 OUT_X_L at 0x28, AOI1/CLICK blocks). Use a LIS2DH-style driver. Only INT1
-is wired; route both wake and tap to it.
+is wired; route both wake and tap to it. Pad 4 is grounded: the pin table
+says NC, but the datasheet's connection column says GND in every mode.
 
 Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf). Datasheet review:
 [docs/design_review_rev_b.md](docs/design_review_rev_b.md).
@@ -96,7 +96,7 @@ Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf). Datasheet review
 | 16 | IO7 | ACC_INT1 | low-power GPIO: wakes from deep sleep too |
 | 22 | IO8 | I2C_SDA | 4.7 k pull-up, which also holds the IO8 strap high |
 | 24 | IO18 | I2C_SCL | 4.7 k pull-up. Accelerometer at 0x19 |
-| 23 | IO9 | BTN | BOOT strap. Hold while resetting for download mode |
+| 23 | IO9 | BTN | BOOT strap, 10 k pull-up (R5). Hold while resetting for download mode |
 | 25 | IO19 | VBUS_SENSE | 0.61 × VBUS: high when plugged in, charging or full |
 | 26 | IO20 | CHG_STAT | low while charging, 10 k pull-up (R10) |
 | 29 | IO23 | LED_STATUS | high = on |
@@ -166,11 +166,13 @@ current shifts the reading; calibrate it against a meter in firmware.
 - **VBAT:** back layer from the battery FET up the left column to the
   driver, and along the bottom in a channel between the two rows of test
   pads to the regulator, the battery divider and the charger.
-- **3V3:** regulator, 22 µF next to it, 10 µF at module pin 3.
+- **3V3:** regulator, 22 µF next to it, 10 µF and 100 nF at module pin 3.
 - **Motor driver:** C3's ground pad drops straight onto the thermal pad,
   which has two vias to the back. Keep the back plane under the driver
   whole: with one trace under it, C3's return path was 15 mm long instead
   of 1.
+- **Charger:** two ground vias under the TP4054, on its pin 2, which is its
+  heat path. The VBAT lane dips below them.
 - **Ground:** both layers poured. `gen_pcb.py stitch` adds a 2.5 mm via grid
   and a via to every pour island it can reach. Five of the module's nine
   centre ground pads have a via.

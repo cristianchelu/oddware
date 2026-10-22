@@ -19,7 +19,7 @@ SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.
 1.5k,R6,R_0402,C25867,Basic,0.0017,R_IPROPI: limits 1.66A / 324mA / 69mA by GAINSEL
 100R,R7,R_0402,C25076,Basic,0.0017,Speaker FET gate series
 100k,R8,R_0402,C25741,Basic,0.0017,Speaker FET gate pulldown
-10k,R9 R10,R_0402,C25744,Basic,0.0017,EN pull-up; CHG_STAT pull-up
+10k,R5 R9 R10,R_0402,C25744,Basic,0.0017,IO9 (BOOT) pull-up; EN pull-up; CHG_STAT pull-up
 0R,R11,R_0402,C17168,Basic,0.0017,Speaker link (1A); cap PWM duty in firmware for 8-ohm speakers
 1M,R12 R13,R_0402,C26083,Basic,0.0017,VBAT/2 divider for the ADC (2.1uA)
 33k,R14,R_0402,C25779,Basic,0.0017,VBUS divider top (VBUS_SENSE = 0.607 x VBUS)
@@ -27,7 +27,7 @@ SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.
 4.7k,R16 R17,R_0402,C25900,Basic,0.0017,I2C pull-ups; R16 also straps IO8 high for download mode
 22uF 25V,C1 C2 C8,C_0805,C45783,Basic,0.1943,VBAT bulk; DRV8213 VM bulk; 3V3 bulk at the regulator
 10uF 10V,C9,C_0603,C19702,Basic,0.0171,3V3 at module pin 3 (radio TX bursts)
-100nF,C3 C10 C11 C15 C16,C_0402,C1525,Basic,0.0129,Decoupling; C15 = XB5353A VDD; C16 = ADC hold
+100nF,C3 C10 C11 C14 C15 C16,C_0402,C1525,Basic,0.0129,Decoupling; C14 = module pin 3 beside C9; C15 = XB5353A VDD; C16 = ADC hold
 4.7uF 16V,C4 C6,C_0603,C19666,Basic,0.0206,VBUS; regulator input
 10nF,C7,C_0402,C15195,Basic,0.0019,IPROPI filter (DRV8213 datasheet 8.4.2.2); 15 us with R6
 1uF,C5,C_0402,C52923,Basic,0.0173,EN power-on delay (10k x 1u)

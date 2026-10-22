@@ -27,13 +27,21 @@ R('VBAT', 'F', 0.5, (5.95, 6.0), 'R11.1')
 
 # ------------------------------------------------------------------ motor driver: VM bypass loop, outputs
 R('VBAT', 'F', 0.3, (7.35, 2.5), 'U2.1')                              # (7.35, 2.5) is inside C3's VBAT pad
-R('VBAT', 'F', 0.4, 'C3.1', (7.42, 1.5), (10.35, 1.5), 'C2.1')         # bulk cap, over the top of C3
+R('VBAT', 'F', 0.4, 'C3.1', (7.42, 1.5), (9.9, 1.5), 'C2.1')         # bulk cap, over the top of C3
 R('GND', 'F', 0.35, 'C3.2', (8.38, 3.7))                              # C3's ground pad onto the thermal pad, between pins 1 and 8
 V('GND', 8.3, 3.85, 0.5, 0.3)                                         # thermal pad vias, TI's DSG land pattern spots
 V('GND', 8.3, 4.95, 0.5, 0.3)
 R('GND', 'F', 0.25, 'U2.4', (8.0, 5.15))                              # into the thermal pad
-R('GND', 'F', 0.4, 'C2.2', (12.3, 3.0))
-V('GND', 12.3, 3.0)
+R('GND', 'F', 0.4, 'C2.2', (12.0, 2.8))                               # C2 + C14 ground via, in the B gap between GAINSEL and IN2
+V('GND', 12.0, 2.8, 0.5, 0.3)
+# C14 (100n) at module pin 3: 3V3 runs down the gap between C9 and the module pads, GND to C2's pad.
+R('3V3', 'F', 0.25, 'C14.1', (13.25, 4.22), (13.25, 5.3), (13.5, 5.55), 'U1.3')
+R('GND', 'F', 0.3, 'C14.2', (12.0, 2.8))
+# R5 (IO9 pull-up): 3V3 from C14, BTN up to a via and along B, under the antenna keepout edge, to TP17.
+R('3V3', 'F', 0.25, 'R5.1', 'C14.1')
+R('BTN', 'F', 0.2, 'R5.2', (12.8, 1.3))
+V('BTN', 12.8, 1.3, 0.5, 0.3)
+R('BTN', 'B', 0.2, (12.8, 1.3), (12.8, 1.9), (13.3, 2.4), (17.4, 2.4), 'TP17.1')
 R('MOT_A', 'F', 0.5, 'J4.1', (6.4, 3.95))
 R('MOT_A', 'F', 0.25, (6.4, 3.95), (6.6, 4.15), 'U2.2')
 R('MOT_B', 'F', 0.5, 'J4.2', (6.4, 4.95))
@@ -62,7 +70,8 @@ V('GND', 10.05, 14.55)
 
 # ------------------------------------------------------------------ VBAT along the bottom: back-layer channel between the two test pad rows
 R('VBAT', 'B', 0.6, (10.0, 13.0), (12.7, 13.0), (13.4, 13.7), (13.4, 18.2), 'TP1.1')
-R('VBAT', 'B', 0.5, 'TP1.1', (15.5, 20.3), (31.55, 20.3), (31.75, 20.5))
+R('VBAT', 'B', 0.5, 'TP1.1', (15.5, 20.3), (27.9, 20.3))
+R('VBAT', 'B', 0.4, (27.9, 20.3), (28.55, 20.95), (31.3, 20.95), (31.75, 20.5))   # dips under the charger, below its ground vias
 R('VBAT', 'B', 0.5, (15.7, 20.3), (15.7, 21.9))                        # regulator input
 V('VBAT', 15.7, 21.9)
 R('VBAT', 'F', 0.5, 'C6.1', (15.7, 21.9), 'U6.1')
@@ -76,6 +85,9 @@ V('VBAT', 21.75, 22.1)
 R('VBAT', 'F', 0.3, (21.75, 22.1), 'R12.1')
 V('VBAT', 31.75, 20.5)                                                # charger BAT
 R('VBAT', 'F', 0.5, (31.75, 20.5), 'U4.3')
+R('GND', 'F', 0.5, 'U4.2', (30.0, 20.3), (30.0, 19.5))                  # charger ground (its heat path): two vias under the body
+V('GND', 30.0, 20.3, 0.5, 0.3)
+V('GND', 30.0, 19.5, 0.5, 0.3)
 R('VBAT_SENSE', 'F', 0.25, 'R12.2', 'R13.1', 'C16.1')
 
 # ------------------------------------------------------------------ 3V3: regulator -> 22 uF over the top of the regulator; TP2 on the via
@@ -129,8 +141,8 @@ V('ACC_INT1', 18.1, 12.1, 0.5, 0.3)
 R('ACC_INT1', 'F', 0.2, (18.1, 12.1), 'U1.16')
 
 # ------------------------------------------------------------------ accelerometer block (under the module's bottom-left pins)
-R('ACC_INT1', 'B', 0.2, (18.1, 12.1), (18.1, 16.0), (18.55, 16.45), (19.35, 16.45))   # back layer, clear of SDA and the 3V3 pins
-V('ACC_INT1', 19.35, 16.45, 0.5, 0.3)                                 # TP13 sits on it (back)
+R('ACC_INT1', 'B', 0.2, (18.1, 12.1), (18.1, 15.75), (19.35, 15.75), (19.35, 16.45))   # back layer, under the sensor; TP13 on the vertical
+V('ACC_INT1', 19.35, 16.45, 0.5, 0.3)
 R('ACC_INT1', 'F', 0.2, (19.35, 16.45), 'U3.5')
 R('I2C_SDA', 'F', 0.2, 'U3.2', (18.6, 14.8), (18.4, 14.6), (18.4, 14.0), (18.7, 13.7), (22.8, 13.7), (23.2, 13.3), 'U1.22')
 R('I2C_SDA', 'F', 0.2, 'R16.2', (22.2, 13.7))
@@ -139,7 +151,9 @@ V('I2C_SDA', 23.22, 11.85, 0.5, 0.3)                                    # TP15 s
 V('I2C_SCL', 25.434, 13.75, 0.5, 0.3)                                  # on the back-layer SCL run, next to pin 24
 R('I2C_SCL', 'F', 0.2, (25.434, 13.75), 'U1.24')
 R('I2C_SCL', 'F', 0.2, 'R17.2', (23.55, 13.93), (24.45, 13.93), 'U1.24')   # pull-up, straight to pin 24
-R('3V3', 'F', 0.25, 'U3.3', (18.3, 15.3), (18.3, 16.9), 'C11.1')       # VDDIO, around the west side
+R('3V3', 'F', 0.25, 'U3.3', (18.04, 15.3), (18.04, 16.9), (18.39, 17.25), 'C11.1')   # VDDIO, around the west side
+R('GND', 'F', 0.2, 'U3.4', (18.85, 16.2), (18.57, 16.48), (18.57, 16.65))   # pad 4 to ground (datasheet connection table)
+V('GND', 18.57, 16.65, 0.5, 0.3)
 R('3V3', 'F', 0.3, 'C11.1', (19.12, 18.4))
 R('GND', 'F', 0.25, 'C11.2', (20.15, 16.65))
 V('GND', 20.15, 16.65, 0.5, 0.3)

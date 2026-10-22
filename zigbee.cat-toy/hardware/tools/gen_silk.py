@@ -103,6 +103,10 @@ def clip_footprint_silk(board, footprints):
         for g in items:
             if g.GetLayer() != pcbnew.F_SilkS or not isinstance(g, pcbnew.PCB_SHAPE):
                 continue
+            if g.GetShape() == pcbnew.SHAPE_T_CIRCLE and any(hit(list(bbox_mm(g)), o) for o in pads):
+                fp.Remove(g)                  # a pin-1 dot that landed on a neighbour's pad: the pad wins
+                n_cut += 1
+                continue
             if g.GetShape() not in (pcbnew.SHAPE_T_SEGMENT, pcbnew.SHAPE_T_RECT):
                 continue
             x1, y1, x2, y2 = bbox_mm(g)

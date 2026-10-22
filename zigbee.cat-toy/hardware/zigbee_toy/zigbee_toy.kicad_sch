@@ -9827,7 +9827,182 @@
 			)
 		)
 	)
-	(text "2 uA quiescent, 600 mA, 0.31 V dropout at 600 mA. C8 bulk at the regulator, C9 at module pin 3."
+	(symbol
+		(lib_id "Device:C")
+		(at 248.92 38.1 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "95a0bb9c-f01d-599e-9226-b43002465e02")
+		(property "Reference" "C14"
+			(at 251.46 36.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 251.46 39.37 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 249.8852 41.91 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C1525"
+			(at 248.92 38.1 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 248.92 38.1 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 248.92 38.1 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "9e592c6b-6075-5a73-ad42-cb9be9fb85f6")
+		)
+		(pin "2"
+			(uuid "5ea0d137-eb04-520a-9209-c45d44c6eadf")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "C14")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 248.92 34.29)
+			(xy 248.92 31.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "43b0707d-5b6e-53da-9ad3-059ac3d61d44")
+	)
+	(label "3V3"
+		(at 248.92 31.75 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "941d82f3-40da-5424-866c-0dcdeb3fd6b8")
+	)
+	(wire
+		(pts
+			(xy 248.92 41.91)
+			(xy 248.92 44.45)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f4b3b843-c0cd-533a-938e-6ef1754d1529")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 248.92 44.45 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "2cf91d99-39d1-5048-bd8c-ff44243c9dae")
+		(property "Reference" "#PWR18"
+			(at 248.92 50.8 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 248.92 48.26 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 248.92 44.45 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 248.92 44.45 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 248.92 44.45 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "36a78f4c-0091-563e-a2f6-d7fcfeb80064")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "#PWR18")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(text "2 uA quiescent, 600 mA, 0.31 V dropout at 600 mA. C8 bulk at the regulator, C9 + C14 at module pin 3."
 		(exclude_from_sim no)
 		(at 142.24 53.34 0)
 		(effects
@@ -10569,8 +10744,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "2cf91d99-39d1-5048-bd8c-ff44243c9dae")
-		(property "Reference" "#PWR18"
+		(uuid "7d901ba8-43e2-569b-9a73-7c8f9837bb51")
+		(property "Reference" "#PWR19"
 			(at 209.55 160.02 0)
 			(hide yes)
 			(effects
@@ -10615,12 +10790,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "36a78f4c-0091-563e-a2f6-d7fcfeb80064")
+			(uuid "97bbc34d-299e-58a4-b718-c8481518d625")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR18")
+					(reference "#PWR19")
 					(unit 1)
 				)
 			)
@@ -10864,8 +11039,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "7d901ba8-43e2-569b-9a73-7c8f9837bb51")
-		(property "Reference" "#PWR19"
+		(uuid "612a9a7e-0ccd-5cd0-9572-0360e204d6d0")
+		(property "Reference" "#PWR20"
 			(at 162.56 93.98 0)
 			(hide yes)
 			(effects
@@ -10910,12 +11085,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "97bbc34d-299e-58a4-b718-c8481518d625")
+			(uuid "9015cee5-16a6-5bfb-9a19-f51dd39a9618")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR19")
+					(reference "#PWR20")
 					(unit 1)
 				)
 			)
@@ -11157,8 +11332,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "612a9a7e-0ccd-5cd0-9572-0360e204d6d0")
-		(property "Reference" "#PWR20"
+		(uuid "9181c512-be45-5df7-bfc7-06bcf5684f83")
+		(property "Reference" "#PWR21"
 			(at 152.4 185.42 0)
 			(hide yes)
 			(effects
@@ -11203,12 +11378,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "9015cee5-16a6-5bfb-9a19-f51dd39a9618")
+			(uuid "3fe4cbd8-dadd-55f4-a7ed-19c4fb85b097")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR20")
+					(reference "#PWR21")
 					(unit 1)
 				)
 			)
@@ -11332,8 +11507,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "9181c512-be45-5df7-bfc7-06bcf5684f83")
-		(property "Reference" "#PWR21"
+		(uuid "39fb6dbf-db00-5521-8334-dc324b29c52c")
+		(property "Reference" "#PWR22"
 			(at 167.64 185.42 0)
 			(hide yes)
 			(effects
@@ -11378,12 +11553,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "3fe4cbd8-dadd-55f4-a7ed-19c4fb85b097")
+			(uuid "243adfa7-ec8c-5ae9-9ddb-ed0bc9bb18cd")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR21")
+					(reference "#PWR22")
 					(unit 1)
 				)
 			)
@@ -11541,8 +11716,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "39fb6dbf-db00-5521-8334-dc324b29c52c")
-		(property "Reference" "#PWR22"
+		(uuid "8738bcd2-f557-505d-8229-caec8d999b8e")
+		(property "Reference" "#PWR23"
 			(at 173.99 220.98 90)
 			(hide yes)
 			(effects
@@ -11587,12 +11762,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "243adfa7-ec8c-5ae9-9ddb-ed0bc9bb18cd")
+			(uuid "ab700d5e-0a2c-56af-b939-4c073f8b936e")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR22")
+					(reference "#PWR23")
 					(unit 1)
 				)
 			)
@@ -11717,6 +11892,126 @@
 		(uuid "729b27b4-a066-5bb1-8526-b27a5e5cf2c4")
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 172.72 236.22 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "86c98e15-1cac-5efd-8267-c9b4d21d91e7")
+		(property "Reference" "R5"
+			(at 175.26 234.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 175.26 237.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 170.942 236.22 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C25744"
+			(at 172.72 236.22 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 172.72 236.22 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 172.72 236.22 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "1aabee48-8cb4-5b6c-aab4-0aa7c963a8e9")
+		)
+		(pin "2"
+			(uuid "989a3193-54c9-5e62-9ea7-1c664cd0c583")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 172.72 232.41)
+			(xy 172.72 229.87)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "01fd23be-b64f-573e-ac60-7b93425a4304")
+	)
+	(label "3V3"
+		(at 172.72 229.87 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "0fe3279c-41e1-525e-89eb-e7d970ea1442")
+	)
+	(wire
+		(pts
+			(xy 172.72 240.03)
+			(xy 172.72 242.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "be4e35c2-e426-5b79-98e5-934ba85747c7")
+	)
+	(label "BTN"
+		(at 172.72 242.57 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "a7638259-7c32-5d9d-9fd4-6b2d00a2aef2")
+	)
+	(symbol
 		(lib_id "Device:LED")
 		(at 213.36 220.98 180)
 		(unit 1)
@@ -11811,8 +12106,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "8738bcd2-f557-505d-8229-caec8d999b8e")
-		(property "Reference" "#PWR23"
+		(uuid "341c7895-cd73-50a9-8ae3-ec69fc3e86ba")
+		(property "Reference" "#PWR24"
 			(at 226.06 220.98 90)
 			(hide yes)
 			(effects
@@ -11857,12 +12152,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "ab700d5e-0a2c-56af-b939-4c073f8b936e")
+			(uuid "f78dba4a-7f4b-59f8-9285-52c5462424c3")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR23")
+					(reference "#PWR24")
 					(unit 1)
 				)
 			)
@@ -12127,8 +12422,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "341c7895-cd73-50a9-8ae3-ec69fc3e86ba")
-		(property "Reference" "#PWR24"
+		(uuid "b9bc5497-f792-57a4-9f37-9e1ad8482e46")
+		(property "Reference" "#PWR25"
 			(at 195.58 264.16 0)
 			(hide yes)
 			(effects
@@ -12173,12 +12468,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "f78dba4a-7f4b-59f8-9285-52c5462424c3")
+			(uuid "f3cf101d-b890-5dda-90a1-87bc827ab000")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR24")
+					(reference "#PWR25")
 					(unit 1)
 				)
 			)
@@ -12302,8 +12597,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "b9bc5497-f792-57a4-9f37-9e1ad8482e46")
-		(property "Reference" "#PWR25"
+		(uuid "57b85948-d717-5be2-b0ba-628ee78f3fde")
+		(property "Reference" "#PWR26"
 			(at 208.28 264.16 0)
 			(hide yes)
 			(effects
@@ -12348,18 +12643,18 @@
 			)
 		)
 		(pin "1"
-			(uuid "f3cf101d-b890-5dda-90a1-87bc827ab000")
+			(uuid "6fc44d0d-b8a4-5d9e-902b-1db4b5d96315")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR25")
+					(reference "#PWR26")
 					(unit 1)
 				)
 			)
 		)
 	)
-	(text "D2: GPIO high = on, 1.3 mA.\nVBAT_SENSE = VBAT / 2, 2.1 uA. C16 holds it for the ADC sample."
+	(text "D2: GPIO high = on, 1.3 mA.  R5: IO9 (BOOT strap) pull-up, per the C6 design guidelines.\nVBAT_SENSE = VBAT / 2, 2.1 uA. C16 holds it for the ADC sample."
 		(exclude_from_sim no)
 		(at 142.24 271.78 0)
 		(effects
@@ -12368,7 +12663,7 @@
 			)
 			(justify left top)
 		)
-		(uuid "dbbf2e48-03a7-58e1-bcb8-b94cfd040750")
+		(uuid "ecfbfe4c-cf5f-5c98-babe-e6542137818d")
 	)
 	(rectangle
 		(start 284.48 12.7)
@@ -12659,8 +12954,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "57b85948-d717-5be2-b0ba-628ee78f3fde")
-		(property "Reference" "#PWR26"
+		(uuid "4fe123f6-9a1c-5e0d-bb23-161ea8924d01")
+		(property "Reference" "#PWR27"
 			(at 335.28 60.96 0)
 			(hide yes)
 			(effects
@@ -12705,12 +13000,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "6fc44d0d-b8a4-5d9e-902b-1db4b5d96315")
+			(uuid "82153563-710b-5a2a-aca1-4a30d2fd7337")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR26")
+					(reference "#PWR27")
 					(unit 1)
 				)
 			)
@@ -12834,8 +13129,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "4fe123f6-9a1c-5e0d-bb23-161ea8924d01")
-		(property "Reference" "#PWR27"
+		(uuid "100e3a06-9af9-5af3-84c1-7fa8f195435a")
+		(property "Reference" "#PWR28"
 			(at 299.72 78.74 0)
 			(hide yes)
 			(effects
@@ -12880,12 +13175,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "82153563-710b-5a2a-aca1-4a30d2fd7337")
+			(uuid "2c1732c2-9186-5a8f-924a-6176b1c10312")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR27")
+					(reference "#PWR28")
 					(unit 1)
 				)
 			)
@@ -13009,8 +13304,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "100e3a06-9af9-5af3-84c1-7fa8f195435a")
-		(property "Reference" "#PWR28"
+		(uuid "8cc8ef73-2de3-58dd-a407-0bbfc7fe6403")
+		(property "Reference" "#PWR29"
 			(at 312.42 78.74 0)
 			(hide yes)
 			(effects
@@ -13055,12 +13350,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "2c1732c2-9186-5a8f-924a-6176b1c10312")
+			(uuid "ef7766fc-363c-50b3-b9e4-4c68eb236446")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR28")
+					(reference "#PWR29")
 					(unit 1)
 				)
 			)
@@ -13184,8 +13479,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "8cc8ef73-2de3-58dd-a407-0bbfc7fe6403")
-		(property "Reference" "#PWR29"
+		(uuid "f5791047-2cde-5336-a82d-1e55d82d78ea")
+		(property "Reference" "#PWR30"
 			(at 368.3 78.74 0)
 			(hide yes)
 			(effects
@@ -13230,12 +13525,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "ef7766fc-363c-50b3-b9e4-4c68eb236446")
+			(uuid "a552d9a6-05e9-56b3-8c8f-0c238de46a8e")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR29")
+					(reference "#PWR30")
 					(unit 1)
 				)
 			)
@@ -13359,8 +13654,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "f5791047-2cde-5336-a82d-1e55d82d78ea")
-		(property "Reference" "#PWR30"
+		(uuid "165706d6-28ff-55f1-98b7-96e98953bce2")
+		(property "Reference" "#PWR31"
 			(at 378.46 78.74 0)
 			(hide yes)
 			(effects
@@ -13405,12 +13700,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "a552d9a6-05e9-56b3-8c8f-0c238de46a8e")
+			(uuid "c6855966-8ef0-5ee1-acdc-df4847c9ab88")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR30")
+					(reference "#PWR31")
 					(unit 1)
 				)
 			)
@@ -14066,8 +14361,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "165706d6-28ff-55f1-98b7-96e98953bce2")
-		(property "Reference" "#PWR31"
+		(uuid "0ddff472-623d-5ca5-ba58-e834230528d9")
+		(property "Reference" "#PWR32"
 			(at 387.35 143.51 0)
 			(hide yes)
 			(effects
@@ -14112,12 +14407,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c6855966-8ef0-5ee1-acdc-df4847c9ab88")
+			(uuid "9435337c-0ffb-5e2d-ac83-50407c771812")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR31")
+					(reference "#PWR32")
 					(unit 1)
 				)
 			)
@@ -14380,8 +14675,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "0ddff472-623d-5ca5-ba58-e834230528d9")
-		(property "Reference" "#PWR32"
+		(uuid "45e6e3e3-023c-5041-bfce-aede312ba973")
+		(property "Reference" "#PWR33"
 			(at 365.76 149.86 0)
 			(hide yes)
 			(effects
@@ -14426,12 +14721,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "9435337c-0ffb-5e2d-ac83-50407c771812")
+			(uuid "28d26692-13a9-5bf8-8a4d-eda81ab382f4")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR32")
+					(reference "#PWR33")
 					(unit 1)
 				)
 			)
@@ -14630,9 +14925,81 @@
 		(at 328.93 185.42)
 		(uuid "3413eb48-923d-552e-b65e-cdc2c91e9013")
 	)
-	(no_connect
-		(at 328.93 187.96)
-		(uuid "ca072c97-69f3-576d-84b5-e0897d7c2780")
+	(wire
+		(pts
+			(xy 328.93 187.96)
+			(xy 326.39 187.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cc80903a-d45d-5bcb-bbf0-67b56c8d63e5")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 326.39 187.96 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "41d3960c-925d-57d8-9831-9658f2e2ff48")
+		(property "Reference" "#PWR34"
+			(at 320.04 187.96 90)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 322.58 187.96 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 326.39 187.96 90)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 326.39 187.96 90)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 326.39 187.96 90)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c5cb7e25-cc34-5776-8b25-f7391f9b6b04")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "#PWR34")
+					(unit 1)
+				)
+			)
+		)
 	)
 	(no_connect
 		(at 328.93 190.5)
@@ -14724,8 +15091,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "45e6e3e3-023c-5041-bfce-aede312ba973")
-		(property "Reference" "#PWR33"
+		(uuid "2666ddb9-7956-5f5f-842b-c0d710028610")
+		(property "Reference" "#PWR35"
 			(at 340.36 204.47 0)
 			(hide yes)
 			(effects
@@ -14770,12 +15137,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "28d26692-13a9-5bf8-8a4d-eda81ab382f4")
+			(uuid "c06e70ab-2e69-5fc9-8ac7-76835ed9141c")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR33")
+					(reference "#PWR35")
 					(unit 1)
 				)
 			)
@@ -14899,8 +15266,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "41d3960c-925d-57d8-9831-9658f2e2ff48")
-		(property "Reference" "#PWR34"
+		(uuid "7450734b-d240-5332-8840-5c55b127b8a9")
+		(property "Reference" "#PWR36"
 			(at 299.72 226.06 0)
 			(hide yes)
 			(effects
@@ -14945,12 +15312,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c5cb7e25-cc34-5776-8b25-f7391f9b6b04")
+			(uuid "d648ad38-35d4-51c9-94db-bd04bc66c6e8")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR34")
+					(reference "#PWR36")
 					(unit 1)
 				)
 			)
@@ -15074,8 +15441,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "2666ddb9-7956-5f5f-842b-c0d710028610")
-		(property "Reference" "#PWR35"
+		(uuid "188b00d1-0b8e-57be-86a8-b8a0639e4da3")
+		(property "Reference" "#PWR37"
 			(at 312.42 226.06 0)
 			(hide yes)
 			(effects
@@ -15120,12 +15487,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c06e70ab-2e69-5fc9-8ac7-76835ed9141c")
+			(uuid "5fc7a083-2e81-51e7-b17f-2bf09b1b62ea")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR35")
+					(reference "#PWR37")
 					(unit 1)
 				)
 			)
@@ -15371,7 +15738,7 @@
 		)
 		(uuid "250c2e3f-7efe-5f01-809a-494dae7cb2e3")
 	)
-	(text "MSKSEMI part, not ST: WHO_AM_I 0x11, LIS2DH-style register map. INT2 unused: route wake and tap to INT1.\nCS and SDO/SA0 open (internal pull-ups): I2C, address 0x19.  C10 at VDD, C11 at VDDIO."
+	(text "MSKSEMI part, not ST: WHO_AM_I 0x11, LIS2DH-style register map. INT2 unused: route wake and tap to INT1.\nCS and SDO/SA0 open (internal pull-ups): I2C, address 0x19.  C10 at VDD, C11 at VDDIO.\nPin 4: NC in the pin table, GND in its connection column for every mode, so grounded."
 		(exclude_from_sim no)
 		(at 287.02 224.79 0)
 		(effects
@@ -15752,8 +16119,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "7450734b-d240-5332-8840-5c55b127b8a9")
-		(property "Reference" "#PWR36"
+		(uuid "a178b4c0-1a53-52dd-92a3-90e46b7e6f39")
+		(property "Reference" "#PWR38"
 			(at 233.68 229.87 90)
 			(hide yes)
 			(effects
@@ -15798,12 +16165,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "d648ad38-35d4-51c9-94db-bd04bc66c6e8")
+			(uuid "238f04f4-1296-5cc2-b94d-c6bc0e9933f0")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR36")
+					(reference "#PWR38")
 					(unit 1)
 				)
 			)
@@ -16503,8 +16870,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "188b00d1-0b8e-57be-86a8-b8a0639e4da3")
-		(property "Reference" "#PWR37"
+		(uuid "42875ef8-f49c-5a59-a1ff-0c5029d40235")
+		(property "Reference" "#PWR39"
 			(at 261.62 210.82 90)
 			(hide yes)
 			(effects
@@ -16549,12 +16916,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "5fc7a083-2e81-51e7-b17f-2bf09b1b62ea")
+			(uuid "665d60c1-da22-5bc5-be1c-248d5da28a10")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR37")
+					(reference "#PWR39")
 					(unit 1)
 				)
 			)
@@ -17341,8 +17708,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "a178b4c0-1a53-52dd-92a3-90e46b7e6f39")
-		(property "Reference" "#PWR38"
+		(uuid "442eea31-4e0e-5c44-a45d-2ae9c238544d")
+		(property "Reference" "#PWR40"
 			(at 261.62 267.97 90)
 			(hide yes)
 			(effects
@@ -17387,12 +17754,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "238f04f4-1296-5cc2-b94d-c6bc0e9933f0")
+			(uuid "0b866602-4e38-574f-bfcb-349953f7baf8")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR38")
+					(reference "#PWR40")
 					(unit 1)
 				)
 			)

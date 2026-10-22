@@ -75,7 +75,8 @@ def build(sh):
     sh.passive('C', 'C6', '4.7u', 162.56, 38.1, 'VBAT', 'GND', C0603, 'C19666')
     sh.passive('C', 'C8', '22u', 223.52, 38.1, '3V3', 'GND', C0805, 'C45783')
     sh.passive('C', 'C9', '10u', 236.22, 38.1, '3V3', 'GND', C0603, 'C19702')
-    sh.text('2 uA quiescent, 600 mA, 0.31 V dropout at 600 mA. C8 bulk at the regulator, C9 at module pin 3.', 142.24, 53.34)
+    sh.passive('C', 'C14', '100n', 248.92, 38.1, '3V3', 'GND', C0402, 'C1525')
+    sh.text('2 uA quiescent, 600 mA, 0.31 V dropout at 600 mA. C8 bulk at the regulator, C9 + C14 at module pin 3.', 142.24, 53.34)
 
     # ------------------------------------------------------------ MCU
     sh.box(139.7, 64.77, 279.4, 195.58, 'ESP32-C6 module (Zigbee / Thread / BLE / Wi-Fi, USB)')
@@ -105,12 +106,13 @@ def build(sh):
     sh.place('Switch:SW_Push', 'SW1', 'PAIR / BOOT', 160.02, 220.98, {'1': 'BTN', '2': 'GND'},
              fp='Button_Switch_SMD:SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010', lcsc='C110293')
     sh.passive('R', 'R4', '1k', 185.42, 220.98, 'LED_STATUS', 'LED_A', R0402, 'C11702', horizontal=True)
+    sh.passive('R', 'R5', '10k', 172.72, 236.22, '3V3', 'BTN', R0402, 'C25744')
     sh.place('Device:LED', 'D2', 'RED (status)', 213.36, 220.98, {'1': 'GND', '2': 'LED_A'}, rot=180,
              fp='LED_SMD:LED_0603_1608Metric', lcsc='C2286')
     sh.passive('R', 'R12', '1M', 180.34, 251.46, 'VBAT', 'VBAT_SENSE', R0402, 'C26083')
     sh.passive('R', 'R13', '1M', 195.58, 251.46, 'VBAT_SENSE', 'GND', R0402, 'C26083')
     sh.passive('C', 'C16', '100n', 208.28, 251.46, 'VBAT_SENSE', 'GND', C0402, 'C1525')
-    sh.text('D2: GPIO high = on, 1.3 mA.\n'
+    sh.text('D2: GPIO high = on, 1.3 mA.  R5: IO9 (BOOT strap) pull-up, per the C6 design guidelines.\n'
             'VBAT_SENSE = VBAT / 2, 2.1 uA. C16 holds it for the ADC sample.', 142.24, 271.78)
 
     # ------------------------------------------------------------ motor
@@ -148,7 +150,7 @@ def build(sh):
     # ------------------------------------------------------------ accelerometer
     sh.box(284.48, 156.21, 406.4, 233.68, 'Accelerometer (wake-on-motion)')
     sh.place('zigbee_toy:LIS2DW12TR-MS', 'U3', 'LIS2DW12TR-MS', 340.36, 182.88,
-             {'7': '3V3', '3': '3V3', '10': 'NC', '1': 'NC', '4': 'NC', '11': 'NC',
+             {'7': '3V3', '3': '3V3', '10': 'NC', '1': 'NC', '4': 'GND', '11': 'NC',
               '2': 'I2C_SDA', '12': 'I2C_SCL', '5': 'ACC_INT1', '6': 'NC',
               '9': 'GND', '8': 'GND'}, lcsc='C50385411')
     sh.passive('C', 'C10', '100n', 299.72, 213.36, '3V3', 'GND', C0402, 'C1525')
@@ -156,7 +158,8 @@ def build(sh):
     sh.passive('R', 'R16', '4.7k', 370.84, 213.36, '3V3', 'I2C_SDA', R0402, 'C25900')
     sh.passive('R', 'R17', '4.7k', 383.54, 213.36, '3V3', 'I2C_SCL', R0402, 'C25900')
     sh.text('MSKSEMI part, not ST: WHO_AM_I 0x11, LIS2DH-style register map. INT2 unused: route wake and tap to INT1.\n'
-            'CS and SDO/SA0 open (internal pull-ups): I2C, address 0x19.  C10 at VDD, C11 at VDDIO.',
+            'CS and SDO/SA0 open (internal pull-ups): I2C, address 0x19.  C10 at VDD, C11 at VDDIO.\n'
+            'Pin 4: NC in the pin table, GND in its connection column for every mode, so grounded.',
             287.02, 224.79)
 
     # ------------------------------------------------------------ test points
