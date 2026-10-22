@@ -168,17 +168,17 @@ def try_at(t, x, y, rot, obs, ext):
     return r
 
 
-def place_near_box(t, body, obs, rots=(0, 90)):
-    """Try positions hugging each side of `body`; nearest, horizontal first."""
+def place_near_box(t, body, obs, rots=(0, 90), reach=12):
+    """Try positions hugging each side of `body`; nearest, horizontal first. `reach` gap steps of 0.15 mm."""
     best = None
     ext = {rot: extents(t, rot) for rot in rots}
     for rot in rots:
         b = ext[rot]
         w, h = b[2] - b[0], b[3] - b[1]
         cx, cy = (body[0] + body[2]) / 2, (body[1] + body[3]) / 2
-        for gi in range(12):
+        for gi in range(reach):
             g = 0.05 + gi * 0.15
-            for si in range(0, 21):
+            for si in range(0, 2 * reach - 3):
                 s = (si + 1) // 2 * 0.2 * (1 if si % 2 else -1)
                 for side, (x, y) in (('top', (cx + s, body[1] - g - h / 2)),
                                      ('bottom', (cx + s, body[3] + g + h / 2)),
@@ -306,7 +306,9 @@ def main():
         body = body_box(fp)
         # clamp the search box to the board for overhanging connectors
         body = [max(body[0], 0), max(body[1], 0), min(body[2], BOARD_W), min(body[3], BOARD_H)]
-        r = place_near_box(f, grow(body, BODY_CLR), obs)
+        r = place_near_box(f, grow(body, BODY_CLR), obs, rots=(0,))   # one orientation for every ref
+        if r is None:                                                  # crowded: vertical beside the part beats horizontal far away
+            r = place_near_box(f, grow(body, BODY_CLR), obs, rots=(90,))
         if r is None:
             print('WARNING: no room for', ref, '- moved to F.Fab')
             f.SetLayer(pcbnew.F_Fab); size_text(f, 0.5)

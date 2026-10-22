@@ -13,7 +13,7 @@ JST_PH_SIDE = 'Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal'
 TEST_POINTS = [
     ('TP1', 'VBAT', 'VBAT'), ('TP2', '3V3', '3V3'), ('TP3', 'VBUS', 'VBUS'),
     ('TP4', 'GND', 'GND'), ('TP5', 'CHG_STAT', 'nCHG'), ('TP6', 'CHG_PROG', 'PROG'),
-    ('TP7', 'MOT_PWM', 'PWM'), ('TP8', 'MOT_DIR', 'DIR'), ('TP9', 'MOT_IPROPI', 'ISNS'),
+    ('TP7', 'MOT_IN2', 'IN2'), ('TP8', 'MOT_IN1', 'IN1'), ('TP9', 'MOT_IPROPI', 'ISNS'),
     ('TP10', 'MOT_GAINSEL', 'GAIN'), ('TP11', 'SPK_PWM', 'SPK'), ('TP12', 'GND', 'GND'),
     ('TP13', 'ACC_INT1', 'INT1'), ('TP15', 'I2C_SDA', 'SDA'),
     ('TP16', 'I2C_SCL', 'SCL'), ('TP17', 'BTN', 'BOOT'), ('TP18', 'LED_STATUS', 'LED'),
@@ -76,7 +76,7 @@ def build(sh):
         '3': '3V3', '8': 'EN',
         '12': 'XTAL_P', '13': 'XTAL_N', '17': 'USB_DN', '18': 'USB_DP',
         '30': 'DBG_RX', '31': 'DBG_TX',
-        '5': 'MOT_IPROPI', '6': 'MOT_DIR', '9': 'MOT_PWM', '10': 'SPK_PWM',
+        '5': 'MOT_IPROPI', '6': 'MOT_IN1', '9': 'MOT_IN2', '10': 'SPK_PWM',
         '15': 'VBAT_SENSE', '16': 'ACC_INT1', '22': 'I2C_SDA', '23': 'BTN',
         '19': 'MOT_GAINSEL', '20': 'NC', '24': 'I2C_SCL',
         '25': 'CHG_STAT', '26': 'VBUS_SENSE', '27': 'NC', '28': 'NC', '29': 'LED_STATUS',
@@ -109,10 +109,10 @@ def build(sh):
     # ------------------------------------------------------------ motor
     sh.box(284.48, 12.7, 406.4, 87.63, 'Motor driver (DRV8213, current sense)')
     sh.place('zigbee_toy:DRV8213DSG', 'U2', 'DRV8213DSGR', 335.28, 40.64,
-             {'1': 'VBAT', '6': 'MOT_DIR', '5': 'MOT_PWM', '7': 'MOT_GAINSEL',
+             {'1': 'VBAT', '6': 'MOT_IN1', '5': 'MOT_IN2', '7': 'MOT_GAINSEL',
               '2': 'MOT_A', '3': 'MOT_B', '8': 'MOT_IPROPI', '4': 'GND', '9': 'GND'},
              lcsc='C22407186')
-    sh.passive('C', 'C2', '10u 25V', 299.72, 66.04, 'VBAT', 'GND', C0805, 'C15850')
+    sh.passive('C', 'C2', '22u', 299.72, 66.04, 'VBAT', 'GND', C0805, 'C45783')
     sh.passive('C', 'C3', '100n', 312.42, 66.04, 'VBAT', 'GND', C0603, 'C14663')
     sh.passive('R', 'R6', '1.5k', 368.3, 66.04, 'MOT_IPROPI', 'GND', R0603, 'C22843')
     sh.place('Connector_Generic:Conn_01x02', 'J4', 'MOTOR', 391.16, 33.02,
@@ -171,8 +171,8 @@ def build(sh):
             'On charger: VBUS_SENSE (IO20). Charging: CHG_STAT (IO19), low = charging.\n'
             'Motor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\n'
             'GAINSEL: drive low / drive high / input-disconnected = Hi-Z.\n'
-            'Motor: DIR (IN1, static) + PWM (IN2): fwd DIR=0 PWM=duty, rev DIR=1 PWM=1-duty.\n'
-            'Motor: DIR IO3, PWM IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n'
+            'Motor PWM = drive/brake: fwd IN1=1, IN2=1-duty; rev IN2=1, IN1=1-duty.\n'
+            'Motor: IN1 IO3, IN2 IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n'
             '\n'
             'Test points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\n'
             'Hand-soldered, not JLC-assembled: J3 battery, J4 motor, J5 speaker.\n'

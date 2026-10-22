@@ -1,6 +1,6 @@
 Comment,Designator,Footprint,LCSC Part #,JLC Library,Unit Price USD (1-9),Notes
 ESP32-C6-MINI-1U-H4,U1,ESP32-C6-MINI-1U,C20627095,Extended,4.2191,u.FL antenna connector; needs a 2.4 GHz FPC antenna (hand-plugged)
-DRV8213DSGR,U2,WSON-8-1EP_2x2mm,C22407186,Extended,1.0409,1.65-11V H-bridge with IPROPI current sense/regulation
+DRV8213DSGR,U2,WSON-8-1EP_2x2mm,C22407186,Extended,1.0409,1.65-11V H-bridge with IPROPI current sense/regulation; PWM drive/brake on both IN pins
 LIS2DW12TR-MS,U3,LGA-12_2x2mm,C50385411,Extended,0.67,MSKSEMI accelerometer; NOT ST-compatible: own pinout, WHO_AM_I 0x11, LIS2DH-style registers; I2C 0x19
 TP4054-42-SOT25R,U4,SOT-23-5,C32574,Preferred Extended,0.1319,LiPo charger 300mA (R3)
 XB5353A,U5,SOT-23-5,C80628,Extended,0.088,1S protection w/ integrated 54mOhm FETs; 4.3V/2.4V/3A OCP
@@ -23,8 +23,7 @@ SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.
 1M,R12 R13,R_0603,C22935,Basic,0.0021,VBAT/2 divider for the ADC (2.1uA)
 68k,R14,R_0603,C23231,Basic,0.0016,VBUS divider top (VBUS_SENSE = 0.6 x VBUS)
 4.7k,R16 R17,R_0603,C23162,Basic,0.0028,I2C pull-ups; R16 also straps IO8 high for download mode
-22uF 25V,C1 C8,C_0805,C45783,Basic,0.1943,VBAT bulk; 3V3 bulk at the regulator
-10uF 25V,C2,C_0805,C15850,Basic,0.0875,DRV8213 VM bulk
+22uF 25V,C1 C2 C8,C_0805,C45783,Basic,0.1943,VBAT bulk; DRV8213 VM bulk; 3V3 bulk at the regulator
 10uF 10V,C9,C_0603,C19702,Basic,0.0171,3V3 at module pin 3 (radio TX bursts)
 100nF,C3 C10 C11 C15 C16,C_0603,C14663,Basic,0.0084,Decoupling; C15 = XB5353A VDD; C16 = ADC hold
 4.7uF 16V,C4 C6,C_0603,C19666,Basic,0.0206,VBUS; regulator input

@@ -440,9 +440,41 @@ def add_routes():
             out += [mid, b]
         return out
 
-    for net, lyr, width, pts in all_routes:
+    def chamfer(pts, width, anchors):
+        """Cut every corner of 90 degrees or sharper with a 45-degree chamfer. Vertices that other
+        polylines or vias attach to (anchors) keep their corner, so nothing gets disconnected."""
+        import math
+        out = [pts[0]]
+        for i in range(1, len(pts) - 1):
+            p = pts[i]
+            if isinstance(p, str) or (round(p[0], 3), round(p[1], 3)) in anchors:
+                out.append(p)
+                continue
+            (ax, ay), (px, py), (bx, by) = mm_pt(out[-1]), mm_pt(p), mm_pt(pts[i + 1])
+            ux, uy, wx, wy = px - ax, py - ay, bx - px, by - py
+            li, lo = math.hypot(ux, uy), math.hypot(wx, wy)
+            if li < 1e-6 or lo < 1e-6 or (-ux * wx - uy * wy) / (li * lo) < -0.01:   # interior angle > 90
+                out.append(p)
+                continue
+            c = min(max(width, 0.3), 0.45 * li, 0.45 * lo)
+            if any(math.hypot(qx - px, qy - py) < c + width for qx, qy in anchors):   # a tap near the corner
+                out.append(p)
+                continue
+            out += [(round(px - ux / li * c, 4), round(py - uy / li * c, 4)),
+                    (round(px + wx / lo * c, 4), round(py + wy / lo * c, 4))]
+        out.append(pts[-1])
+        return out
+
+    polys = [(net, lyr, width, octilinear(list(pts))) for net, lyr, width, pts in all_routes]
+    vias = {(round(x, 3), round(y, 3)) for _, x, y, _, _ in all_vias}
+    anchors = {'F': set(vias), 'B': set(vias)}
+    for _, lyr, _, pts in polys:
+        for p in (pts[0], pts[-1]):
+            if not isinstance(p, str):
+                anchors[lyr].add((round(p[0], 3), round(p[1], 3)))
+    for net, lyr, width, pts in polys:
         ni = nets[net]
-        pts = octilinear(list(pts))
+        pts = chamfer(pts, width, anchors[lyr])
         for a, b in zip(pts, pts[1:]):
             t = pcbnew.PCB_TRACK(board)
             t.SetStart(pt(a)); t.SetEnd(pt(b)); t.SetWidth(MM(width))

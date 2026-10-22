@@ -1,7 +1,8 @@
 """Silkscreen spec, rev B (board mm, origin top-left, Y down).
 
 Front: reference designators for the parts you'd look for while debugging (ICs, FETs,
-diodes, LEDs, crystal, connectors, button), auto-placed clear of pads, bodies and each other.
+diodes, LEDs, crystal, connectors, button), auto-placed clear of pads, bodies and each other,
+all the same size and all horizontal.
 Passive refs move to F.Fab (assembly drawing only).  Front legends are auto-placed near
 their anchor and dropped with a warning if nothing fits.
 Back: the wiring legend (connector names, polarity, LED/button/USB) and the title,
@@ -13,12 +14,12 @@ FRONT_REFS = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'Q1', 'Q2', 'D1', 'D2', 'Y1',
               'J1', 'SW1']
 
 # fixed spots for refs the auto-placer gets wrong: ref -> (x, y, rot)
-REF_AT = {}
+REF_AT = {'Q2': (10.365, 12.4, 0), 'U5': (11.2, 17.26, 0), 'D1': (9.65, 13.72, 0)}   # crowded: below Q2, above U5
 
 # front legends: (text, anchor 'REF.PAD' to auto-place near, or (x, y, rot) fixed, size)
 FRONT_LABELS = [
     ('MOT', (7.6, 3.8), 0.8),
-    ('SPK', (7.6, 11.0), 0.8),
+    ('SPK', (7.25, 13.5, 0), 0.8),             # fixed: clear of D1's ref
     ('BAT', (7.6, 18.2), 0.8),
     ('+', 'J3.1', 0.8),
 ]
@@ -26,9 +27,9 @@ FRONT_LABELS = [
 # back legends: (text, x, y, rot, size); x/y are the text centre in board coordinates,
 # the text is mirrored so it reads correctly from the back.
 BACK_TEXT = [
-    # title, behind the module
-    ('zigbee toy', 24.6, 6.55, 0, 0.9),
-    ('rev B  2026-10', 24.6, 8.1, 0, 0.8),
+    # title + paw in the strip a MINI-1's antenna keepout leaves bare (no copper there, silk is fine)
+    ('zigbee toy', 23.9, 0.9, 0, 0.9),
+    ('rev B  2026-10', 23.9, 2.4, 0, 0.8),
     # connectors: names along the clean strip right of the pins, polarity left of them
     ('MOTOR', 6.6, 3.8, 270, 0.9),
     ('SPEAKER', 6.6, 11.0, 270, 0.9),
@@ -45,7 +46,8 @@ BACK_TEXT = [
 TP_LABEL_SIZE = 0.8
 TP_LABEL_SIDE = {f'TP{n}': 'right' for n in (1, 2, 3, 4, 5, 6, 13, 15, 16, 18, 20)}
 TP_LABEL_SIDE.update({f'TP{n}': 'above' for n in (7, 8, 9)})       # motor block, top row
-TP_LABEL_SIDE.update({f'TP{n}': 'below' for n in (11, 12, 21)})
+TP_LABEL_SIDE.update({f'TP{n}': 'below' for n in (11, 12)})
+TP_LABEL_SIDE['TP21'] = 'left'                                     # EN: below is the IN2 via
 TP_LABEL_SIDE['TP10'] = 'right'
 TP_LABEL_SIDE['TP17'] = 'left'                                     # BOOT
 TP_LABEL_SIDE['TP22'] = 'below'                                    # UART GND
@@ -74,5 +76,5 @@ def text_box(x, y, rot, text, size):
         w, h = h, w
     return (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
 
-# small paw print on the back, behind the battery protection: (cx, cy, size)
-PAW = (11.0, 17.0, 2.4)
+# small paw print on the back, beside the title (reads left of it from the back): (cx, cy, size)
+PAW = (29.9, 1.2, 2.0)

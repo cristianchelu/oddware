@@ -32,9 +32,9 @@ PLACE = {
     'J5': (4.4, 10.0, 270),      # SPEAKER
     'J3': (4.4, 17.2, 270),      # BATTERY
 
-    # ---- motor driver, VM caps above it
+    # ---- motor driver, VM caps above it: C3's ground pad sits over the driver's thermal pad
     'U2': (10.6, 5.05, 0),
-    'C3': (9.9, 2.95, 180),
+    'C3': (9.9, 2.95, 0),
     'C2': (13.85, 3.2, 0),
     'R6': (13.4, 5.9, 90),
 
@@ -48,7 +48,7 @@ PLACE = {
     # ---- battery protection + reverse FET, battery divider in the corner pocket
     'C15': (8.6, 18.4, 270),
     'U5': (11.2, 19.8, 270),
-    'Q1': (11.4, 15.2, 180),
+    'Q1': (11.4, 14.9, 180),
     'C1': (14.2, 19.0, 270),
     'R12': (7.9, 21.3, 0),
     'R13': (7.9, 22.9, 0),
@@ -96,13 +96,13 @@ PLACE = {
     # Behind the accelerometer, each centred on its signal's via (labels right): SDA INT1 SCL
     'TP15': (22.4, 15.4, 0, 'B'), 'TP13': (25.6, 17.1, 0, 'B'), 'TP16': (29.65, 22.04, 0, 'B'),
     # Behind the motor driver and speaker
-    'TP7': (8.7, 6.0, 0, 'B'), 'TP8': (11.4, 6.0, 0, 'B'), 'TP9': (14.7, 6.0, 0, 'B'),     # PWM  DIR  ISNS (labels above)
+    'TP7': (8.7, 6.0, 0, 'B'), 'TP8': (11.4, 6.0, 0, 'B'), 'TP9': (14.7, 6.0, 0, 'B'),     # IN2  IN1  ISNS (labels above)
     'TP10': (15.6, 7.5, 0, 'B'), 'TP11': (11.7, 9.6, 0, 'B'), 'TP12': (14.7, 11.0, 0, 'B'),  # GAIN (on its via, label right) SPK GND (below)
     # Behind the module's right pads and the USB-C: UART with its ground, LED data, BOOT, EN
     'TP19': (33.2, 3.0, 0, 'B'),                                                             # TX, clear of the MINI-1 antenna keepout
     'TP20': (30.6, 3.85, 0, 'B'), 'TP18': (30.6, 5.85, 0, 'B'),                                # RX LED (labels right)
     'TP22': (32.8, 10.2, 0, 'B'), 'TP17': (30.6, 9.85, 0, 'B'),                              # GND (label below) BOOT (label left)
-    'TP21': (17.0, 9.6, 0, 'B'),                                                             # EN, beside the EN resistor (label below)
+    'TP21': (17.5, 9.55, 0, 'B'),                                                            # EN, on its via beside the EN resistor (label left)
 
     # ---- M2 mounting holes, NPTH
     'H1': (37.4, 2.6, 0),

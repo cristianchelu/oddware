@@ -9407,7 +9407,7 @@
 		)
 		(uuid "a95ff3cf-eb79-5b4f-99c1-b6cf210f0a43")
 	)
-	(label "MOT_DIR"
+	(label "MOT_IN1"
 		(at 227.33 110.49 0)
 		(effects
 			(font
@@ -9415,7 +9415,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "e7924a13-9202-5051-9257-96e0db32a2df")
+		(uuid "c3934de2-80b4-5e99-b2a5-d5786c226430")
 	)
 	(wire
 		(pts
@@ -9428,7 +9428,7 @@
 		)
 		(uuid "f811c7a6-ec77-549c-af19-ebdb4c16ed9f")
 	)
-	(label "MOT_PWM"
+	(label "MOT_IN2"
 		(at 227.33 113.03 0)
 		(effects
 			(font
@@ -9436,7 +9436,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "91a49dcb-2745-554b-82c2-28ab642612e6")
+		(uuid "9e4c0170-0e43-5e1c-b838-31f69ebdab43")
 	)
 	(wire
 		(pts
@@ -11635,7 +11635,7 @@
 		)
 		(uuid "8e52ce96-0fa6-51a9-8ac9-30014fe00cb6")
 	)
-	(label "MOT_DIR"
+	(label "MOT_IN1"
 		(at 320.04 39.37 180)
 		(effects
 			(font
@@ -11643,7 +11643,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "112df487-19d3-5848-a61b-35f2503f823e")
+		(uuid "cff90c0d-20be-5ee7-80c8-3aea7b5d719b")
 	)
 	(wire
 		(pts
@@ -11656,7 +11656,7 @@
 		)
 		(uuid "6d75331b-350d-5d73-b8db-ad11019b80c9")
 	)
-	(label "MOT_PWM"
+	(label "MOT_IN2"
 		(at 320.04 41.91 180)
 		(effects
 			(font
@@ -11664,7 +11664,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "301e56a2-8cc6-50c2-b303-6987bbb04397")
+		(uuid "603645da-feae-5bca-9a27-d52eb8c1a8a0")
 	)
 	(wire
 		(pts
@@ -11844,7 +11844,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10u 25V"
+		(property "Value" "22u"
 			(at 302.26 67.31 0)
 			(effects
 				(font
@@ -11862,7 +11862,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C15850"
+		(property "LCSC" "C45783"
 			(at 299.72 66.04 0)
 			(hide yes)
 			(effects
@@ -14936,7 +14936,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "PWM"
+		(property "Value" "IN2"
 			(at 246.38 250.19 90)
 			(effects
 				(font
@@ -14995,7 +14995,7 @@
 		)
 		(uuid "b234ebcb-6b74-5d2c-bc03-8482b11192f5")
 	)
-	(label "MOT_PWM"
+	(label "MOT_IN2"
 		(at 240.03 248.92 180)
 		(effects
 			(font
@@ -15003,7 +15003,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "a04dd162-6a50-5928-a82c-93420756ef0f")
+		(uuid "c3599d0f-4024-5c46-9004-280a7d0aaa11")
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
@@ -15023,7 +15023,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "DIR"
+		(property "Value" "IN1"
 			(at 246.38 256.54 90)
 			(effects
 				(font
@@ -15082,7 +15082,7 @@
 		)
 		(uuid "be8aa71e-c086-5477-92f2-171e7010e616")
 	)
-	(label "MOT_DIR"
+	(label "MOT_IN1"
 		(at 240.03 255.27 180)
 		(effects
 			(font
@@ -15090,7 +15090,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "df13e3eb-d6b5-5a40-b9fb-de960a5e0658")
+		(uuid "02b48c76-9394-57ed-b909-5454986c02dc")
 	)
 	(symbol
 		(lib_id "Connector:TestPoint")
@@ -16479,7 +16479,7 @@
 		)
 		(uuid "5c062bae-2cbb-56fc-bf36-cb976b02e8f5")
 	)
-	(text "One board for all three toys (bird / fish / ball). 1S LiPo, protected or not.\n\nBattery voltage: VBAT_SENSE (IO6, ADC1_CH6), VBAT / 2.\nOn charger: VBUS_SENSE (IO20). Charging: CHG_STAT (IO19), low = charging.\nMotor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\nGAINSEL: drive low / drive high / input-disconnected = Hi-Z.\nMotor: DIR (IN1, static) + PWM (IN2): fwd DIR=0 PWM=duty, rev DIR=1 PWM=1-duty.\nMotor: DIR IO3, PWM IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n\nTest points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\nHand-soldered, not JLC-assembled: J3 battery, J4 motor, J5 speaker.\nAntenna: 2.4 GHz FPC antenna on the module u.FL, plugged in by hand.\nH1, H2: M2 mounting holes (NPTH), diagonal corners; ISO 7380 button head (3.5 mm)."
+	(text "One board for all three toys (bird / fish / ball). 1S LiPo, protected or not.\n\nBattery voltage: VBAT_SENSE (IO6, ADC1_CH6), VBAT / 2.\nOn charger: VBUS_SENSE (IO20). Charging: CHG_STAT (IO19), low = charging.\nMotor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\nGAINSEL: drive low / drive high / input-disconnected = Hi-Z.\nMotor PWM = drive/brake: fwd IN1=1, IN2=1-duty; rev IN2=1, IN1=1-duty.\nMotor: IN1 IO3, IN2 IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n\nTest points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\nHand-soldered, not JLC-assembled: J3 battery, J4 motor, J5 speaker.\nAntenna: 2.4 GHz FPC antenna on the module u.FL, plugged in by hand.\nH1, H2: M2 mounting holes (NPTH), diagonal corners; ISO 7380 button head (3.5 mm)."
 		(exclude_from_sim no)
 		(at 15.24 208.28 0)
 		(effects

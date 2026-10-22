@@ -78,8 +78,8 @@ Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf).
 | Module pin | GPIO | Net | Notes |
 |---|---|---|---|
 | 5 | IO2 | MOT_IPROPI | ADC1_CH2. 0.51 V = current limit reached |
-| 6 | IO3 | MOT_DIR | DRV8213 IN1 |
-| 9 | IO4 | MOT_PWM | DRV8213 IN2 |
+| 6 | IO3 | MOT_IN1 | DRV8213 IN1 |
+| 9 | IO4 | MOT_IN2 | DRV8213 IN2 |
 | 19 | IO14 | MOT_GAINSEL | drive low / drive high / input (Hi-Z) |
 | 10 | IO5 | SPK_PWM | speaker FET gate |
 | 12, 13 | IO0, IO1 | XTAL_32K | 32.768 kHz crystal for the light-sleep clock |
@@ -97,7 +97,10 @@ Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf).
 
 Unconnected: IO15 (a strapping pin), IO21, IO22.
 
-Motor drive: forward DIR = 0, PWM = duty; reverse DIR = 1, PWM = 1 − duty.
+Motor drive: PWM between drive and brake. Forward IN1 = 1, IN2 = 1 − duty;
+reverse IN2 = 1, IN1 = 1 − duty. Both pins need a PWM channel. Drive/coast
+also spins the motor, but IPROPI reads zero while coasting, so current
+sensing and stall detection stop working.
 
 ### Power
 
@@ -133,8 +136,14 @@ current shifts the reading; calibrate it against a meter in firmware.
   routes are not checked against them.
 - **3V3:** regulator, 22 µF bulk next to it, back layer to module pin 3,
   10 µF at the pin.
+- **Motor driver:** C3's ground pad drops straight onto the thermal pad,
+  which has two vias to the back. IN2 runs on the back layer below the
+  driver, not under it, so the back plane joins the VM caps' ground vias to
+  the thermal pad vias. Keep it that way: with one trace under the driver,
+  C3's return path was 15 mm long instead of 1.
 - **Ground:** both layers poured. `gen_pcb.py stitch` adds a 2.5 mm via grid
-  and a via to every pour island it can reach.
+  and a via to every pour island it can reach. Seven of the module's nine
+  centre ground pads have a via; the GAINSEL trace runs under the other two.
 
 ## Flashing
 
@@ -192,7 +201,7 @@ folders, which git ignores.
 
 - Order Economic PCBA. Seven parts are JLC "Extended" ($3 each per order):
   module, motor driver, accelerometer, regulator, protection IC, USB-C,
-  button. Parts come to about $7.65 a board.
+  button. Parts come to about $7.75 a board.
 - The order's BOM step decides Economic or Standard, not the "PCBA Type"
   field on the part page. One Standard-only part moves the whole order to
   Standard. Re-check there after any part swap.

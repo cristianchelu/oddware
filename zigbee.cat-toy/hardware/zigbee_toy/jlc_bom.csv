@@ -1,6 +1,5 @@
 "Comment","Qty","Designator","Footprint","LCSC Part #"
-"22u","2","C1,C8","Capacitor_SMD:C_0805_2012Metric","C45783"
-"10u 25V","1","C2","Capacitor_SMD:C_0805_2012Metric","C15850"
+"22u","3","C1,C2,C8","Capacitor_SMD:C_0805_2012Metric","C45783"
 "100n","5","C3,C10,C11,C15,C16","Capacitor_SMD:C_0603_1608Metric","C14663"
 "4.7u","2","C4,C6","Capacitor_SMD:C_0603_1608Metric","C19666"
 "1u","1","C5","Capacitor_SMD:C_0603_1608Metric","C15849"
