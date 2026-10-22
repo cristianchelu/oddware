@@ -14,7 +14,9 @@ the footprint on the back.
   * Left edge = internal wiring: three side-entry JST-PH stacked from the top corner
     (motor, speaker, battery), each circuit beside it, wired to the module's left pins.
   * Under the module: crystal, regulator, battery divider, accelerometer, charger.
-  * Right edge: status LED above the USB-C, side-push button below it.
+  * Right edge: status LED above the USB-C, side-push button below it. The channel between
+    the module's right pads and the receptacle pads is 2.1 mm: only the CC pull-downs go
+    there (vertical). The VBUS divider sits above the receptacle beside H1.
   * Back: labelled test pads in three groups, clear of the module so its underside stays free for routing.
 """
 
@@ -52,10 +54,10 @@ PLACE = {
     'C5': (12.65, 10.5, 270),
 
     # ---- battery
-    'C15': (8.6, 21.4, 180),
-    'U5': (7.8, 18.25, 90),
-    'Q1': (7.9, 13.9, 180),
-    'C1': (11.4, 14.6, 270),
+    'C15': (8.5, 20.9, 180),      # 1 mm outside H2's screw head circle
+    'U5': (8.6, 17.9, 90),        # 1.4 mm from the battery connector body, 0.7 mm outside the screw head
+    'Q1': (8.25, 13.9, 180),
+    'C1': (12.2, 14.6, 270),
 
     # ---- under the module
     'Y1': (16.0, 15.0, 180),
@@ -78,15 +80,15 @@ PLACE = {
     'D2': (34.1, 2.4, 180),
     'J1': (33.3, 10.1, 90),      # receptacle face 1.0 mm past the edge: flush with the shell outside
     'SW1': (33.85, 18.6, 90),
-    'R2': (28.3, 5.6, 0),
-    'R1': (27.5, 10.0, 180),
+    'R2': (27.9, 8.6, 270),       # CC2 pull-down, vertical beside pad B5
+    'R1': (27.9, 10.9, 90),       # CC1 pull-down, vertical beside pad A5
     'U7': (27.0, 15.85, 180),     # pin 5 (3V3) faces the module side
     'R10': (23.9, 17.5, 270),     # CHG_STAT pull-up, beside the CHG_STAT via
     'U4': (30.0, 20.6, 90),
     'R3': (27.7, 20.1, 90),
     'C4': (30.4, 18.0, 180),
-    'R14': (27.5, 12.55, 180),
-    'R15': (27.45, 13.7, 0),
+    'R14': (28.05, 5.3, 90),      # VBUS divider, out of the channel: beside H1, fed from pad A9
+    'R15': (27.2, 5.3, 270),
 
     # ---- test pads, back side ('B'): placeholder grid, placed properly after routing
     'TP1': (14.6, 19.4, 0, 'B'),

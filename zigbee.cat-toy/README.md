@@ -147,7 +147,13 @@ current shifts the reading; calibrate it against a meter in firmware.
   clearance. `gen_pcb.py` refuses a placement that breaks the rule.
 - **Module position:** 1 mm from the top edge. Under it, two rows of parts
   with a channel between them: crystal, accelerometer and USB protection in
-  the first row, regulator and the two dividers in the second.
+  the first row, regulator and the battery divider in the second.
+- **USB-C side:** the channel between the module's right pads and the
+  receptacle pads is 2.1 mm wide. Only the two CC pull-downs live in it,
+  standing vertical beside their pads. The VBUS divider sits above the
+  receptacle, beside the top mounting hole, fed from the upper VBUS pad;
+  VBUS_SENSE comes back to pin 25 on the back layer, under the module's
+  right pad column.
 - **Antenna keepout:** no copper on either layer between the module's top
   pads and the board edge. That is the area under an ESP32-C6-MINI-1's PCB
   antenna, so the MINI-1 fits the same pads. The keepout is a rule area in
@@ -163,6 +169,10 @@ current shifts the reading; calibrate it against a meter in firmware.
 - **Crystal:** no back-layer copper under it or its traces.
 - The DSN export turns the last two into keepouts for the autorouter; hand
   routes are not checked against them.
+- **Battery corner:** the protection IC body is 1.4 mm from the JST-PH
+  housing and 0.7 mm outside the 4 mm circle an M2 screw head covers at
+  H2; CELL_P goes round its ground pad on the far side, and the bulk
+  capacitor sits to the right of that with its own ground via.
 - **VBAT:** back layer from the battery FET up the left column to the
   driver, and along the bottom in a channel between the two rows of test
   pads to the regulator, the battery divider and the charger.

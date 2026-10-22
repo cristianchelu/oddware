@@ -57,16 +57,17 @@ V('GND', 11.4, 7.95)
 
 # ------------------------------------------------------------------ battery: + to the FET (top), - through the protection IC (below)
 R('CELL_P', 'F', 0.6, 'J3.1', 'Q1.3')
-R('CELL_P', 'F', 0.5, 'J3.1', (5.6, 15.55), (9.85, 15.55), (9.85, 20.9), 'C15.1')
-R('CELL_P', 'F', 0.5, (9.85, 19.39), 'U5.3')
-R('CELL_N', 'F', 0.5, 'J3.2', (5.6, 17.94), (5.6, 20.6), (7.8, 20.6), 'U5.2')
-R('CELL_N', 'F', 0.5, (7.8, 20.6), 'C15.2')
+R('CELL_P', 'F', 0.5, 'J3.1', (5.6, 15.55), (10.4, 15.55), (10.65, 15.8), (10.65, 18.65), (10.26, 19.04), 'U5.3')   # round the IC's ground pad
+R('CELL_P', 'F', 0.5, (10.26, 19.04), (10.1, 19.2), (10.1, 20.6), (9.8, 20.9), 'C15.1')
+R('CELL_N', 'F', 0.5, 'J3.2', (5.6, 17.94), (5.6, 20.4), (8.15, 20.4), (8.4, 20.15), (8.4, 19.3), 'U5.2')   # enters pad 2 at its west half, clear of C15's + pad
+R('CELL_N', 'F', 0.5, (7.75, 20.4), (8.02, 20.67), 'C15.2')
 R('GND', 'F', 0.5, 'U5.5', 'U5.4')                                    # protection IC VM pins = board GND
 R('GND', 'F', 0.5, 'U5.5', (5.95, 16.95))
 V('GND', 5.95, 16.95)
 R('GND', 'F', 0.4, 'Q1.1', (10.05, 14.55))                            # FET gate
-R('GND', 'F', 0.4, 'C1.2', (10.05, 14.55))
 V('GND', 10.05, 14.55)
+R('GND', 'F', 0.4, 'C1.2', (12.2, 16.6))                               # bulk cap ground: its own via
+V('GND', 12.2, 16.6)
 
 # ------------------------------------------------------------------ VBAT along the bottom: back-layer channel between the two test pad rows
 R('VBAT', 'B', 0.6, (10.0, 13.0), (12.7, 13.0), (13.4, 13.7), (13.4, 18.2), 'TP1.1')
@@ -172,9 +173,22 @@ V('VBAT_SENSE', 21.6, 18.95, 0.5, 0.3)
 R('VBAT_SENSE', 'F', 0.2, (21.6, 18.95), (21.6, 19.6), 'R12.2')
 
 # ------------------------------------------------------------------ USB-C side strip: CC1, VBUS divider (sense to pin 25), charge status (pin 26)
-R('CC1', 'F', 0.2, 'J1.A5', (28.2, 11.35), (28.2, 10.3), 'R1.1')
-R('VBUS', 'F', 0.25, 'J1.A4', 'R14.1')
-R('VBUS_SENSE', 'F', 0.2, 'U1.25', 'R14.2', 'R15.1')
+R('CC1', 'F', 0.2, 'J1.A5', 'R1.1')                                   # CC pull-downs: vertical, beside their pads
+R('CC2', 'F', 0.2, 'J1.B5', (28.4, 8.35), (28.14, 8.09), 'R2.1')
+R('GND', 'F', 0.2, 'R1.2', (27.9, 9.75), 'R2.2')                      # their ground pads face each other; via to the west
+R('GND', 'F', 0.2, (27.9, 9.75), (27.05, 9.75))
+V('GND', 27.05, 9.75, 0.5, 0.3)
+# VBUS divider beside H1, above the receptacle: VBUS from pad A9 up a lane left of the ground pad
+R('VBUS', 'F', 0.2, 'J1.A9', (28.25, 7.4), (28.25, 6.2), (28.05, 6.0), 'R14.1')
+R('VBUS_SENSE', 'F', 0.2, 'R14.2', 'R15.1')
+R('GND', 'F', 0.2, 'R15.2', (27.2, 6.05), (26.8, 6.45))
+V('GND', 26.8, 6.45, 0.5, 0.3)
+# VBUS_SENSE to pin 25 on the back, under the module's right pad column
+R('VBUS_SENSE', 'F', 0.2, 'R15.1', (27.2, 4.28), (26.98, 4.06))
+V('VBUS_SENSE', 26.98, 4.06, 0.5, 0.3)
+R('VBUS_SENSE', 'B', 0.2, (26.98, 4.06), (26.3, 4.74), (26.25, 4.79), (26.25, 12.9), (26.75, 13.4))
+V('VBUS_SENSE', 26.75, 13.4, 0.5, 0.3)
+R('VBUS_SENSE', 'F', 0.2, (26.75, 13.4), (26.75, 12.1), (26.6, 11.95), 'U1.25')
 R('CHG_STAT', 'F', 0.2, 'U1.26', (26.75, 11.15), (26.95, 10.95))
 V('CHG_STAT', 26.95, 10.95, 0.5, 0.3)
 R('CHG_STAT', 'F', 0.2, 'R10.2', (23.0077, 17.9574))                  # pull-up: the done state is only a weak pull-down

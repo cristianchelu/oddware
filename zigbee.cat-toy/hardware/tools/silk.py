@@ -14,7 +14,7 @@ FRONT_REFS = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'Q1', 'Q2', 'D1', 'D2', 
               'J1', 'SW1']
 
 # fixed spots for refs the auto-placer gets wrong: ref -> (x, y, rot)
-REF_AT = {'U1': (13.2, 14.5, 0)}   # below the module's corner: the auto-placer looks right beside the body, which is all pads
+REF_AT = {'U1': (13.59, 14.7, 90)}   # below the module's corner, standing: C1 to the left, the crystal to the right
 
 # front legends: (text, anchor 'REF.PAD' to auto-place near, or (x, y, rot) fixed, size)
 FRONT_LABELS = [
