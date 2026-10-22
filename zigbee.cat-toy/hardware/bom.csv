@@ -2,10 +2,10 @@ Comment,Designator,Footprint,LCSC Part #,JLC Library,Unit Price USD (1-9),Notes
 ESP32-C6-MINI-1U-H4,U1,ESP32-C6-MINI-1U,C20627095,Extended,4.2191,u.FL antenna connector; needs a 2.4 GHz FPC antenna (hand-plugged)
 DRV8213DSGR,U2,WSON-8-1EP_2x2mm,C22407186,Extended,1.0409,1.65-11V H-bridge with IPROPI current sense/regulation; PWM drive/brake on both IN pins
 LIS2DW12TR-MS,U3,LGA-12_2x2mm,C50385411,Extended,0.67,"MSKSEMI accelerometer; NOT ST-compatible: own pinout, WHO_AM_I 0x11, LIS2DH-style registers; I2C 0x19"
-TP4054-42-SOT25R,U4,SOT-23-5,C32574,Preferred Extended,0.1319,LiPo charger 300mA (R3)
+TP4054-42-SOT25R,U4,SOT-23-5,C32574,Preferred Extended,0.1319,LiPo charger 260mA (R3)
 XB5353A,U5,SOT-23-5,C80628,Extended,0.088,1S protection w/ integrated 54mOhm FETs; 4.3V/2.4V/3A OCP
 RT9080-33GJ5,U6,TSOT-23-5,C841192,Extended,0.1195,3.3V LDO 600mA; 2uA quiescent
-USBLC6-2SC6,U7,SOT-23-6,C7519,Extended,0.1793,USB D+/D- ESD protection; VBUS-referenced
+USBLC6-2SC6,U7,SOT-23-6,C7519,Extended,0.1793,USB D+/D- ESD protection; pin 5 on 3V3 (VBUS would be back-fed by the D+ pull-up)
 AO3401A,Q1,SOT-23,C15127,Basic,0.1022,Reverse-polarity P-FET
 AO3400A,Q2,SOT-23,C20917,Basic,0.0973,Speaker low-side switch
 B5819W,D1,SOD-123,C8598,Basic,0.0283,Speaker flyback
@@ -14,12 +14,12 @@ TYPE-C-31-M-12,J1,USB_C_Receptacle_HRO_TYPE-C-31-M-12,C165948,Extended,0.1867,16
 32.768kHz 12.5pF,Y1,Crystal_SMD_3215-2Pin,C32346,Basic,0.1708,RTC crystal for light sleep (IO0/IO1)
 SKRTLAE010,SW1,SW_Push_1P1T-MP_NO_Horizontal_Alps_SKRTLAE010,C110293,Extended,0.1425,Side-push pairing / BOOT button (IO9)
 5.1k,R1 R2,R_0402,C25905,Basic,0.0017,USB-C CC pulldowns
-3.3k,R3,R_0402,C25890,Basic,0.0017,TP4054 PROG -> ~300mA
+3.3k,R3,R_0402,C25890,Basic,0.0017,TP4054 PROG -> 260mA (datasheet formula one; 1000/I only holds to 150mA)
 1k,R4,R_0402,C11702,Basic,0.0017,Status LED series
 1.5k,R6,R_0402,C25867,Basic,0.0017,R_IPROPI: limits 1.66A / 324mA / 69mA by GAINSEL
 100R,R7,R_0402,C25076,Basic,0.0017,Speaker FET gate series
 100k,R8,R_0402,C25741,Basic,0.0017,Speaker FET gate pulldown
-10k,R9,R_0402,C25744,Basic,0.0017,EN pull-up
+10k,R9 R10,R_0402,C25744,Basic,0.0017,EN pull-up; CHG_STAT pull-up
 0R,R11,R_0402,C17168,Basic,0.0017,Speaker link (1A); cap PWM duty in firmware for 8-ohm speakers
 1M,R12 R13,R_0402,C26083,Basic,0.0017,VBAT/2 divider for the ADC (2.1uA)
 33k,R14,R_0402,C25779,Basic,0.0017,VBUS divider top (VBUS_SENSE = 0.607 x VBUS)

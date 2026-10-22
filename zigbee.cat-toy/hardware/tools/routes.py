@@ -91,7 +91,6 @@ V('VBUS', 32.3, 12.15)
 R('VBUS', 'B', 0.4, (32.3, 8.05), (32.3, 16.2))                         # right of the D- lane and the shell tab
 V('VBUS', 32.3, 16.2)
 R('VBUS', 'F', 0.4, (32.3, 16.2), 'C4.1', 'U4.4')
-R('VBUS', 'F', 0.4, (32.3, 16.2), (29.2, 16.2), (28.85, 15.85), 'U7.5')
 
 # ------------------------------------------------------------------ USB-C: each pad pair drops to B.Cu inside the receptacle and is joined there
 for pad, net, x in (('B6', 'USB_DP', 30.45), ('A6', 'USB_DP', 30.45), ('A7', 'USB_DN', 31.15), ('B7', 'USB_DN', 31.15)):
@@ -103,21 +102,23 @@ R('USB_DN', 'B', 0.2, (31.15, 9.85), (31.15, 10.85))
 # receptacle -> USBLC6 (right pins): D+ left of the shell tab, D- right of it
 R('USB_DP', 'B', 0.2, (30.45, 10.35), (30.45, 11.7), (28.65, 13.5), (28.65, 14.3))
 V('USB_DP', 28.65, 14.3, 0.5, 0.3)
-R('USB_DP', 'F', 0.2, (28.65, 14.3), 'U7.6')
+R('USB_DP', 'F', 0.2, (28.65, 14.3), 'U7.3')
 R('USB_DN', 'B', 0.2, (31.15, 10.85), (31.6, 11.3), (31.6, 16.0), (30.6, 17.0), (29.15, 17.0))
 V('USB_DN', 29.15, 17.0, 0.5, 0.3)
-R('USB_DN', 'F', 0.2, (29.15, 17.0), 'U7.4')
+R('USB_DN', 'F', 0.2, (29.15, 17.0), 'U7.1')
 # USBLC6 (left pins) -> back layer right under the module's bottom pad row (the row of parts below keeps the back
 # layer for its own vias) -> vias inside the pad ring at pins 17/18
-R('USB_DP', 'F', 0.2, 'U7.1', (24.9, 14.65))
+R('USB_DP', 'F', 0.2, 'U7.4', (24.9, 14.65))
 V('USB_DP', 24.9, 14.65, 0.5, 0.3)
 R('USB_DP', 'B', 0.2, (24.9, 14.65), (24.9, 12.6), (20.6, 12.6), (20.0, 12.0))
-R('USB_DN', 'F', 0.2, 'U7.3', (24.9, 16.8))
+R('USB_DN', 'F', 0.2, 'U7.6', (24.9, 16.8))
 V('USB_DN', 24.9, 16.8, 0.5, 0.3)
 R('USB_DN', 'B', 0.2, (24.9, 16.8), (24.3, 16.2), (24.3, 13.5), (24.0, 13.2), (19.8, 13.2), (19.2, 12.6), (19.2, 12.0))
-# the USBLC6 joins pins 1/6 and 3/4 inside; KiCad needs copper for it: straight under the body
-R('USB_DP', 'F', 0.2, 'U7.1', 'U7.6')
-R('USB_DN', 'F', 0.2, 'U7.3', 'U7.4')
+# the USBLC6 joins pins 3/4 and 1/6 inside; KiCad needs copper for it: straight under the body
+R('USB_DP', 'F', 0.2, 'U7.4', 'U7.3')
+R('USB_DN', 'F', 0.2, 'U7.6', 'U7.1')
+# its pin 5 on 3V3: on VBUS, the C6's D+ pull-up would back-feed VBUS through the steering diode while unplugged
+R('3V3', 'F', 0.25, 'U7.5', (24.2, 15.85), (23.72, 15.37), 'R17.1')
 V('USB_DP', 20.0, 12.0, 0.5, 0.3)
 V('USB_DN', 19.2, 12.0, 0.5, 0.3)
 R('USB_DP', 'F', 0.2, (20.0, 12.0), 'U1.18')
@@ -137,7 +138,7 @@ R('I2C_SDA', 'F', 0.2, 'U1.22', (23.22, 11.85))
 V('I2C_SDA', 23.22, 11.85, 0.5, 0.3)                                    # TP15 sits on it (back)
 V('I2C_SCL', 25.434, 13.75, 0.5, 0.3)                                  # on the back-layer SCL run, next to pin 24
 R('I2C_SCL', 'F', 0.2, (25.434, 13.75), 'U1.24')
-R('I2C_SCL', 'F', 0.2, (22.81, 16.285), (23.75, 16.285), (23.75, 14.9), 'R17.2')   # pull-up, from the router's via
+R('I2C_SCL', 'F', 0.2, 'R17.2', (23.55, 13.93), (24.45, 13.93), 'U1.24')   # pull-up, straight to pin 24
 R('3V3', 'F', 0.25, 'U3.3', (18.3, 15.3), (18.3, 16.9), 'C11.1')       # VDDIO, around the west side
 R('3V3', 'F', 0.3, 'C11.1', (19.12, 18.4))
 R('GND', 'F', 0.25, 'C11.2', (20.15, 16.65))
@@ -162,19 +163,17 @@ R('VBUS', 'F', 0.25, 'J1.A4', 'R14.1')
 R('VBUS_SENSE', 'F', 0.2, 'U1.25', 'R14.2', 'R15.1')
 R('CHG_STAT', 'F', 0.2, 'U1.26', (26.75, 11.15), (26.95, 10.95))
 V('CHG_STAT', 26.95, 10.95, 0.5, 0.3)
+R('CHG_STAT', 'F', 0.2, 'R10.2', (23.0077, 17.9574))                  # pull-up: the done state is only a weak pull-down
+R('3V3', 'F', 0.2, 'R10.1', (23.9, 16.15), (24.2, 15.85))
 R('VBUS', 'B', 0.3, (32.3, 10.1), 'TP3.1')                              # test pad on the VBUS run, behind the receptacle
 
-# ------------------------------------------------------------------ BTN: the button sits below the USB-C, boxed in by VBUS and the USB lanes:
-# down from pin 23 between R17 and the USBLC6, east on top, back layer under the charger cap, up to the button's lower pad
-R('BTN', 'F', 0.2, 'U1.23', (24.0, 13.6), (24.1, 13.7), (24.1, 18.0), (28.6, 18.0))
-V('BTN', 28.6, 18.0, 0.5, 0.3)
-R('BTN', 'B', 0.2, (28.6, 18.0), (31.75, 18.0), (31.75, 19.65))
-V('BTN', 31.75, 19.65, 0.5, 0.3)
-R('BTN', 'F', 0.2, (31.75, 19.65), 'SW1.1')
+# ------------------------------------------------------------------ BTN: from the BOOT test pad's via, back layer along the top (clear of the
+# antenna keepout), round H1 and down the right edge behind the USB-C, up to the button's upper pad
+R('BTN', 'B', 0.2, (19.3286, 3.995), (19.3286, 2.75), (19.48, 2.6), (28.5, 2.6), (28.5, 4.15), (35.4, 4.15), (35.4, 17.8))
+V('BTN', 35.4, 17.8, 0.5, 0.3)
+R('BTN', 'F', 0.2, (35.4, 17.8), (34.2, 17.8), (33.9, 17.5), (33.5, 17.4))
 R('GND', 'F', 0.3, 'SW1.2', (34.4, 18.6))                              # button ground: out the east side (its two pin-1 pads count as joined)
 V('GND', 34.4, 18.6, 0.5, 0.3)
-R('GND', 'F', 0.25, 'U7.2', (26.8, 15.85))                             # USBLC6 ground: via under the chip, between the pin rows
-V('GND', 26.8, 15.85, 0.5, 0.3)
 R('GND', 'F', 0.3, 'C5.2', (12.75, 11.55))                             # EN cap ground, onto TP12 on the back
 V('GND', 12.75, 11.55, 0.5, 0.3)
 

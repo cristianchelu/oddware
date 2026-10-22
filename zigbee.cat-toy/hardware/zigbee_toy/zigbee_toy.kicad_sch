@@ -7318,7 +7318,7 @@
 	)
 	(symbol
 		(lib_id "Power_Protection:USBLC6-2SC6")
-		(at 68.58 118.11 0)
+		(at 58.42 118.11 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -7326,7 +7326,7 @@
 		(dnp no)
 		(uuid "710a67e9-4e8e-5adf-a941-329e118e9a7b")
 		(property "Reference" "U7"
-			(at 69.215 112.395 0)
+			(at 59.055 112.395 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7335,7 +7335,7 @@
 			)
 		)
 		(property "Value" "USBLC6-2SC6"
-			(at 69.215 114.3 0)
+			(at 59.055 114.3 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7344,7 +7344,7 @@
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
-			(at 69.85 124.46 0)
+			(at 59.69 124.46 0)
 			(hide yes)
 			(effects
 				(font
@@ -7354,7 +7354,7 @@
 			)
 		)
 		(property "LCSC" "C7519"
-			(at 68.58 118.11 0)
+			(at 58.42 118.11 0)
 			(hide yes)
 			(effects
 				(font
@@ -7363,7 +7363,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.st.com/resource/en/datasheet/usblc6-2.pdf"
-			(at 69.85 126.365 0)
+			(at 59.69 126.365 0)
 			(hide yes)
 			(effects
 				(font
@@ -7373,7 +7373,7 @@
 			)
 		)
 		(property "Description" "Very low capacitance ESD protection diode, 2 data-line, SOT-23-6"
-			(at 68.58 118.11 0)
+			(at 58.42 118.11 0)
 			(hide yes)
 			(effects
 				(font
@@ -7410,39 +7410,39 @@
 	)
 	(wire
 		(pts
-			(xy 63.5 118.11)
-			(xy 60.96 118.11)
+			(xy 53.34 118.11)
+			(xy 50.8 118.11)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "4e656a1e-6482-5605-bf6d-56905ddd5dd6")
+		(uuid "b8cbd25c-0a02-55a1-82c5-140e5e2c4cf8")
 	)
-	(label "USB_DP"
-		(at 60.96 118.11 180)
+	(label "USB_DN"
+		(at 50.8 118.11 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify right bottom)
 		)
-		(uuid "7e2630d3-b786-56da-9bfc-adaa5953506e")
+		(uuid "f2b0594b-0a9d-5934-b992-089a9f2a4932")
 	)
 	(wire
 		(pts
-			(xy 68.58 125.73)
-			(xy 68.58 128.27)
+			(xy 58.42 125.73)
+			(xy 58.42 128.27)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "324f0039-dc65-5c85-9c2e-c96022b7aa3c")
+		(uuid "0b8b58bf-fa0d-50c2-b067-e11b8eadfaf1")
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 68.58 128.27 0)
+		(at 58.42 128.27 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -7450,7 +7450,7 @@
 		(dnp no)
 		(uuid "af9b2cb9-8551-5851-983e-f7794a30b3e1")
 		(property "Reference" "#PWR07"
-			(at 68.58 134.62 0)
+			(at 58.42 134.62 0)
 			(hide yes)
 			(effects
 				(font
@@ -7459,7 +7459,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 68.58 132.08 0)
+			(at 58.42 132.08 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7467,7 +7467,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 68.58 128.27 0)
+			(at 58.42 128.27 0)
 			(hide yes)
 			(effects
 				(font
@@ -7476,7 +7476,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 68.58 128.27 0)
+			(at 58.42 128.27 0)
 			(hide yes)
 			(effects
 				(font
@@ -7485,7 +7485,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 68.58 128.27 0)
+			(at 58.42 128.27 0)
 			(hide yes)
 			(effects
 				(font
@@ -7507,87 +7507,87 @@
 	)
 	(wire
 		(pts
-			(xy 63.5 120.65)
-			(xy 60.96 120.65)
+			(xy 53.34 120.65)
+			(xy 50.8 120.65)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "1e217962-6811-5d20-98ce-6e7e6cecb795")
+		(uuid "75961206-cc26-55a8-b047-e14dc1a11f29")
 	)
-	(label "USB_DN"
-		(at 60.96 120.65 180)
+	(label "USB_DP"
+		(at 50.8 120.65 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify right bottom)
 		)
-		(uuid "e36079b3-71f6-5f54-b752-5ea7d518d7d4")
+		(uuid "18e582c8-7d68-567f-a54a-ec91d8c1f7a4")
 	)
 	(wire
 		(pts
-			(xy 73.66 120.65)
-			(xy 76.2 120.65)
+			(xy 63.5 120.65)
+			(xy 66.04 120.65)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "abca1671-e1bd-572d-ac46-4b17204421e6")
-	)
-	(label "USB_DN"
-		(at 76.2 120.65 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "8805c17e-2e77-55a9-8298-28ff702e9207")
-	)
-	(wire
-		(pts
-			(xy 68.58 113.03)
-			(xy 68.58 110.49)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9389f0ac-d05a-50cc-966e-1a0b8a488418")
-	)
-	(label "VBUS"
-		(at 68.58 110.49 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "066a73d5-2a85-549d-8e76-667de504db8e")
-	)
-	(wire
-		(pts
-			(xy 73.66 118.11)
-			(xy 76.2 118.11)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bf5d83f3-3d0d-5d87-89fa-8d42aeac38dd")
+		(uuid "1f20df51-c7b6-513a-8654-faeffc1ee9ee")
 	)
 	(label "USB_DP"
-		(at 76.2 118.11 0)
+		(at 66.04 120.65 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "0f344d3c-4646-5b81-a59d-6cc2f7dd2ded")
+		(uuid "ea4213bf-9092-559f-bf66-77f39cd86982")
+	)
+	(wire
+		(pts
+			(xy 58.42 113.03)
+			(xy 58.42 110.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8c6a6b05-04d9-5796-af26-1cd79ac05222")
+	)
+	(label "3V3"
+		(at 58.42 110.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "76fc7841-5fda-5056-bbbe-1c3cc6e5b9e1")
+	)
+	(wire
+		(pts
+			(xy 63.5 118.11)
+			(xy 66.04 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a54ca9a0-9234-5883-9853-c35e9ba6b549")
+	)
+	(label "USB_DN"
+		(at 66.04 118.11 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "bf764eef-0d2c-5fef-a38a-10e1b58671f7")
 	)
 	(symbol
 		(lib_id "Device:R")
@@ -8362,6 +8362,126 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 86.36 144.78 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "04f316cc-26be-5134-bc57-9e8c0307f09f")
+		(property "Reference" "R10"
+			(at 88.9 143.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 88.9 146.05 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 84.582 144.78 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C25744"
+			(at 86.36 144.78 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 86.36 144.78 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 86.36 144.78 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "8f6bf506-b356-51bc-a874-d83d1c239f7b")
+		)
+		(pin "2"
+			(uuid "dc7de84e-d82a-593b-acf6-1fc94c5a8786")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "R10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 86.36 140.97)
+			(xy 86.36 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a8578547-32d4-57d6-8f21-301fdb54a905")
+	)
+	(label "3V3"
+		(at 86.36 138.43 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "4dede5f9-9faf-58a1-a279-604a9fe8487f")
+	)
+	(wire
+		(pts
+			(xy 86.36 148.59)
+			(xy 86.36 151.13)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b9d127d2-c23d-5335-b36e-d29792ab3ab2")
+	)
+	(label "CHG_STAT"
+		(at 86.36 151.13 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "b0c1de62-7f5f-505e-89d2-27cb29910e41")
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 93.98 171.45 0)
 		(unit 1)
@@ -8917,7 +9037,7 @@
 		)
 		(uuid "462ce82f-ddda-5a4a-9d3c-ca9e5cbe8596")
 	)
-	(text "I_chg = 1000 V / R3 = ~300 mA.  CHRG (open drain) -> MCU, internal pull-up.\nVBUS_SENSE = 0.6 x VBUS (3.0 V at 5 V): plugged in, charging or full."
+	(text "I_chg = (1000 V / R3) x (1.2 - 4 I/3) = 260 mA.  CHRG -> MCU, R10 pull-up (its done-state pull-down is weak).\nU7 pin 5 on 3V3, not VBUS: the C6 pulls D+ up while unplugged and would back-feed VBUS.\nVBUS_SENSE = 0.61 x VBUS (3.0 V at 5 V): plugged in, charging or full."
 		(exclude_from_sim no)
 		(at 15.24 184.15 0)
 		(effects
@@ -8926,7 +9046,7 @@
 			)
 			(justify left top)
 		)
-		(uuid "dd1c900d-a2ca-5b31-a4d6-e83fa4ae535f")
+		(uuid "044a0eb3-51fc-5da8-985e-570122d3bb2c")
 	)
 	(rectangle
 		(start 139.7 12.7)

@@ -50,8 +50,8 @@ def build(sh):
               'A5': 'CC1', 'B5': 'CC2', 'A6': 'USB_DP', 'B6': 'USB_DP',
               'A7': 'USB_DN', 'B7': 'USB_DN', 'A8': 'NC', 'B8': 'NC'},
              fp='Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12', lcsc='C165948')
-    sh.place('Power_Protection:USBLC6-2SC6', 'U7', 'USBLC6-2SC6', 68.58, 118.11,
-             {'1': 'USB_DP', '6': 'USB_DP', '3': 'USB_DN', '4': 'USB_DN', '5': 'VBUS', '2': 'GND'},   # channels are identical: picked for the layout
+    sh.place('Power_Protection:USBLC6-2SC6', 'U7', 'USBLC6-2SC6', 58.42, 118.11,
+             {'1': 'USB_DN', '6': 'USB_DN', '3': 'USB_DP', '4': 'USB_DP', '5': '3V3', '2': 'GND'},   # channels are identical: picked for the layout
              fp='Package_TO_SOT_SMD:SOT-23-6', lcsc='C7519')
     sh.passive('R', 'R1', '5.1k', 71.12, 171.45, 'CC1', 'GND', R0402, 'C25905')
     sh.passive('R', 'R2', '5.1k', 81.28, 171.45, 'CC2', 'GND', R0402, 'C25905')
@@ -59,12 +59,14 @@ def build(sh):
              {'4': 'VBUS', '5': 'CHG_PROG', '3': 'VBAT', '1': 'CHG_STAT', '2': 'GND'},
              lcsc='C32574')
     sh.passive('R', 'R3', '3.3k', 73.66, 144.78, 'CHG_PROG', 'GND', R0402, 'C25890')
+    sh.passive('R', 'R10', '10k', 86.36, 144.78, '3V3', 'CHG_STAT', R0402, 'C25744')
     sh.passive('C', 'C4', '4.7u', 93.98, 171.45, 'VBUS', 'GND', C0603, 'C19666')
     sh.passive('R', 'R14', '33k', 114.3, 144.78, 'VBUS', 'VBUS_SENSE', R0402, 'C25779')
     sh.passive('R', 'R15', '51k', 127, 144.78, 'VBUS_SENSE', 'GND', R0402, 'C25794')
     sh.flag('VBUS', 110.49, 167.64)
-    sh.text('I_chg = 1000 V / R3 = ~300 mA.  CHRG (open drain) -> MCU, internal pull-up.\n'
-            'VBUS_SENSE = 0.6 x VBUS (3.0 V at 5 V): plugged in, charging or full.', 15.24, 184.15)
+    sh.text('I_chg = (1000 V / R3) x (1.2 - 4 I/3) = 260 mA.  CHRG -> MCU, R10 pull-up (its done-state pull-down is weak).\n'
+            'U7 pin 5 on 3V3, not VBUS: the C6 pulls D+ up while unplugged and would back-feed VBUS.\n'
+            'VBUS_SENSE = 0.61 x VBUS (3.0 V at 5 V): plugged in, charging or full.', 15.24, 184.15)
 
     # ------------------------------------------------------------ 3.3 V
     sh.box(139.7, 12.7, 279.4, 59.69, '3.3 V regulator')

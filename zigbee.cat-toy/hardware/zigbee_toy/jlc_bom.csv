@@ -19,7 +19,7 @@
 "1.5k","1","R6","Resistor_SMD:R_0402_1005Metric","C25867"
 "100R","1","R7","Resistor_SMD:R_0402_1005Metric","C25076"
 "100k","1","R8","Resistor_SMD:R_0402_1005Metric","C25741"
-"10k","1","R9","Resistor_SMD:R_0402_1005Metric","C25744"
+"10k","2","R9,R10","Resistor_SMD:R_0402_1005Metric","C25744"
 "0R","1","R11","Resistor_SMD:R_0402_1005Metric","C17168"
 "1M","2","R12,R13","Resistor_SMD:R_0402_1005Metric","C26083"
 "33k","1","R14","Resistor_SMD:R_0402_1005Metric","C25779"

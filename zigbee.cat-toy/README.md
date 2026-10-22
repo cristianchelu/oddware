@@ -20,6 +20,9 @@ three connectors.
 - **Rev B** (this tree) — ESP32-C6. Every assembled part is eligible for
   JLC Economic PCBA. DRC-clean, not ordered yet.
 - No firmware yet.
+- Open for the next revision (from the datasheet review): 100 nF at module
+  pin 3, an external 10 k pull-up on IO9, the accelerometer's pad 4 to GND,
+  ground vias under the charger.
 
 ## The toys
 
@@ -56,12 +59,12 @@ bulk capacitors 0603/0805.
 | 3.3 V | Richtek RT9080-33 | 2 µA quiescent, 600 mA |
 | Motor driver | TI DRV8213 | Current sense on IPROPI, no shunt. Firmware picks the hardware current limit per toy: 1.66 A, 324 mA or 69 mA |
 | Accelerometer | MSKSEMI LIS2DW12TR-MS | Wake-on-motion and tap. Not ST's LIS2DW12, see below |
-| Charger | TP4054 | 300 mA from USB-C. Charge state goes to the MCU |
+| Charger | TP4054 | 260 mA from USB-C. Charge state goes to the MCU through a 10 k pull-up |
 | Cell protection | XySemi XB5353A | Low side, FETs built in |
 | Reverse polarity | AO3401A | High side |
 | Speaker | AO3400A | Low-side PWM switch |
 | Status LED | red 0603 | On a GPIO |
-| USB ESD | ST USBLC6-2SC6 | D+/D− clamps, VBUS-referenced |
+| USB ESD | ST USBLC6-2SC6 | D+/D− clamps, referenced to 3V3: on VBUS, the C6's D+ pull-up would back-feed VBUS while unplugged |
 | Button | Alps SKRTLAE010 | Side push. Pairing, and BOOT for flashing |
 
 - Left edge — motor and speaker JST-SH connectors (SMD, assembled), battery
@@ -76,7 +79,8 @@ reads 0x11 and the registers follow the LIS2DH layout (CTRL_REG1 at 0x20,
 OUT_X_L at 0x28, AOI1/CLICK blocks). Use a LIS2DH-style driver. Only INT1
 is wired; route both wake and tap to it.
 
-Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf).
+Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf). Datasheet review:
+[docs/design_review_rev_b.md](docs/design_review_rev_b.md).
 
 ### Pin map
 
@@ -93,8 +97,8 @@ Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf).
 | 22 | IO8 | I2C_SDA | 4.7 k pull-up, which also holds the IO8 strap high |
 | 24 | IO18 | I2C_SCL | 4.7 k pull-up. Accelerometer at 0x19 |
 | 23 | IO9 | BTN | BOOT strap. Hold while resetting for download mode |
-| 25 | IO19 | VBUS_SENSE | 0.6 × VBUS: high when plugged in, charging or full |
-| 26 | IO20 | CHG_STAT | low while charging, internal pull-up |
+| 25 | IO19 | VBUS_SENSE | 0.61 × VBUS: high when plugged in, charging or full |
+| 26 | IO20 | CHG_STAT | low while charging, 10 k pull-up (R10) |
 | 29 | IO23 | LED_STATUS | high = on |
 | 17, 18 | IO12, IO13 | USB D−, D+ | |
 | 30, 31 | RXD0, TXD0 | DBG_RX, DBG_TX | test pads, 3.3 V |
@@ -105,7 +109,11 @@ Unconnected: IO15 (a strapping pin), IO21, IO22.
 Motor drive: PWM between drive and brake. Forward IN1 = 1, IN2 = 1 − duty;
 reverse IN2 = 1, IN1 = 1 − duty. Both pins need a PWM channel. Drive/coast
 also spins the motor, but IPROPI reads zero while coasting, so current
-sensing and stall detection stop working.
+sensing and stall detection stop working. The driver only auto-sleeps with
+IN1 = IN2 = 0; brake keeps it awake, so park both inputs low before sleeping.
+
+The JST-SH is rated 1 A per pin. Use the 324 mA limit (GAINSEL Hi-Z) as the
+default; at 1.66 A a stalled motor overloads the connector.
 
 ### Power
 
@@ -117,6 +125,18 @@ That is 1.6 mAh a day. Ten minutes of flapping costs about 25 mAh, so a
 
 The battery divider is 1 M / 1 M. At that impedance the ADC's own input
 current shifts the reading; calibrate it against a meter in firmware.
+
+- Low battery — the XB5353A cuts off at 2.4 V, but the C6 browns out below
+  about 3.4 V during radio bursts and reboots in a loop. Stop the radio and
+  sleep at 3.4 V; the protection IC is the last line.
+- First cell — the XB5353A may start in its off state when a cell is
+  connected. Plug in USB once to wake it.
+- Charge state — CHG_STAT low = charging; high with VBUS_SENSE high = done;
+  high with VBUS_SENSE low = unplugged. With USB plugged in and the radio
+  awake, the board draws through the charger, which then stays in its
+  constant-voltage float and CHG_STAT stays low. Not an error.
+- Charger heat — 0.34 W at 260 mA into a 3.7 V cell. On a warm day the
+  TP4054 folds its current back.
 
 ### Layout
 
