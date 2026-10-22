@@ -92,6 +92,8 @@ def write_project_rules():
     }
     # gen_silk.py clips footprint silk at the board edge on purpose, so the board copies differ
     pro['board']['design_settings'].setdefault('rule_severities', {})['lib_footprint_mismatch'] = 'ignore'
+    # courtyards overlap by their library margins on this board; tools/check_spacing.py checks the real gaps
+    pro['board']['design_settings']['rule_severities']['courtyards_overlap'] = 'warning'
     with open(pro_path, 'w') as f:
         json.dump(pro, f, indent=2)
 
@@ -203,6 +205,8 @@ def place():
         board.Add(fp)
         fp.SetPosition(v(x, y))
         fp.SetOrientationDegrees(rot)
+        if ref == 'SW1':
+            fp.SetDuplicatePadNumbersAreJumpers(True)   # both '1' pads are the same switch terminal
         if ref.startswith('TP'):
             # bare probe pads, not parts: the library's 2 mm courtyard would forbid a tight grid
             for g in fp.GraphicalItems():
@@ -232,7 +236,7 @@ def place():
 
 def check_edge_keepout(board, comps):
     """JLC assembly: every assembled body >= EDGE_KEEPOUT from the board edge (F.Fab outline = body).
-    Parts in EDGE_PARTS may reach the right edge only."""
+    Parts in EDGE_PARTS may reach their own edge only."""
     bad = []
     for fp in board.GetFootprints():
         ref = fp.GetReference()
@@ -246,10 +250,13 @@ def check_edge_keepout(board, comps):
         y1 = min(pcbnew.ToMM(b.GetTop()) for b in boxes); y2 = max(pcbnew.ToMM(b.GetBottom()) for b in boxes)
         d = {'top': y1, 'bottom': BOARD_H - y2, 'left': x1, 'right': BOARD_W - x2}
         if ref in EDGE_PARTS:
-            d.pop('right')
+            d.pop(EDGE_PARTS[ref])
         for side, dist in d.items():
             if dist < EDGE_KEEPOUT - 1e-3:
                 bad.append(f'{ref} body {dist:.2f} mm from the {side} edge')
+    if bad and os.environ.get('PLACE_DRAFT'):          # floorplanning: report, keep going
+        print('DRAFT, edge keepout violated:\n  ' + '\n  '.join(bad))
+        return
     if bad:
         raise SystemExit('edge keepout (' + str(EDGE_KEEPOUT) + ' mm) violated:\n  ' + '\n  '.join(bad))
     print(f'edge keepout ok: assembled bodies >= {EDGE_KEEPOUT} mm from the edges')
@@ -344,10 +351,13 @@ def export_dsn():
     no_tracks(pcbnew.B_Cu, yx - 1.65, cy + 5.7, yx + 2.05, yy + 1.3)
     # nothing under the USB-C receptacle: on F.Cu only solder mask would separate a track from the
     # shell; B.Cu stays solid so the shell ties into the ground plane
-    j1 = board.FindFootprintByReference('J1').GetCourtyard(pcbnew.F_Cu).BBox()
-    for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
-        no_tracks(layer, pcbnew.ToMM(j1.GetLeft()), pcbnew.ToMM(j1.GetTop()),
-                  BOARD_W, pcbnew.ToMM(j1.GetBottom()))
+    # (F.Cu from the body's back edge; B.Cu only right of the D+/D- escape vias, which routes.py puts at x 30.45/31.15)
+    j1fp = board.FindFootprintByReference('J1')
+    j1 = j1fp.GetCourtyard(pcbnew.F_Cu).BBox()
+    body_x = min(pcbnew.ToMM(g.GetBoundingBox().GetLeft()) for g in j1fp.GraphicalItems()
+                 if g.GetLayer() == pcbnew.F_Fab and isinstance(g, pcbnew.PCB_SHAPE))
+    no_tracks(pcbnew.F_Cu, body_x, pcbnew.ToMM(j1.GetTop()), BOARD_W, pcbnew.ToMM(j1.GetBottom()))
+    no_tracks(pcbnew.B_Cu, 31.6, pcbnew.ToMM(j1.GetTop()), BOARD_W, pcbnew.ToMM(j1.GetBottom()))
     out = os.path.join(PROJ, 'build', 'zigbee_toy.dsn')
     ok = pcbnew.ExportSpecctraDSN(board, out)
     print('dsn', ok, out)

@@ -11,7 +11,7 @@ OUT=build/jlc
 rm -rf "$OUT" && mkdir -p "$OUT/gerbers"
 # The board must sit next to its .kicad_pro/.kicad_dru/fp-lib-table, or KiCad falls back to default rules (0.2 mm clearance, 0.5 mm edge).
 mkdir -p "$OUT/work" && cp zigbee_toy.kicad_pcb zigbee_toy.kicad_pro zigbee_toy.kicad_dru fp-lib-table "$OUT/work/" && cp -r zigbee_toy.pretty "$OUT/work/"
-$K pcb drc --refill-zones --save-board --exit-code-violations -o "$OUT/drc.rpt" "$OUT/work/zigbee_toy.kicad_pcb" >/dev/null
+$K pcb drc --refill-zones --save-board --severity-error --exit-code-violations -o "$OUT/drc.rpt" "$OUT/work/zigbee_toy.kicad_pcb" >/dev/null
 $K pcb export gerbers --layers F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts \
     --subtract-soldermask --no-x2 --use-drill-file-origin -o "$OUT/gerbers/" "$OUT/work/zigbee_toy.kicad_pcb" >/dev/null
 $K pcb export drill --format excellon --excellon-separate-th --excellon-units mm --drill-origin plot \

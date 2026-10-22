@@ -8,3 +8,4 @@ $K pcb export svg -l "$L" --mode-single --page-size-mode 2 --exclude-drawing-she
 magick -density 600 build/board.svg -background white -flatten build/board.png
 $K pcb drc --severity-all -o build/drc.rpt zigbee_toy.kicad_pcb >/dev/null || true
 grep -E '^\[' build/drc.rpt | sed 's/:.*//' | sort | uniq -c
+flatpak run --command=python3 org.kicad.kicad ../tools/check_spacing.py 2>&1 | grep -v -E 'm_choices|swig|Debug' || true

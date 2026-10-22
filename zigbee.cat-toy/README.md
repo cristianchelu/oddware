@@ -4,7 +4,7 @@ One controller board for three battery-powered Zigbee cat toys: a flapping
 bird, a flapping fish and a rolling ball. The board drives a motor and a
 speaker, wakes on motion, charges over USB-C, and joins Home Assistant as a
 sleepy Zigbee end device. The toys differ only in what is plugged into its
-three JST-PH connectors.
+three connectors.
 
 ![Rev B board, KiCad 3D render](docs/pcb_rev_b_iso.png)
 
@@ -32,6 +32,8 @@ three JST-PH connectors.
 - Any 3.7 V cell with a JST-PH lead works, protected or not. The board has
   its own protection and a reverse-polarity FET; JST-PH pigtails come wired
   both ways.
+- Motor and speaker plug in with JST-SH (1 mm, 1 A per pin). Crimp the
+  leads or buy SH pigtails.
 - Keep the ceramic capacitor across the motor tabs. It suppresses brush noise
   next to a 2.4 GHz radio.
 - The module has no antenna of its own. Plug a 2.4 GHz FPC antenna into its
@@ -45,7 +47,8 @@ Printed parts for the ball and a bench pod:
 
 ![Rev B board, top and back](docs/pcb_rev_b_preview.png)
 
-40 × 26 mm, 2 layers, every assembled part on top.
+36 × 23 mm, 2 layers, every assembled part on top. Passives are 0402,
+bulk capacitors 0603/0805.
 
 | Block | Part | Notes |
 |-------|------|-------|
@@ -58,9 +61,11 @@ Printed parts for the ball and a bench pod:
 | Reverse polarity | AO3401A | High side |
 | Speaker | AO3400A | Low-side PWM switch |
 | Status LED | red 0603 | On a GPIO |
+| USB ESD | ST USBLC6-2SC6 | D+/D− clamps, VBUS-referenced |
 | Button | Alps SKRTLAE010 | Side push. Pairing, and BOOT for flashing |
 
-- Left edge — motor, speaker and battery JST-PH connectors.
+- Left edge — motor and speaker JST-SH connectors (SMD, assembled), battery
+  JST-PH (through-hole, hand-soldered).
 - Right edge — USB-C and the side-push button, status LED above the USB-C.
 - Top edge — the module, 1 mm from the edge.
 - Back — 21 labelled test pads, debug UART among them.
@@ -88,8 +93,8 @@ Schematic: [PDF](hardware/zigbee_toy/zigbee_toy_schematic.pdf).
 | 22 | IO8 | I2C_SDA | 4.7 k pull-up, which also holds the IO8 strap high |
 | 24 | IO18 | I2C_SCL | 4.7 k pull-up. Accelerometer at 0x19 |
 | 23 | IO9 | BTN | BOOT strap. Hold while resetting for download mode |
-| 25 | IO19 | CHG_STAT | low while charging, internal pull-up |
-| 26 | IO20 | VBUS_SENSE | 0.6 × VBUS: high when plugged in, charging or full |
+| 25 | IO19 | VBUS_SENSE | 0.6 × VBUS: high when plugged in, charging or full |
+| 26 | IO20 | CHG_STAT | low while charging, internal pull-up |
 | 29 | IO23 | LED_STATUS | high = on |
 | 17, 18 | IO12, IO13 | USB D−, D+ | |
 | 30, 31 | RXD0, TXD0 | DBG_RX, DBG_TX | test pads, 3.3 V |
@@ -116,34 +121,39 @@ current shifts the reading; calibrate it against a meter in firmware.
 ### Layout
 
 - **Edge distance:** every assembled part body is at least 1 mm from the
-  board edge (see [Ordering](#ordering)). The USB-C and the button are
-  exempt on the right edge. `gen_pcb.py` refuses a placement that breaks it.
-- **Module position:** 1 mm from the top edge. Below it, a 2.6 mm channel
-  separates its bottom pins from the row under it; the bottom and right
-  pins drop to the back layer there.
+  board edge (see [Ordering](#ordering)). Exempt: the USB-C and the button
+  on the right edge, the two JST-SH plugs on the left. The SH fronts sit
+  0.5 mm in from the edge so their solder tabs keep 0.3 mm of copper
+  clearance. `gen_pcb.py` refuses a placement that breaks the rule.
+- **Module position:** 1 mm from the top edge. Under it, two rows of parts
+  with a channel between them: crystal, accelerometer and USB protection in
+  the first row, regulator and the two dividers in the second.
 - **Antenna keepout:** no copper on either layer between the module's top
   pads and the board edge. That is the area under an ESP32-C6-MINI-1's PCB
   antenna, so the MINI-1 fits the same pads. The keepout is a rule area in
   the module footprint, so DRC checks it.
-- **USB D+/D−:** back layer, directly under the module's bottom edge, up
-  into the pad ring through vias inside pins 17 and 18. Run any lower, the
-  pair walls off the channel.
-- **Under the USB-C:** no top-layer copper except the pad escapes. The
-  button line crosses on the back layer.
-- **Crystal:** no back-layer copper under it or its traces. 3V3 reaches the
-  module west of it.
+- **USB D+/D−:** each USB-C pad pair is joined on the back layer through
+  vias inside the receptacle. D+ passes left of the shell tab, D− right of
+  it, into the USBLC6 below the receptacle. From there both run on the back
+  layer under the module's bottom edge and come up through vias inside the
+  pad ring at pins 17 and 18.
+- **Under the USB-C:** no top-layer copper except the pad escapes. On the
+  back, only the escape vias and the VBUS run, so the shell still ties into
+  the ground pour.
+- **Crystal:** no back-layer copper under it or its traces.
 - The DSN export turns the last two into keepouts for the autorouter; hand
   routes are not checked against them.
-- **3V3:** regulator, 22 µF bulk next to it, back layer to module pin 3,
-  10 µF at the pin.
+- **VBAT:** back layer from the battery FET up the left column to the
+  driver, and along the bottom in a channel between the two rows of test
+  pads to the regulator, the battery divider and the charger.
+- **3V3:** regulator, 22 µF next to it, 10 µF at module pin 3.
 - **Motor driver:** C3's ground pad drops straight onto the thermal pad,
-  which has two vias to the back. IN2 runs on the back layer below the
-  driver, not under it, so the back plane joins the VM caps' ground vias to
-  the thermal pad vias. Keep it that way: with one trace under the driver,
-  C3's return path was 15 mm long instead of 1.
+  which has two vias to the back. Keep the back plane under the driver
+  whole: with one trace under it, C3's return path was 15 mm long instead
+  of 1.
 - **Ground:** both layers poured. `gen_pcb.py stitch` adds a 2.5 mm via grid
-  and a via to every pour island it can reach. Seven of the module's nine
-  centre ground pads have a via; the GAINSEL trace runs under the other two.
+  and a via to every pour island it can reach. Five of the module's nine
+  centre ground pads have a via.
 
 ## Flashing
 
@@ -180,7 +190,9 @@ a new LCSC number shows up in the BOM.
 1. Run `hardware/tools/build.sh`. It writes the schematic, runs ERC, checks
    the netlist against intent, and writes the PDF and the JLC BOM.
 2. Run `hardware/tools/pcb_build.sh`. It places, adds the copper, stitches,
-   adds the silkscreen and runs DRC. Placement fails if a part breaks the
+   adds the silkscreen, runs DRC and checks part spacing
+   (`check_spacing.py`: bodies 0.2 mm, pads 0.15 mm apart; the library
+   courtyards overlap by their margins). Placement fails if a part breaks the
    edge distance.
 3. Run `hardware/tools/export_jlc.sh`. It writes `gerbers.zip`, `cpl.csv`
    and `bom.csv` to `hardware/zigbee_toy/build/jlc/`.
@@ -199,9 +211,9 @@ folders, which git ignores.
 
 ## Ordering
 
-- Order Economic PCBA. Seven parts are JLC "Extended" ($3 each per order):
-  module, motor driver, accelerometer, regulator, protection IC, USB-C,
-  button. Parts come to about $7.75 a board.
+- Order Economic PCBA. Nine parts are JLC "Extended" ($3 each per order):
+  module, motor driver, accelerometer, regulator, protection IC, USB ESD,
+  USB-C, JST-SH, button. Parts come to about $8.25 a board.
 - The order's BOM step decides Economic or Standard, not the "PCBA Type"
   field on the part page. One Standard-only part moves the whole order to
   Standard. Re-check there after any part swap.

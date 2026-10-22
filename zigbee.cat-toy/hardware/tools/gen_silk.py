@@ -51,16 +51,67 @@ def hit(a, b):
 
 
 # ------------------------------------------------------------------ edge clipping
+def shape_segments(g):
+    """A silk segment or rectangle as line segments (board mm); other shapes: none."""
+    if g.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+        return [((T(g.GetStart().x), T(g.GetStart().y)), (T(g.GetEnd().x), T(g.GetEnd().y)))]
+    if g.GetShape() == pcbnew.SHAPE_T_RECT:
+        x1, y1, x2, y2 = (T(g.GetStart().x), T(g.GetStart().y), T(g.GetEnd().x), T(g.GetEnd().y))
+        c = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+        return [(c[i], c[(i + 1) % 4]) for i in range(4)]
+    return []
+
+
+def sample(g, step=0.1):
+    for (ax, ay), (bx, by) in shape_segments(g):
+        n = max(1, int(math.hypot(bx - ax, by - ay) / step))
+        for i in range(n + 1):
+            yield (ax + (bx - ax) * i / n, ay + (by - ay) * i / n)
+
+
 def clip_footprint_silk(board, footprints):
+    """Cut footprint silk lines where they leave the board, cross a pad, or run into another part's silk."""
     n_cut = 0
     # snapshot first: the SWIG proxies go stale once a footprint's drawings are edited
     snap = [(fp, list(fp.GraphicalItems())) for fp in footprints]
+    pads = [grow(bbox_mm(p), PAD_CLR) for fp in footprints for p in fp.Pads() if p.IsOnLayer(pcbnew.F_Cu)]
+    silk = []          # (ref, (a, b), half width): other footprints' silk as line segments
     for fp, items in snap:
+        for g in items:
+            if g.GetLayer() == pcbnew.F_SilkS and isinstance(g, pcbnew.PCB_SHAPE):
+                segs = shape_segments(g)
+                if not segs:                  # polygons, circles (pin-1 marks): their bounding box
+                    x1, y1, x2, y2 = bbox_mm(g)
+                    c = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+                    segs = [(c[i], c[(i + 1) % 4]) for i in range(4)]
+                for seg in segs:
+                    silk.append((fp.GetReference(), seg, T(g.GetWidth()) / 2))
+
+    def seg_dist(p, a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = dx * dx + dy * dy
+        t = 0 if L == 0 else max(0, min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L))
+        return math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy)
+
+    def blocked(ref, p, hw):
+        r = [p[0] - hw, p[1] - hw, p[0] + hw, p[1] + hw]
+        return any(hit(r, o) for o in pads) or \
+            any(seg_dist(p, a, b) < hw + ohw + SILK_CLR for other, (a, b), ohw in silk if other != ref)
+
+    for fp, items in snap:
+        ref = fp.GetReference()
         for g in items:
             if g.GetLayer() != pcbnew.F_SilkS or not isinstance(g, pcbnew.PCB_SHAPE):
                 continue
+            if g.GetShape() not in (pcbnew.SHAPE_T_SEGMENT, pcbnew.SHAPE_T_RECT):
+                continue
             x1, y1, x2, y2 = bbox_mm(g)
-            if all(inside_board(x, y, m=EDGE - 0.05) for x in (x1, x2) for y in (y1, y2)):
+            box = [x1, y1, x2, y2]
+            near = grow(box, T(g.GetWidth()) + SILK_CLR + 0.2)
+            if all(inside_board(x, y, m=EDGE - 0.05) for x in (x1, x2) for y in (y1, y2)) and \
+                    not any(hit(box, o) for o in pads) and \
+                    not any(other != ref and hit(near, [min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])])
+                            and any(blocked(ref, q, T(g.GetWidth()) / 2) for q in sample(g)) for other, (a, b), _ in silk):
                 continue
             n_cut += 1
             w = g.GetWidth()
@@ -68,8 +119,7 @@ def clip_footprint_silk(board, footprints):
             if g.GetShape() == pcbnew.SHAPE_T_SEGMENT:
                 segs = [((T(g.GetStart().x), T(g.GetStart().y)), (T(g.GetEnd().x), T(g.GetEnd().y)))]
             elif g.GetShape() == pcbnew.SHAPE_T_RECT:
-                c = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
-                segs = [(c[i], c[(i + 1) % 4]) for i in range(4)]
+                segs = shape_segments(g)
             fp.Remove(g)
             for (ax, ay), (bx, by) in segs:
                 n = max(2, int(math.hypot(bx - ax, by - ay) / 0.02))
@@ -77,7 +127,7 @@ def clip_footprint_silk(board, footprints):
                 for i in range(n + 1):
                     t = i / n
                     p = (ax + (bx - ax) * t, ay + (by - ay) * t)
-                    ok = inside_board(*p, m=EDGE + T(w) / 2)
+                    ok = inside_board(*p, m=EDGE + T(w) / 2) and not blocked(ref, p, T(w) / 2)
                     if ok and run is None:
                         run = [p, p]
                     elif ok:

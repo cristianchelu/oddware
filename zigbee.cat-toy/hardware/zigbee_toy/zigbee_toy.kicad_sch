@@ -1779,6 +1779,503 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Power_Protection:USBLC6-2SC6"
+			(pin_names
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0.635 5.715 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "USBLC6-2SC6"
+				(at 0.635 3.81 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+				(at 1.27 -6.35 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+						(italic yes)
+					)
+					(justify left)
+				)
+			)
+			(property "Datasheet" "https://www.st.com/resource/en/datasheet/usblc6-2.pdf"
+				(at 1.27 -8.255 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Description" "Very low capacitance ESD protection diode, 2 data-line, SOT-23-6"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "usb ethernet video"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "SOT?23*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "USBLC6-2SC6_0_0"
+				(circle
+					(center -1.524 0)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center -0.508 2.032)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center -0.508 -4.572)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 0.508 2.032)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 0.508 -4.572)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 1.524 -2.54)
+					(radius 0.0001)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "USBLC6-2SC6_0_1"
+				(polyline
+					(pts
+						(xy -2.54 0)
+						(xy 2.54 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.54 -2.54)
+						(xy 2.54 -2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 0.508)
+						(xy -1.016 0.508)
+						(xy -1.524 1.524)
+						(xy -2.032 0.508)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 -3.048)
+						(xy -1.016 -3.048)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.016 1.524)
+						(xy -2.032 1.524)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.016 -4.064)
+						(xy -2.032 -4.064)
+						(xy -1.524 -3.048)
+						(xy -1.016 -4.064)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -0.508 -1.143)
+						(xy -0.508 -0.762)
+						(xy 0.508 -0.762)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54)
+						(xy -0.508 2.032)
+						(xy 0.508 2.032)
+						(xy 0 1.524)
+						(xy 0 -4.064)
+						(xy -0.508 -4.572)
+						(xy 0.508 -4.572)
+						(xy 0 -5.08)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.508 -1.778)
+						(xy -0.508 -1.778)
+						(xy 0 -0.762)
+						(xy 0.508 -1.778)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.016 1.524)
+						(xy 2.032 1.524)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.016 -3.048)
+						(xy 2.032 -3.048)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.032 0.508)
+						(xy 1.016 0.508)
+						(xy 1.524 1.524)
+						(xy 2.032 0.508)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 2.032 -4.064)
+						(xy 1.016 -4.064)
+						(xy 1.524 -3.048)
+						(xy 2.032 -4.064)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "USBLC6-2SC6_1_1"
+				(rectangle
+					(start -2.54 2.794)
+					(end 2.54 -5.334)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(polyline
+					(pts
+						(xy -0.508 2.032)
+						(xy -1.524 2.032)
+						(xy -1.524 -4.572)
+						(xy -0.508 -4.572)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.508 -4.572)
+						(xy 1.524 -4.572)
+						(xy 1.524 2.032)
+						(xy 0.508 2.032)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "I/O1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 2.54)
+					(name "I/O2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 -2.54 180)
+					(length 2.54)
+					(name "I/O2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 5.08 270)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "I/O1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:R"
 			(pin_numbers
 				(hide yes)
@@ -5488,7 +5985,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 64.4652 69.85 0)
 			(hide yes)
 			(effects
@@ -5497,7 +5994,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14663"
+		(property "LCSC" "C1525"
 			(at 63.5 66.04 0)
 			(hide yes)
 			(effects
@@ -6820,6 +7317,279 @@
 		)
 	)
 	(symbol
+		(lib_id "Power_Protection:USBLC6-2SC6")
+		(at 68.58 118.11 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "710a67e9-4e8e-5adf-a941-329e118e9a7b")
+		(property "Reference" "U7"
+			(at 69.215 112.395 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "USBLC6-2SC6"
+			(at 69.215 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+			(at 69.85 124.46 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "LCSC" "C7519"
+			(at 68.58 118.11 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.st.com/resource/en/datasheet/usblc6-2.pdf"
+			(at 69.85 126.365 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" "Very low capacitance ESD protection diode, 2 data-line, SOT-23-6"
+			(at 68.58 118.11 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "2e90c4f6-cb2c-577f-a2c6-b3d14e874c14")
+		)
+		(pin "2"
+			(uuid "f635811b-be98-54b2-9d17-221c3a529a04")
+		)
+		(pin "3"
+			(uuid "f7d68acc-2395-5dfd-b3df-2b02772d68e1")
+		)
+		(pin "4"
+			(uuid "79545fba-dc26-582f-ba8c-8b0a18cac4f6")
+		)
+		(pin "5"
+			(uuid "a9f1c1ef-6af8-5147-8bda-59bf0d2f64d0")
+		)
+		(pin "6"
+			(uuid "3bd6ec77-ddf2-5085-b43c-9762344dced4")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "U7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 63.5 118.11)
+			(xy 60.96 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e656a1e-6482-5605-bf6d-56905ddd5dd6")
+	)
+	(label "USB_DP"
+		(at 60.96 118.11 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "7e2630d3-b786-56da-9bfc-adaa5953506e")
+	)
+	(wire
+		(pts
+			(xy 68.58 125.73)
+			(xy 68.58 128.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "324f0039-dc65-5c85-9c2e-c96022b7aa3c")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 68.58 128.27 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "af9b2cb9-8551-5851-983e-f7794a30b3e1")
+		(property "Reference" "#PWR07"
+			(at 68.58 134.62 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 68.58 132.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 68.58 128.27 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 68.58 128.27 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 68.58 128.27 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ee85f0d3-496b-58ed-be3c-50b51c4037a6")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "#PWR07")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 63.5 120.65)
+			(xy 60.96 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1e217962-6811-5d20-98ce-6e7e6cecb795")
+	)
+	(label "USB_DN"
+		(at 60.96 120.65 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "e36079b3-71f6-5f54-b752-5ea7d518d7d4")
+	)
+	(wire
+		(pts
+			(xy 73.66 120.65)
+			(xy 76.2 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "abca1671-e1bd-572d-ac46-4b17204421e6")
+	)
+	(label "USB_DN"
+		(at 76.2 120.65 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8805c17e-2e77-55a9-8298-28ff702e9207")
+	)
+	(wire
+		(pts
+			(xy 68.58 113.03)
+			(xy 68.58 110.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9389f0ac-d05a-50cc-966e-1a0b8a488418")
+	)
+	(label "VBUS"
+		(at 68.58 110.49 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "066a73d5-2a85-549d-8e76-667de504db8e")
+	)
+	(wire
+		(pts
+			(xy 73.66 118.11)
+			(xy 76.2 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bf5d83f3-3d0d-5d87-89fa-8d42aeac38dd")
+	)
+	(label "USB_DP"
+		(at 76.2 118.11 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "0f344d3c-4646-5b81-a59d-6cc2f7dd2ded")
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 71.12 171.45 0)
 		(unit 1)
@@ -6846,7 +7616,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 69.342 171.45 0)
 			(hide yes)
 			(effects
@@ -6855,7 +7625,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23186"
+		(property "LCSC" "C25905"
 			(at 71.12 171.45 0)
 			(hide yes)
 			(effects
@@ -6937,8 +7707,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "af9b2cb9-8551-5851-983e-f7794a30b3e1")
-		(property "Reference" "#PWR07"
+		(uuid "c5e7c641-17d5-54c8-8ceb-9ba71b6d4982")
+		(property "Reference" "#PWR08"
 			(at 71.12 184.15 0)
 			(hide yes)
 			(effects
@@ -6983,12 +7753,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "ee85f0d3-496b-58ed-be3c-50b51c4037a6")
+			(uuid "191a4053-7566-5a61-8988-c3bf5930b934")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR07")
+					(reference "#PWR08")
 					(unit 1)
 				)
 			)
@@ -7021,7 +7791,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 79.502 171.45 0)
 			(hide yes)
 			(effects
@@ -7030,7 +7800,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23186"
+		(property "LCSC" "C25905"
 			(at 81.28 171.45 0)
 			(hide yes)
 			(effects
@@ -7112,8 +7882,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "c5e7c641-17d5-54c8-8ceb-9ba71b6d4982")
-		(property "Reference" "#PWR08"
+		(uuid "bcdd2bd1-3fb5-5352-8ea6-f0c10bbdf91d")
+		(property "Reference" "#PWR09"
 			(at 81.28 184.15 0)
 			(hide yes)
 			(effects
@@ -7158,12 +7928,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "191a4053-7566-5a61-8988-c3bf5930b934")
+			(uuid "223c72e7-07cc-5489-bbea-c07b6bbdece7")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR08")
+					(reference "#PWR09")
 					(unit 1)
 				)
 			)
@@ -7359,8 +8129,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "bcdd2bd1-3fb5-5352-8ea6-f0c10bbdf91d")
-		(property "Reference" "#PWR09"
+		(uuid "cde4035c-e6f5-599f-bb29-ab07448505e6")
+		(property "Reference" "#PWR10"
 			(at 104.14 137.16 0)
 			(hide yes)
 			(effects
@@ -7405,12 +8175,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "223c72e7-07cc-5489-bbea-c07b6bbdece7")
+			(uuid "96e55f15-1be8-5b47-b2b1-624f151e69cf")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR09")
+					(reference "#PWR10")
 					(unit 1)
 				)
 			)
@@ -7443,7 +8213,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 71.882 144.78 0)
 			(hide yes)
 			(effects
@@ -7452,7 +8222,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22978"
+		(property "LCSC" "C25890"
 			(at 73.66 144.78 0)
 			(hide yes)
 			(effects
@@ -7534,8 +8304,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "cde4035c-e6f5-599f-bb29-ab07448505e6")
-		(property "Reference" "#PWR10"
+		(uuid "fbfd2005-6cbf-542a-bb42-a3a5ff310953")
+		(property "Reference" "#PWR11"
 			(at 73.66 157.48 0)
 			(hide yes)
 			(effects
@@ -7580,12 +8350,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "96e55f15-1be8-5b47-b2b1-624f151e69cf")
+			(uuid "315c30f3-e24c-5292-81fb-f24e553182a4")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR10")
+					(reference "#PWR11")
 					(unit 1)
 				)
 			)
@@ -7709,8 +8479,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "fbfd2005-6cbf-542a-bb42-a3a5ff310953")
-		(property "Reference" "#PWR11"
+		(uuid "9b5f596d-8543-5d5f-9b6d-e999eb1563ef")
+		(property "Reference" "#PWR12"
 			(at 93.98 184.15 0)
 			(hide yes)
 			(effects
@@ -7755,12 +8525,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "315c30f3-e24c-5292-81fb-f24e553182a4")
+			(uuid "2f8ae4c1-0d76-5f0e-b493-166e7fe782bd")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR11")
+					(reference "#PWR12")
 					(unit 1)
 				)
 			)
@@ -7784,7 +8554,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "68k"
+		(property "Value" "33k"
 			(at 116.84 146.05 0)
 			(effects
 				(font
@@ -7793,7 +8563,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 112.522 144.78 0)
 			(hide yes)
 			(effects
@@ -7802,7 +8572,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23231"
+		(property "LCSC" "C25779"
 			(at 114.3 144.78 0)
 			(hide yes)
 			(effects
@@ -7904,7 +8674,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100k"
+		(property "Value" "51k"
 			(at 129.54 146.05 0)
 			(effects
 				(font
@@ -7913,7 +8683,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 125.222 144.78 0)
 			(hide yes)
 			(effects
@@ -7922,7 +8692,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25803"
+		(property "LCSC" "C25794"
 			(at 127 144.78 0)
 			(hide yes)
 			(effects
@@ -8004,8 +8774,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "9b5f596d-8543-5d5f-9b6d-e999eb1563ef")
-		(property "Reference" "#PWR12"
+		(uuid "2cce7c1c-db4f-5147-aace-5ada7c75116e")
+		(property "Reference" "#PWR13"
 			(at 127 157.48 0)
 			(hide yes)
 			(effects
@@ -8050,12 +8820,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "2f8ae4c1-0d76-5f0e-b493-166e7fe782bd")
+			(uuid "8accd2b8-4362-5829-9b8f-c8d10e725a2a")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR12")
+					(reference "#PWR13")
 					(unit 1)
 				)
 			)
@@ -8355,8 +9125,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "2cce7c1c-db4f-5147-aace-5ada7c75116e")
-		(property "Reference" "#PWR13"
+		(uuid "bd76d680-4860-5c1b-8ea3-9dbad98ab430")
+		(property "Reference" "#PWR14"
 			(at 190.5 48.26 0)
 			(hide yes)
 			(effects
@@ -8401,12 +9171,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "8accd2b8-4362-5829-9b8f-c8d10e725a2a")
+			(uuid "b88d7113-4a2a-54dc-b352-87883668e2a1")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR13")
+					(reference "#PWR14")
 					(unit 1)
 				)
 			)
@@ -8530,8 +9300,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "bd76d680-4860-5c1b-8ea3-9dbad98ab430")
-		(property "Reference" "#PWR14"
+		(uuid "5aec5d90-cc85-53a5-8bf7-2c0f9b94bb28")
+		(property "Reference" "#PWR15"
 			(at 162.56 50.8 0)
 			(hide yes)
 			(effects
@@ -8576,12 +9346,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "b88d7113-4a2a-54dc-b352-87883668e2a1")
+			(uuid "c85f9f29-59aa-5af9-974e-5bdac0129f56")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR14")
+					(reference "#PWR15")
 					(unit 1)
 				)
 			)
@@ -8705,8 +9475,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "5aec5d90-cc85-53a5-8bf7-2c0f9b94bb28")
-		(property "Reference" "#PWR15"
+		(uuid "11efbba6-b3ce-5eb1-a937-1ae65f84160c")
+		(property "Reference" "#PWR16"
 			(at 223.52 50.8 0)
 			(hide yes)
 			(effects
@@ -8751,12 +9521,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c85f9f29-59aa-5af9-974e-5bdac0129f56")
+			(uuid "66d574d0-0426-5473-aad0-d43f44a4f968")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR15")
+					(reference "#PWR16")
 					(unit 1)
 				)
 			)
@@ -8880,8 +9650,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "11efbba6-b3ce-5eb1-a937-1ae65f84160c")
-		(property "Reference" "#PWR16"
+		(uuid "919d55a3-5782-5a91-b1e7-098574bc246a")
+		(property "Reference" "#PWR17"
 			(at 236.22 50.8 0)
 			(hide yes)
 			(effects
@@ -8926,12 +9696,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "66d574d0-0426-5473-aad0-d43f44a4f968")
+			(uuid "71f97dfe-1b01-5851-b71a-2add97fd6b12")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR16")
+					(reference "#PWR17")
 					(unit 1)
 				)
 			)
@@ -9600,7 +10370,7 @@
 		)
 		(uuid "c30a5477-942d-5bd3-8a5a-9a152a677360")
 	)
-	(label "CHG_STAT"
+	(label "VBUS_SENSE"
 		(at 227.33 135.89 0)
 		(effects
 			(font
@@ -9608,7 +10378,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "1da554fd-c64e-5938-8a42-1e385b699fd7")
+		(uuid "519fd28a-f821-5046-aa1f-be53e0d204ee")
 	)
 	(wire
 		(pts
@@ -9621,7 +10391,7 @@
 		)
 		(uuid "ad153343-031d-5603-b64a-30321aeef7f3")
 	)
-	(label "VBUS_SENSE"
+	(label "CHG_STAT"
 		(at 227.33 138.43 0)
 		(effects
 			(font
@@ -9629,7 +10399,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "9c4ce506-c2aa-50b8-9031-cb4d3a7789a0")
+		(uuid "e1101065-11e1-5ebd-b40f-b1dd274f0a83")
 	)
 	(no_connect
 		(at 224.79 140.97)
@@ -9679,8 +10449,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "919d55a3-5782-5a91-b1e7-098574bc246a")
-		(property "Reference" "#PWR17"
+		(uuid "2cf91d99-39d1-5048-bd8c-ff44243c9dae")
+		(property "Reference" "#PWR18"
 			(at 209.55 160.02 0)
 			(hide yes)
 			(effects
@@ -9725,12 +10495,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "71f97dfe-1b01-5851-b71a-2add97fd6b12")
+			(uuid "36a78f4c-0091-563e-a2f6-d7fcfeb80064")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR17")
+					(reference "#PWR18")
 					(unit 1)
 				)
 			)
@@ -9763,7 +10533,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 150.622 81.28 0)
 			(hide yes)
 			(effects
@@ -9772,7 +10542,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25804"
+		(property "LCSC" "C25744"
 			(at 152.4 81.28 0)
 			(hide yes)
 			(effects
@@ -9883,7 +10653,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 163.5252 85.09 0)
 			(hide yes)
 			(effects
@@ -9892,7 +10662,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C15849"
+		(property "LCSC" "C52923"
 			(at 162.56 81.28 0)
 			(hide yes)
 			(effects
@@ -9974,8 +10744,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "2cf91d99-39d1-5048-bd8c-ff44243c9dae")
-		(property "Reference" "#PWR18"
+		(uuid "7d901ba8-43e2-569b-9a73-7c8f9837bb51")
+		(property "Reference" "#PWR19"
 			(at 162.56 93.98 0)
 			(hide yes)
 			(effects
@@ -10020,12 +10790,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "36a78f4c-0091-563e-a2f6-d7fcfeb80064")
+			(uuid "97bbc34d-299e-58a4-b718-c8481518d625")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR18")
+					(reference "#PWR19")
 					(unit 1)
 				)
 			)
@@ -10176,7 +10946,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 153.3652 176.53 0)
 			(hide yes)
 			(effects
@@ -10185,7 +10955,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1648"
+		(property "LCSC" "C1554"
 			(at 152.4 172.72 0)
 			(hide yes)
 			(effects
@@ -10267,8 +11037,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "7d901ba8-43e2-569b-9a73-7c8f9837bb51")
-		(property "Reference" "#PWR19"
+		(uuid "612a9a7e-0ccd-5cd0-9572-0360e204d6d0")
+		(property "Reference" "#PWR20"
 			(at 152.4 185.42 0)
 			(hide yes)
 			(effects
@@ -10313,12 +11083,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "97bbc34d-299e-58a4-b718-c8481518d625")
+			(uuid "9015cee5-16a6-5bfb-9a19-f51dd39a9618")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR19")
+					(reference "#PWR20")
 					(unit 1)
 				)
 			)
@@ -10351,7 +11121,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 168.6052 176.53 0)
 			(hide yes)
 			(effects
@@ -10360,7 +11130,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C1648"
+		(property "LCSC" "C1554"
 			(at 167.64 172.72 0)
 			(hide yes)
 			(effects
@@ -10442,8 +11212,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "612a9a7e-0ccd-5cd0-9572-0360e204d6d0")
-		(property "Reference" "#PWR20"
+		(uuid "9181c512-be45-5df7-bfc7-06bcf5684f83")
+		(property "Reference" "#PWR21"
 			(at 167.64 185.42 0)
 			(hide yes)
 			(effects
@@ -10488,12 +11258,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "9015cee5-16a6-5bfb-9a19-f51dd39a9618")
+			(uuid "3fe4cbd8-dadd-55f4-a7ed-19c4fb85b097")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR20")
+					(reference "#PWR21")
 					(unit 1)
 				)
 			)
@@ -10651,8 +11421,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "9181c512-be45-5df7-bfc7-06bcf5684f83")
-		(property "Reference" "#PWR21"
+		(uuid "39fb6dbf-db00-5521-8334-dc324b29c52c")
+		(property "Reference" "#PWR22"
 			(at 173.99 220.98 90)
 			(hide yes)
 			(effects
@@ -10697,12 +11467,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "3fe4cbd8-dadd-55f4-a7ed-19c4fb85b097")
+			(uuid "243adfa7-ec8c-5ae9-9ddb-ed0bc9bb18cd")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR21")
+					(reference "#PWR22")
 					(unit 1)
 				)
 			)
@@ -10733,7 +11503,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 185.42 222.758 90)
 			(hide yes)
 			(effects
@@ -10742,7 +11512,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C21190"
+		(property "LCSC" "C11702"
 			(at 185.42 220.98 90)
 			(hide yes)
 			(effects
@@ -10921,8 +11691,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "39fb6dbf-db00-5521-8334-dc324b29c52c")
-		(property "Reference" "#PWR22"
+		(uuid "8738bcd2-f557-505d-8229-caec8d999b8e")
+		(property "Reference" "#PWR23"
 			(at 226.06 220.98 90)
 			(hide yes)
 			(effects
@@ -10967,12 +11737,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "243adfa7-ec8c-5ae9-9ddb-ed0bc9bb18cd")
+			(uuid "ab700d5e-0a2c-56af-b939-4c073f8b936e")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR22")
+					(reference "#PWR23")
 					(unit 1)
 				)
 			)
@@ -11026,7 +11796,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 178.562 251.46 0)
 			(hide yes)
 			(effects
@@ -11035,7 +11805,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C26083"
 			(at 180.34 251.46 0)
 			(hide yes)
 			(effects
@@ -11146,7 +11916,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 193.802 251.46 0)
 			(hide yes)
 			(effects
@@ -11155,7 +11925,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22935"
+		(property "LCSC" "C26083"
 			(at 195.58 251.46 0)
 			(hide yes)
 			(effects
@@ -11237,8 +12007,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "8738bcd2-f557-505d-8229-caec8d999b8e")
-		(property "Reference" "#PWR23"
+		(uuid "341c7895-cd73-50a9-8ae3-ec69fc3e86ba")
+		(property "Reference" "#PWR24"
 			(at 195.58 264.16 0)
 			(hide yes)
 			(effects
@@ -11283,12 +12053,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "ab700d5e-0a2c-56af-b939-4c073f8b936e")
+			(uuid "f78dba4a-7f4b-59f8-9285-52c5462424c3")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR23")
+					(reference "#PWR24")
 					(unit 1)
 				)
 			)
@@ -11321,7 +12091,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 209.2452 255.27 0)
 			(hide yes)
 			(effects
@@ -11330,7 +12100,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14663"
+		(property "LCSC" "C1525"
 			(at 208.28 251.46 0)
 			(hide yes)
 			(effects
@@ -11412,8 +12182,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "341c7895-cd73-50a9-8ae3-ec69fc3e86ba")
-		(property "Reference" "#PWR24"
+		(uuid "b9bc5497-f792-57a4-9f37-9e1ad8482e46")
+		(property "Reference" "#PWR25"
 			(at 208.28 264.16 0)
 			(hide yes)
 			(effects
@@ -11458,12 +12228,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "f78dba4a-7f4b-59f8-9285-52c5462424c3")
+			(uuid "f3cf101d-b890-5dda-90a1-87bc827ab000")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR24")
+					(reference "#PWR25")
 					(unit 1)
 				)
 			)
@@ -11769,8 +12539,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "b9bc5497-f792-57a4-9f37-9e1ad8482e46")
-		(property "Reference" "#PWR25"
+		(uuid "57b85948-d717-5be2-b0ba-628ee78f3fde")
+		(property "Reference" "#PWR26"
 			(at 335.28 60.96 0)
 			(hide yes)
 			(effects
@@ -11815,12 +12585,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "f3cf101d-b890-5dda-90a1-87bc827ab000")
+			(uuid "6fc44d0d-b8a4-5d9e-902b-1db4b5d96315")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR25")
+					(reference "#PWR26")
 					(unit 1)
 				)
 			)
@@ -11944,8 +12714,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "57b85948-d717-5be2-b0ba-628ee78f3fde")
-		(property "Reference" "#PWR26"
+		(uuid "4fe123f6-9a1c-5e0d-bb23-161ea8924d01")
+		(property "Reference" "#PWR27"
 			(at 299.72 78.74 0)
 			(hide yes)
 			(effects
@@ -11990,12 +12760,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "6fc44d0d-b8a4-5d9e-902b-1db4b5d96315")
+			(uuid "82153563-710b-5a2a-aca1-4a30d2fd7337")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR26")
+					(reference "#PWR27")
 					(unit 1)
 				)
 			)
@@ -12028,7 +12798,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 313.3852 69.85 0)
 			(hide yes)
 			(effects
@@ -12037,7 +12807,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14663"
+		(property "LCSC" "C1525"
 			(at 312.42 66.04 0)
 			(hide yes)
 			(effects
@@ -12119,8 +12889,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "4fe123f6-9a1c-5e0d-bb23-161ea8924d01")
-		(property "Reference" "#PWR27"
+		(uuid "100e3a06-9af9-5af3-84c1-7fa8f195435a")
+		(property "Reference" "#PWR28"
 			(at 312.42 78.74 0)
 			(hide yes)
 			(effects
@@ -12165,12 +12935,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "82153563-710b-5a2a-aca1-4a30d2fd7337")
+			(uuid "2c1732c2-9186-5a8f-924a-6176b1c10312")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR27")
+					(reference "#PWR28")
 					(unit 1)
 				)
 			)
@@ -12203,7 +12973,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 366.522 66.04 0)
 			(hide yes)
 			(effects
@@ -12212,7 +12982,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22843"
+		(property "LCSC" "C25867"
 			(at 368.3 66.04 0)
 			(hide yes)
 			(effects
@@ -12294,8 +13064,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "100e3a06-9af9-5af3-84c1-7fa8f195435a")
-		(property "Reference" "#PWR28"
+		(uuid "8cc8ef73-2de3-58dd-a407-0bbfc7fe6403")
+		(property "Reference" "#PWR29"
 			(at 368.3 78.74 0)
 			(hide yes)
 			(effects
@@ -12340,12 +13110,187 @@
 			)
 		)
 		(pin "1"
-			(uuid "2c1732c2-9186-5a8f-924a-6176b1c10312")
+			(uuid "ef7766fc-363c-50b3-b9e4-4c68eb236446")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR28")
+					(reference "#PWR29")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 378.46 66.04 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "adf5a445-358c-5c70-8ae8-46dd867f8af1")
+		(property "Reference" "C7"
+			(at 381 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10n"
+			(at 381 67.31 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 379.4252 69.85 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C15195"
+			(at 378.46 66.04 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 378.46 66.04 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 378.46 66.04 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "7030c844-1f05-5b0a-8e72-89b0062f5a2a")
+		)
+		(pin "2"
+			(uuid "d5586821-33e4-557f-ac6a-daba8848d87d")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "C7")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 378.46 62.23)
+			(xy 378.46 59.69)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "907b2b3a-3ac4-5e98-8dbe-fbbf7c476eca")
+	)
+	(label "MOT_IPROPI"
+		(at 378.46 59.69 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "21adb1da-81f3-5311-83f4-d3c6ccbbeecb")
+	)
+	(wire
+		(pts
+			(xy 378.46 69.85)
+			(xy 378.46 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ba27b2e6-fef1-5ef9-a456-db3d474a5b8b")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 378.46 72.39 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(uuid "f5791047-2cde-5336-a82d-1e55d82d78ea")
+		(property "Reference" "#PWR30"
+			(at 378.46 78.74 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 378.46 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 378.46 72.39 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 378.46 72.39 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 378.46 72.39 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a552d9a6-05e9-56b3-8c8f-0c238de46a8e")
+		)
+		(instances
+			(project "zigbee_toy"
+				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
+					(reference "#PWR30")
 					(unit 1)
 				)
 			)
@@ -12356,7 +13301,7 @@
 		(at 391.16 33.02 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom no)
+		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "ebed959a-c9fc-5681-92d7-76df50581f7e")
@@ -12376,7 +13321,7 @@
 				)
 			)
 		)
-		(property "Note" "Side-entry JST-PH, hand-solder (THT)"
+		(property "Note" "Side-entry JST-SH (1 A per pin), SMD"
 			(at 391.16 33.02 0)
 			(hide yes)
 			(effects
@@ -12385,7 +13330,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal"
+		(property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal"
 			(at 391.16 33.02 0)
 			(hide yes)
 			(effects
@@ -12394,7 +13339,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C173752"
+		(property "LCSC" "C160402"
 			(at 391.16 33.02 0)
 			(hide yes)
 			(effects
@@ -12478,7 +13423,7 @@
 		)
 		(uuid "dd2beae6-a12a-50b4-9701-5a5d39266e1d")
 	)
-	(text "I_limit = 0.51 V / (R6 x A_IPROPI):  GAINSEL low 1.66 A, Hi-Z 324 mA, high 69 mA.\nAuto-sleep (20 nA) when IN1 = IN2 = 0.  Keep the 100 nF cap on the motor tabs."
+	(text "I_limit = 0.51 V / (R6 x A_IPROPI):  GAINSEL low 1.66 A, Hi-Z 324 mA, high 69 mA.\nC7: IPROPI filter (datasheet 8.4.2.2), 15 us with R6, against motor-cap spikes.\nAuto-sleep (20 nA) when IN1 = IN2 = 0.  Keep the 100 nF cap on the motor tabs."
 		(exclude_from_sim no)
 		(at 287.02 79.5 0)
 		(effects
@@ -12540,7 +13485,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 295.402 109.22 0)
 			(hide yes)
 			(effects
@@ -12549,7 +13494,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C21189"
+		(property "LCSC" "C17168"
 			(at 297.18 109.22 0)
 			(hide yes)
 			(effects
@@ -12638,7 +13583,7 @@
 		(at 327.66 106.68 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom no)
+		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(uuid "239d2f85-e7ab-55f7-81ab-b52e85d9f21a")
@@ -12658,7 +13603,7 @@
 				)
 			)
 		)
-		(property "Note" "Side-entry JST-PH, hand-solder (THT)"
+		(property "Note" "Side-entry JST-SH, SMD"
 			(at 327.66 106.68 0)
 			(hide yes)
 			(effects
@@ -12667,7 +13612,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal"
+		(property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal"
 			(at 327.66 106.68 0)
 			(hide yes)
 			(effects
@@ -12676,7 +13621,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C173752"
+		(property "LCSC" "C160402"
 			(at 327.66 106.68 0)
 			(hide yes)
 			(effects
@@ -13001,8 +13946,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "8cc8ef73-2de3-58dd-a407-0bbfc7fe6403")
-		(property "Reference" "#PWR29"
+		(uuid "165706d6-28ff-55f1-98b7-96e98953bce2")
+		(property "Reference" "#PWR31"
 			(at 387.35 143.51 0)
 			(hide yes)
 			(effects
@@ -13047,12 +13992,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "ef7766fc-363c-50b3-b9e4-4c68eb236446")
+			(uuid "c6855966-8ef0-5ee1-acdc-df4847c9ab88")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR29")
+					(reference "#PWR31")
 					(unit 1)
 				)
 			)
@@ -13104,7 +14049,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 345.44 131.318 90)
 			(hide yes)
 			(effects
@@ -13113,7 +14058,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C22775"
+		(property "LCSC" "C25076"
 			(at 345.44 129.54 90)
 			(hide yes)
 			(effects
@@ -13224,7 +14169,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 363.982 137.16 0)
 			(hide yes)
 			(effects
@@ -13233,7 +14178,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C25803"
+		(property "LCSC" "C25741"
 			(at 365.76 137.16 0)
 			(hide yes)
 			(effects
@@ -13315,8 +14260,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "f5791047-2cde-5336-a82d-1e55d82d78ea")
-		(property "Reference" "#PWR30"
+		(uuid "0ddff472-623d-5ca5-ba58-e834230528d9")
+		(property "Reference" "#PWR32"
 			(at 365.76 149.86 0)
 			(hide yes)
 			(effects
@@ -13361,12 +14306,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "a552d9a6-05e9-56b3-8c8f-0c238de46a8e")
+			(uuid "9435337c-0ffb-5e2d-ac83-50407c771812")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR30")
+					(reference "#PWR32")
 					(unit 1)
 				)
 			)
@@ -13659,8 +14604,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "165706d6-28ff-55f1-98b7-96e98953bce2")
-		(property "Reference" "#PWR31"
+		(uuid "45e6e3e3-023c-5041-bfce-aede312ba973")
+		(property "Reference" "#PWR33"
 			(at 340.36 204.47 0)
 			(hide yes)
 			(effects
@@ -13705,12 +14650,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c6855966-8ef0-5ee1-acdc-df4847c9ab88")
+			(uuid "28d26692-13a9-5bf8-8a4d-eda81ab382f4")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR31")
+					(reference "#PWR33")
 					(unit 1)
 				)
 			)
@@ -13743,7 +14688,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 300.6852 217.17 0)
 			(hide yes)
 			(effects
@@ -13752,7 +14697,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14663"
+		(property "LCSC" "C1525"
 			(at 299.72 213.36 0)
 			(hide yes)
 			(effects
@@ -13834,8 +14779,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "0ddff472-623d-5ca5-ba58-e834230528d9")
-		(property "Reference" "#PWR32"
+		(uuid "41d3960c-925d-57d8-9831-9658f2e2ff48")
+		(property "Reference" "#PWR34"
 			(at 299.72 226.06 0)
 			(hide yes)
 			(effects
@@ -13880,12 +14825,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "9435337c-0ffb-5e2d-ac83-50407c771812")
+			(uuid "c5cb7e25-cc34-5776-8b25-f7391f9b6b04")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR32")
+					(reference "#PWR34")
 					(unit 1)
 				)
 			)
@@ -13918,7 +14863,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 313.3852 217.17 0)
 			(hide yes)
 			(effects
@@ -13927,7 +14872,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C14663"
+		(property "LCSC" "C1525"
 			(at 312.42 213.36 0)
 			(hide yes)
 			(effects
@@ -14009,8 +14954,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "45e6e3e3-023c-5041-bfce-aede312ba973")
-		(property "Reference" "#PWR33"
+		(uuid "2666ddb9-7956-5f5f-842b-c0d710028610")
+		(property "Reference" "#PWR35"
 			(at 312.42 226.06 0)
 			(hide yes)
 			(effects
@@ -14055,12 +15000,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "28d26692-13a9-5bf8-8a4d-eda81ab382f4")
+			(uuid "c06e70ab-2e69-5fc9-8ac7-76835ed9141c")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR33")
+					(reference "#PWR35")
 					(unit 1)
 				)
 			)
@@ -14093,7 +15038,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 369.062 213.36 0)
 			(hide yes)
 			(effects
@@ -14102,7 +15047,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23162"
+		(property "LCSC" "C25900"
 			(at 370.84 213.36 0)
 			(hide yes)
 			(effects
@@ -14213,7 +15158,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 381.762 213.36 0)
 			(hide yes)
 			(effects
@@ -14222,7 +15167,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C23162"
+		(property "LCSC" "C25900"
 			(at 383.54 213.36 0)
 			(hide yes)
 			(effects
@@ -14687,8 +15632,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "41d3960c-925d-57d8-9831-9658f2e2ff48")
-		(property "Reference" "#PWR34"
+		(uuid "7450734b-d240-5332-8840-5c55b127b8a9")
+		(property "Reference" "#PWR36"
 			(at 233.68 229.87 90)
 			(hide yes)
 			(effects
@@ -14733,12 +15678,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c5cb7e25-cc34-5776-8b25-f7391f9b6b04")
+			(uuid "d648ad38-35d4-51c9-94db-bd04bc66c6e8")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR34")
+					(reference "#PWR36")
 					(unit 1)
 				)
 			)
@@ -15438,8 +16383,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "2666ddb9-7956-5f5f-842b-c0d710028610")
-		(property "Reference" "#PWR35"
+		(uuid "188b00d1-0b8e-57be-86a8-b8a0639e4da3")
+		(property "Reference" "#PWR37"
 			(at 261.62 210.82 90)
 			(hide yes)
 			(effects
@@ -15484,12 +16429,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "c06e70ab-2e69-5fc9-8ac7-76835ed9141c")
+			(uuid "5fc7a083-2e81-51e7-b17f-2bf09b1b62ea")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR35")
+					(reference "#PWR37")
 					(unit 1)
 				)
 			)
@@ -16276,8 +17221,8 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(uuid "7450734b-d240-5332-8840-5c55b127b8a9")
-		(property "Reference" "#PWR36"
+		(uuid "a178b4c0-1a53-52dd-92a3-90e46b7e6f39")
+		(property "Reference" "#PWR38"
 			(at 261.62 267.97 90)
 			(hide yes)
 			(effects
@@ -16322,12 +17267,12 @@
 			)
 		)
 		(pin "1"
-			(uuid "d648ad38-35d4-51c9-94db-bd04bc66c6e8")
+			(uuid "238f04f4-1296-5cc2-b94d-c6bc0e9933f0")
 		)
 		(instances
 			(project "zigbee_toy"
 				(path "/cd6f7973-3019-533d-a0cf-98d98a659f5e"
-					(reference "#PWR36")
+					(reference "#PWR38")
 					(unit 1)
 				)
 			)
@@ -16479,7 +17424,7 @@
 		)
 		(uuid "5c062bae-2cbb-56fc-bf36-cb976b02e8f5")
 	)
-	(text "One board for all three toys (bird / fish / ball). 1S LiPo, protected or not.\n\nBattery voltage: VBAT_SENSE (IO6, ADC1_CH6), VBAT / 2.\nOn charger: VBUS_SENSE (IO20). Charging: CHG_STAT (IO19), low = charging.\nMotor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\nGAINSEL: drive low / drive high / input-disconnected = Hi-Z.\nMotor PWM = drive/brake: fwd IN1=1, IN2=1-duty; rev IN2=1, IN1=1-duty.\nMotor: IN1 IO3, IN2 IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n\nTest points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\nHand-soldered, not JLC-assembled: J3 battery, J4 motor, J5 speaker.\nAntenna: 2.4 GHz FPC antenna on the module u.FL, plugged in by hand.\nH1, H2: M2 mounting holes (NPTH), diagonal corners; ISO 7380 button head (3.5 mm)."
+	(text "One board for all three toys (bird / fish / ball). 1S LiPo, protected or not.\n\nBattery voltage: VBAT_SENSE (IO6, ADC1_CH6), VBAT / 2.\nOn charger: VBUS_SENSE (IO19). Charging: CHG_STAT (IO20), low = charging.\nMotor current: MOT_IPROPI (IO2, ADC1_CH2), 0 dB attenuation.\nGAINSEL: drive low / drive high / input-disconnected = Hi-Z.\nMotor PWM = drive/brake: fwd IN1=1, IN2=1-duty; rev IN2=1, IN1=1-duty.\nMotor: IN1 IO3, IN2 IO4, GAINSEL IO14.  Speaker: SPK_PWM IO5.  Status LED: LED_STATUS IO23.\n\nTest points: value = back-silk label. TX/RX = UART0, 3.3 V. BOOT low + EN pulse = download mode.\nHand-soldered, not JLC-assembled: J3 battery (JST-PH, the plug cells come with).\nAntenna: 2.4 GHz FPC antenna on the module u.FL, plugged in by hand.\nH1, H2: M2 mounting holes (NPTH), diagonal corners; ISO 7380 button head (3.5 mm)."
 		(exclude_from_sim no)
 		(at 15.24 208.28 0)
 		(effects

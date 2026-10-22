@@ -1,4 +1,4 @@
-"""Hand-routed copper (rev B). Locked before autorouting.
+"""Hand-routed copper (rev B, 36 x 22). Locked before autorouting.
 
 R(net, layer, width, *points): polyline; points are (x, y) or 'REF.PAD' (pad centre).
 V(net, x, y[, size, drill]): through via.  Off-angle segments get 45-degree elbows.
@@ -16,171 +16,168 @@ def V(net, x, y, size=0.6, drill=0.3):
     VIAS.append((net, x, y, size, drill))
 
 
+# ------------------------------------------------------------------ VBAT trunk: battery FET -> back layer up the left column -> driver
+R('VBAT', 'F', 0.6, 'Q1.2', (10.0, 13.0), 'C1.1')
+V('VBAT', 10.0, 13.0, 0.8, 0.4)
+R('VBAT', 'B', 0.8, (10.0, 13.0), (6.6, 13.0), (5.95, 12.35), (5.95, 1.85), (6.3, 1.5))
+V('VBAT', 6.3, 1.5, 0.8, 0.4)
+R('VBAT', 'F', 0.5, (6.3, 1.5), 'C3.1')
+V('VBAT', 5.95, 6.0, 0.8, 0.4)                                        # speaker link
+R('VBAT', 'F', 0.5, (5.95, 6.0), 'R11.1')
 
+# ------------------------------------------------------------------ motor driver: VM bypass loop, outputs
+R('VBAT', 'F', 0.3, (7.35, 2.5), 'U2.1')                              # (7.35, 2.5) is inside C3's VBAT pad
+R('VBAT', 'F', 0.4, 'C3.1', (7.42, 1.5), (10.35, 1.5), 'C2.1')         # bulk cap, over the top of C3
+R('GND', 'F', 0.35, 'C3.2', (8.38, 3.7))                              # C3's ground pad onto the thermal pad, between pins 1 and 8
+V('GND', 8.3, 3.85, 0.5, 0.3)                                         # thermal pad vias, TI's DSG land pattern spots
+V('GND', 8.3, 4.95, 0.5, 0.3)
+R('GND', 'F', 0.25, 'U2.4', (8.0, 5.15))                              # into the thermal pad
+R('GND', 'F', 0.4, 'C2.2', (12.3, 3.0))
+V('GND', 12.3, 3.0)
+R('MOT_A', 'F', 0.5, 'J4.1', (6.4, 3.95))
+R('MOT_A', 'F', 0.25, (6.4, 3.95), (6.6, 4.15), 'U2.2')
+R('MOT_B', 'F', 0.5, 'J4.2', (6.4, 4.95))
+R('MOT_B', 'F', 0.25, (6.4, 4.95), (6.7, 4.65), 'U2.3')
 
-# ------------------------------------------------------------------ battery + protection (left edge, lower)
-R('CELL_P', 'F', 0.5, 'J3.1', (6.2, 17.2), (8.2, 15.2), 'Q1.3')       # main current to the FET drain
-R('CELL_P', 'F', 0.4, (6.2, 17.2), 'C15.1')
-R('CELL_P', 'F', 0.3, 'C15.1', (9.85, 17.62), 'U5.3')                 # XB5353A VDD sense
-R('CELL_N', 'F', 0.5, 'J3.2', 'C15.2')
-R('CELL_N', 'F', 0.4, 'C15.2', (9.2, 19.8), (11.2, 19.8), 'U5.2')     # between U5's pad rows
-R('GND', 'F', 0.6, 'U5.4', (10.25, 22.0), (12.15, 22.0), 'U5.5')      # VM = board GND
-V('GND', 10.25, 22.2, 0.8, 0.4)
-V('GND', 12.15, 22.2, 0.8, 0.4)
-R('GND', 'F', 0.4, 'Q1.1', (13.6, 16.15))                             # FET gate
-V('GND', 13.6, 16.15)
+# ------------------------------------------------------------------ speaker: flyback across the jack, FET drain under the diode
+R('SPK_P', 'F', 0.5, 'J5.1', (6.6, 9.15), 'D1.1')
+R('SPK_P', 'F', 0.4, 'R11.2', 'D1.1')
+R('SPK_N', 'F', 0.5, 'J5.2', (9.21, 10.15), 'Q2.3')                   # under D1's body, into Q2's drain
+R('SPK_N', 'F', 0.5, (7.6, 10.15), 'D1.2')
+R('GND', 'F', 0.4, 'Q2.2', (11.4, 7.95))
+V('GND', 11.4, 7.95)
 
-# ------------------------------------------------------------------ VBAT
-# bottom trunk: FET -> down the left column -> along the bottom edge -> charger BAT, with taps
-R('VBAT', 'F', 0.6, 'Q1.2', (12.64, 14.25), (15.4, 14.25), (15.4, 24.9), (30.96, 24.9), 'U4.3')
-R('VBAT', 'F', 0.6, 'C1.1', (15.4, 18.05))                            # bulk 22u
-R('VBAT', 'F', 0.5, 'C6.1', (16.4, 24.9))                             # regulator input cap
-R('VBAT', 'F', 0.5, 'U6.1', (18.0, 24.9))                             # VIN
-R('VBAT', 'F', 0.3, 'U6.3', (19.9, 24.9))                             # EN = VIN
-R('VBAT', 'F', 0.4, 'R12.1', (6.3, 21.3), (6.3, 24.9), (15.4, 24.9))  # battery divider
-# B.Cu around the left column (open towards the module): FET -> motor driver, speaker link
-V('VBAT', 12.34, 13.3, 0.8, 0.4)
-R('VBAT', 'F', 0.6, 'Q1.2', (12.34, 13.3))
-R('VBAT', 'B', 0.8, (12.34, 13.3), (7.0, 13.3), (6.35, 12.65), (6.35, 2.65), (7.0, 2.0), (11.0, 2.0), (11.77, 2.77), (11.77, 3.2))
-V('VBAT', 11.77, 3.2, 0.8, 0.4)
-R('VBAT', 'F', 0.6, (11.77, 3.2), 'C2.1')
-V('VBAT', 9.125, 2.0, 0.8, 0.4)                                       # on the B.Cu ring, right above C3
-R('VBAT', 'F', 0.5, (9.125, 2.0), 'C3.1')
-R('VBAT', 'F', 0.3, 'C3.1', 'U2.1')
-V('VBAT', 6.35, 7.1, 0.8, 0.4)
-R('VBAT', 'F', 0.5, (6.35, 7.1), 'R11.1')
+# ------------------------------------------------------------------ battery: + to the FET (top), - through the protection IC (below)
+R('CELL_P', 'F', 0.6, 'J3.1', 'Q1.3')
+R('CELL_P', 'F', 0.5, 'J3.1', (5.6, 15.55), (9.85, 15.55), (9.85, 20.9), 'C15.1')
+R('CELL_P', 'F', 0.5, (9.85, 19.39), 'U5.3')
+R('CELL_N', 'F', 0.5, 'J3.2', (5.6, 17.94), (5.6, 20.6), (7.8, 20.6), 'U5.2')
+R('CELL_N', 'F', 0.5, (7.8, 20.6), 'C15.2')
+R('GND', 'F', 0.5, 'U5.5', 'U5.4')                                    # protection IC VM pins = board GND
+R('GND', 'F', 0.5, 'U5.5', (5.95, 16.95))
+V('GND', 5.95, 16.95)
+R('GND', 'F', 0.4, 'Q1.1', (10.05, 14.55))                            # FET gate
+R('GND', 'F', 0.4, 'C1.2', (10.05, 14.55))
+V('GND', 10.05, 14.55)
 
-# ------------------------------------------------------------------ motor driver
-R('MOT_A', 'F', 0.25, 'U2.2', (9.15, 4.8), (8.85, 4.5))
-R('MOT_A', 'F', 0.5, (8.85, 4.5), (7.85, 3.5), (7.0, 3.5), 'J4.1')
-R('MOT_B', 'F', 0.25, 'U2.3', (8.7, 5.3))
-R('MOT_B', 'F', 0.5, (8.7, 5.3), (6.0, 5.3), 'J4.2')
-R('GND', 'F', 0.25, 'U2.4', (10.4, 5.8))                              # into the thermal pad
-# VM bypass loop: C3's ground pad drops straight onto the thermal pad, between pins 1 and 8
-R('GND', 'F', 0.4, 'C3.2', (10.675, 4.4))
-V('GND', 10.6, 4.6, 0.5, 0.3)                                         # thermal pad vias, 0.9 mm apart (TI: 1.1; TP8 is in the way)
-V('GND', 10.6, 5.5, 0.5, 0.3)
-R('GND', 'F', 0.4, 'C2.2', (15.75, 3.2))                              # bulk cap to the back plane
-V('GND', 15.75, 3.2)
-# IN2 from the module's pin 9: B.Cu below the driver, so the back plane under it stays whole
-# (it joins the VM caps' ground vias to the thermal pad vias)
-R('MOT_IN2', 'F', 0.2, 'U1.9', (17.85, 10.5))
-V('MOT_IN2', 17.85, 10.5, 0.5, 0.3)
-R('MOT_IN2', 'B', 0.2, (17.85, 10.5), (17.6, 10.75), (15.85, 10.75), (13.25, 8.15), (11.3, 8.15), (10.16, 7.01), (10.16, 6.485))
-V('MOT_IN2', 10.16, 6.485)
-R('MOT_IN2', 'F', 0.2, (10.16, 6.485), (10.865, 6.485), 'U2.5')
-R('MOT_IN2', 'B', 0.2, 'TP7.1', (9.68, 6.0), (10.16, 6.485))
-R('GND', 'F', 0.25, 'R8.2', (14.0, 8.0))                              # the pocket between IN1 and GAINSEL: its own via
-V('GND', 14.0, 8.0, 0.5, 0.3)
+# ------------------------------------------------------------------ VBAT along the bottom: back-layer channel between the two test pad rows
+R('VBAT', 'B', 0.6, (10.0, 13.0), (12.7, 13.0), (13.4, 13.7), (13.4, 18.2), 'TP1.1')
+R('VBAT', 'B', 0.5, 'TP1.1', (15.5, 20.3), (31.55, 20.3), (31.75, 20.5))
+R('VBAT', 'B', 0.5, (15.7, 20.3), (15.7, 21.9))                        # regulator input
+V('VBAT', 15.7, 21.9)
+R('VBAT', 'F', 0.5, 'C6.1', (15.7, 21.9), 'U6.1')
+R('VBAT', 'B', 0.5, (18.95, 20.3), (18.95, 21.9))                      # EN = VIN, its own via (keeps the ground pin between them open)
+V('VBAT', 18.95, 21.9)
+R('VBAT', 'F', 0.4, (18.95, 21.9), 'U6.3')
+R('GND', 'F', 0.3, 'U6.2', (17.35, 21.0))                              # regulator ground: via under its body
+V('GND', 17.35, 21.0, 0.5, 0.3)
+R('VBAT', 'B', 0.4, (21.75, 20.3), (21.75, 22.1))                      # battery divider, from below
+V('VBAT', 21.75, 22.1)
+R('VBAT', 'F', 0.3, (21.75, 22.1), 'R12.1')
+V('VBAT', 31.75, 20.5)                                                # charger BAT
+R('VBAT', 'F', 0.5, (31.75, 20.5), 'U4.3')
+R('VBAT_SENSE', 'F', 0.25, 'R12.2', 'R13.1', 'C16.1')
 
-# ------------------------------------------------------------------ speaker
-R('SPK_P', 'F', 0.5, 'R11.2', (9.02, 8.0), 'D1.1')
-R('SPK_P', 'F', 0.5, 'D1.1', (6.35, 8.95), (5.4, 9.9), 'J5.1')
-R('SPK_N', 'F', 0.5, 'J5.2', (6.0, 12.0), (6.25, 12.25), 'D1.2')
-R('SPK_N', 'F', 0.5, 'D1.2', 'Q2.3')
-R('GND', 'F', 0.4, 'Q2.2', (10.65, 8.55))
-V('GND', 10.65, 8.55)
+# ------------------------------------------------------------------ 3V3: regulator -> 22 uF over the top of the regulator; TP2 on the via
+R('3V3', 'F', 0.4, 'U6.5', (16.4, 18.4), (20.15, 18.4), 'C8.1')
+V('3V3', 19.0, 18.4)
+R('3V3', 'B', 0.3, (19.0, 18.4), (16.0, 18.4), (14.025, 16.42), (14.025, 11.28), (12.54, 9.8), (11.66, 9.8))   # to the module's pin 3 side
 
-# ------------------------------------------------------------------ EN: straight to the resistor, C5 below it; TP21 on the via
-R('EN', 'F', 0.2, 'U1.8', (17.5, 9.55), 'R9.2')
-R('EN', 'F', 0.25, 'R9.2', 'C5.1')
-V('EN', 17.5, 9.55, 0.5, 0.3)
+# ------------------------------------------------------------------ VBUS: both pad pairs escape right inside the receptacle, back layer down to the charger
+R('VBUS', 'F', 0.3, 'J1.A9', (30.4, 8.05), (32.3, 8.05))
+R('VBUS', 'F', 0.3, 'J1.A4', (30.4, 12.15), (32.3, 12.15))
+V('VBUS', 32.3, 8.05)
+V('VBUS', 32.3, 12.15)
+R('VBUS', 'B', 0.4, (32.3, 8.05), (32.3, 16.2))                         # right of the D- lane and the shell tab
+V('VBUS', 32.3, 16.2)
+R('VBUS', 'F', 0.4, (32.3, 16.2), 'C4.1', 'U4.4')
+R('VBUS', 'F', 0.4, (32.3, 16.2), (29.2, 16.2), (28.85, 15.85), 'U7.5')
 
-# ------------------------------------------------------------------ module centre ground pads: vias into the back plane
-# (ground return and heat; the two pads on the GAINSEL diagonal stay without)
-for x, y in ((22.825, 5.975), (22.825, 7.95), (22.825, 9.925), (24.8, 7.95), (24.8, 9.925), (26.775, 5.975), (26.775, 9.925)):
-    V('GND', x, y)
-
-# ------------------------------------------------------------------ crystal (module bottom-left pins)
-R('XTAL_N', 'F', 0.2, 'U1.13', (20.8, 15.0), (20.49, 15.31), 'Y1.2')
-R('XTAL_N', 'F', 0.2, 'Y1.2', (21.3, 17.82), 'C13.1')
-R('XTAL_P', 'F', 0.2, 'U1.12', (20.0, 14.6), (18.4, 14.6), (17.99, 15.01), 'Y1.1')
-R('XTAL_P', 'F', 0.2, 'C12.1', (17.4, 17.82), 'Y1.1')
-R('GND', 'F', 0.25, 'U1.14', (21.6, 15.7), 'C13.2')
-R('GND', 'F', 0.3, 'C12.2', (16.4, 15.35))
-V('GND', 16.4, 15.35)
-
-# ------------------------------------------------------------------ 3V3: regulator -> trunk under row A -> module pin 3 (B.Cu inside the pad ring)
-R('3V3', 'F', 0.4, (18.0, 18.9), (31.02, 18.9))
-R('3V3', 'F', 0.4, 'U6.5', (18.0, 18.9))
-for ref in ('C8.1', 'C11.1', 'C10.1', 'R16.1', 'R17.1'):
-    R('3V3', 'F', 0.4, ref, ({'C8.1': 21.74, 'C11.1': 23.66, 'C10.1': 27.86, 'R16.1': 29.44, 'R17.1': 31.02}[ref], 18.9))
-R('3V3', 'F', 0.4, (17.2, 18.9), (18.0, 18.9))                        # via west of the crystal, B.Cu stays clear of it
-V('3V3', 17.2, 18.9)
-R('3V3', 'B', 0.4, (17.2, 18.9), (17.2, 13.0), (19.95, 10.25), (19.95, 5.55))
-V('3V3', 19.95, 5.55)
-R('3V3', 'F', 0.4, 'U1.3', (19.95, 5.55))
-R('3V3', 'F', 0.4, 'U1.3', 'C9.1')
-R('GND', 'F', 0.3, 'U6.2', (18.95, 21.5))
-V('GND', 18.95, 21.5)
-
-# ------------------------------------------------------------------ USB-C
-# Each pad pair drops to B.Cu right of the pad row (D+ vias at x 34.45, D- at 35.15) and is joined
-# there; both run left on B.Cu right under the module's bottom edge and come up through the pad
-# ring just inside pins 17/18. The channel below the module stays free for the vias of the bottom
-# and right pins' signals; the gap left of the USB-C pads stays free for CC1/CC2.
-for pad, net, x in (('B6', 'USB_DP', 34.45), ('A6', 'USB_DP', 34.45), ('A7', 'USB_DN', 35.15), ('B7', 'USB_DN', 35.15)):
-    y = {'B6': 12.15, 'A6': 13.15, 'A7': 12.65, 'B7': 13.65}[pad]
+# ------------------------------------------------------------------ USB-C: each pad pair drops to B.Cu inside the receptacle and is joined there
+for pad, net, x in (('B6', 'USB_DP', 30.45), ('A6', 'USB_DP', 30.45), ('A7', 'USB_DN', 31.15), ('B7', 'USB_DN', 31.15)):
+    y = {'B6': 9.35, 'A6': 10.35, 'A7': 9.85, 'B7': 10.85}[pad]
     R(net, 'F', 0.2, 'J1.' + pad, (x, y))
     V(net, x, y, 0.5, 0.3)
-R('USB_DP', 'B', 0.2, (34.45, 12.15), (34.45, 13.15), (24.85, 13.15), (24.85, 11.9))
-R('USB_DN', 'B', 0.2, (35.15, 12.65), (35.15, 13.65), (34.85, 13.95), (24.0, 13.95), (24.0, 11.9))
-V('USB_DP', 24.85, 11.9, 0.5, 0.3)
-V('USB_DN', 24.0, 11.9, 0.5, 0.3)
-R('USB_DP', 'F', 0.2, (24.85, 11.9), 'U1.18')
-R('USB_DN', 'F', 0.2, (24.0, 11.9), 'U1.17')
-# CC1 leaves left and runs down the gap to R1
-R('CC1', 'F', 0.2, 'J1.A5', (32.2, 14.15), (32.2, 18.6), 'R1.1')
-# CC2 leaves left, up the gap to R2
-R('CC2', 'F', 0.2, 'J1.B5', (32.2, 11.15), (32.2, 4.3), 'R2.1')
-# VBUS: both pad pairs drop to B.Cu right of the pad row, down the right edge to the charger
-# (between each pad pair's locating peg and the neighbouring CC pad)
-R('VBUS', 'F', 0.25, 'J1.A9', (34.3, 10.72), (35.8, 10.72))
-V('VBUS', 35.8, 10.72)
-R('VBUS', 'F', 0.25, 'J1.A4', (34.3, 15.08), (35.8, 15.08))
-V('VBUS', 35.8, 15.08)
-R('VBUS', 'B', 0.4, (35.8, 10.72), (35.8, 23.0), (35.05, 23.75), (34.2, 23.75))
-V('VBUS', 34.2, 23.75)
-R('VBUS', 'F', 0.4, (34.2, 23.75), 'U4.4')
-R('VBUS', 'F', 0.4, (34.2, 23.75), (35.05, 23.75), 'C4.1')
+R('USB_DP', 'B', 0.2, (30.45, 9.35), (30.45, 10.35))
+R('USB_DN', 'B', 0.2, (31.15, 9.85), (31.15, 10.85))
+# receptacle -> USBLC6 (right pins): D+ left of the shell tab, D- right of it
+R('USB_DP', 'B', 0.2, (30.45, 10.35), (30.45, 11.7), (28.65, 13.5), (28.65, 14.3))
+V('USB_DP', 28.65, 14.3, 0.5, 0.3)
+R('USB_DP', 'F', 0.2, (28.65, 14.3), 'U7.6')
+R('USB_DN', 'B', 0.2, (31.15, 10.85), (31.6, 11.3), (31.6, 16.0), (30.6, 17.0), (29.15, 17.0))
+V('USB_DN', 29.15, 17.0, 0.5, 0.3)
+R('USB_DN', 'F', 0.2, (29.15, 17.0), 'U7.4')
+# USBLC6 (left pins) -> back layer right under the module's bottom pad row (the row of parts below keeps the back
+# layer for its own vias) -> vias inside the pad ring at pins 17/18
+R('USB_DP', 'F', 0.2, 'U7.1', (24.9, 14.65))
+V('USB_DP', 24.9, 14.65, 0.5, 0.3)
+R('USB_DP', 'B', 0.2, (24.9, 14.65), (24.9, 12.6), (20.6, 12.6), (20.0, 12.0))
+R('USB_DN', 'F', 0.2, 'U7.3', (24.9, 16.8))
+V('USB_DN', 24.9, 16.8, 0.5, 0.3)
+R('USB_DN', 'B', 0.2, (24.9, 16.8), (24.3, 16.2), (24.3, 13.5), (24.0, 13.2), (19.8, 13.2), (19.2, 12.6), (19.2, 12.0))
+# the USBLC6 joins pins 1/6 and 3/4 inside; KiCad needs copper for it: straight under the body
+R('USB_DP', 'F', 0.2, 'U7.1', 'U7.6')
+R('USB_DN', 'F', 0.2, 'U7.3', 'U7.4')
+V('USB_DP', 20.0, 12.0, 0.5, 0.3)
+V('USB_DN', 19.2, 12.0, 0.5, 0.3)
+R('USB_DP', 'F', 0.2, (20.0, 12.0), 'U1.18')
+R('USB_DN', 'F', 0.2, (19.2, 12.0), 'U1.17')
 
-# ------------------------------------------------------------------ ground vias for pads the pour can't reach (found by search: main B.Cu pour below, stub clear on F.Cu)
-for pad, x, y in (('C8.2', 20.64, 22.35), ('R3.2', 28.0, 21.27), ('R6.2', 13.3, 5.88), ('C16.2', 22.86, 20.12), ('R15.2', 26.42, 19.88)):
-    R('GND', 'F', 0.25, pad, (x, y))
-    V('GND', x, y, 0.5, 0.3)
+# ------------------------------------------------------------------ accelerometer interrupt: via inside the pad ring at pin 16
+V('ACC_INT1', 18.1, 12.1, 0.5, 0.3)
+R('ACC_INT1', 'F', 0.2, (18.1, 12.1), 'U1.16')
 
-# ------------------------------------------------------------------ status LED: the module's LED line arrives on B.Cu at this via
-V('LED_STATUS', 34.95, 5.0)
-R('LED_STATUS', 'F', 0.25, (34.95, 5.0), 'R4.1')
-R('LED_A', 'F', 0.25, 'R4.2', 'D2.2')
+# ------------------------------------------------------------------ accelerometer block (under the module's bottom-left pins)
+R('ACC_INT1', 'B', 0.2, (18.1, 12.1), (18.1, 16.0), (18.55, 16.45), (19.35, 16.45))   # back layer, clear of SDA and the 3V3 pins
+V('ACC_INT1', 19.35, 16.45, 0.5, 0.3)                                 # TP13 sits on it (back)
+R('ACC_INT1', 'F', 0.2, (19.35, 16.45), 'U3.5')
+R('I2C_SDA', 'F', 0.2, 'U3.2', (18.6, 14.8), (18.4, 14.6), (18.4, 14.0), (18.7, 13.7), (22.8, 13.7), (23.2, 13.3), 'U1.22')
+R('I2C_SDA', 'F', 0.2, 'R16.2', (22.2, 13.7))
+R('I2C_SDA', 'F', 0.2, 'U1.22', (23.22, 11.85))
+V('I2C_SDA', 23.22, 11.85, 0.5, 0.3)                                    # TP15 sits on it (back)
+V('I2C_SCL', 25.434, 13.75, 0.5, 0.3)                                  # on the back-layer SCL run, next to pin 24
+R('I2C_SCL', 'F', 0.2, (25.434, 13.75), 'U1.24')
+R('I2C_SCL', 'F', 0.2, (22.81, 16.285), (23.75, 16.285), (23.75, 14.9), 'R17.2')   # pull-up, from the router's via
+R('3V3', 'F', 0.25, 'U3.3', (18.3, 15.3), (18.3, 16.9), 'C11.1')       # VDDIO, around the west side
+R('3V3', 'F', 0.3, 'C11.1', (19.12, 18.4))
+R('GND', 'F', 0.25, 'C11.2', (20.15, 16.65))
+V('GND', 20.15, 16.65, 0.5, 0.3)
+R('3V3', 'F', 0.2, 'U3.7', (20.75, 16.19), (20.75, 17.08), 'C10.1')     # VDD: C10 below the sensor, its ground pad facing it
+R('3V3', 'F', 0.3, 'C10.1', (21.3, 18.4), (19.9, 18.4))
+R('3V3', 'F', 0.3, 'R16.1', 'R17.1')
+R('3V3', 'F', 0.2, 'R16.1', (22.2, 16.8), 'C10.1')
+R('GND', 'F', 0.25, 'U3.9', 'U3.8', (21.35, 15.4), 'C10.2')            # sensor ground + C10: one via between them
+V('GND', 21.35, 15.4, 0.5, 0.3)
 
-# ------------------------------------------------------------------ VBUS_SENSE: straight down the gap between the module and the USB-C pads
-R('VBUS_SENSE', 'F', 0.2, 'U1.26', (31.45, 11.15), (31.8, 11.5), (31.8, 19.8), (31.909, 19.909), (27.85, 19.909),
-  (27.51, 20.249), (27.51, 20.975), (26.72, 21.765), 'R15.1')
-R('VBUS_SENSE', 'F', 0.2, 'R15.1', 'R14.2')
+# battery sense: via inside the ring at pin 15, back layer down past the crystal's edge (a DC line), up to the divider
+V('VBAT_SENSE', 17.3, 11.8, 0.5, 0.3)
+R('VBAT_SENSE', 'F', 0.2, (17.3, 11.8), 'U1.15')
+R('VBAT_SENSE', 'B', 0.2, (17.3, 11.8), (17.45, 11.95), (17.45, 17.0), (18.05, 17.6), (21.25, 17.6), (21.6, 17.95), (21.6, 18.95))
+V('VBAT_SENSE', 21.6, 18.95, 0.5, 0.3)
+R('VBAT_SENSE', 'F', 0.2, (21.6, 18.95), (21.6, 19.6), 'R12.2')
 
-# ------------------------------------------------------------------ BTN: over the top of the USB-C, then B.Cu under it (no F.Cu under the shell)
-R('BTN', 'F', 0.2, 'U1.23', (28.8, 11.4), (29.64, 10.56))
-V('BTN', 29.64, 10.56)
-R('BTN', 'B', 0.2, (29.64, 10.56), (30.35, 9.85), 'TP17.1')
-R('BTN', 'B', 0.2, 'TP17.1', (31.35, 9.1), (31.35, 7.79), (32.3, 6.84), (36.0, 6.84), (36.4, 7.24), (36.4, 18.6), (36.65, 18.85))
-V('BTN', 36.65, 18.85)
-R('BTN', 'F', 0.2, (36.65, 18.85), (36.65, 19.975), (37.1, 19.975))
-R('BTN', 'F', 0.2, (37.1, 19.975), (37.35, 19.975), (38.27, 20.9), (38.27, 21.51), (37.36, 22.425), (37.1, 22.425))   # both pads are '1'
+# ------------------------------------------------------------------ USB-C side strip: CC1, VBUS divider (sense to pin 25), charge status (pin 26)
+R('CC1', 'F', 0.2, 'J1.A5', (28.2, 11.35), (28.2, 10.3), 'R1.1')
+R('VBUS', 'F', 0.25, 'J1.A4', 'R14.1')
+R('VBUS_SENSE', 'F', 0.2, 'U1.25', 'R14.2', 'R15.1')
+R('CHG_STAT', 'F', 0.2, 'U1.26', (26.75, 11.15), (26.95, 10.95))
+V('CHG_STAT', 26.95, 10.95, 0.5, 0.3)
+R('VBUS', 'B', 0.3, (32.3, 10.1), 'TP3.1')                              # test pad on the VBUS run, behind the receptacle
 
-# ------------------------------------------------------------------ CHG_STAT: module corner pin, past the USB lanes on F.Cu, then B.Cu down to the charger
-R('CHG_STAT', 'F', 0.2, 'U1.25', (31.4, 11.95), (31.4, 14.45), (31.1, 14.75))
-V('CHG_STAT', 31.1, 14.75, 0.5, 0.3)
-V('GND', 30.25, 14.75, 0.5, 0.3)        # the module's corner GND pad is boxed in by CHG_STAT and SCL on F.Cu
+# ------------------------------------------------------------------ BTN: the button sits below the USB-C, boxed in by VBUS and the USB lanes:
+# down from pin 23 between R17 and the USBLC6, east on top, back layer under the charger cap, up to the button's lower pad
+R('BTN', 'F', 0.2, 'U1.23', (24.0, 13.6), (24.1, 13.7), (24.1, 18.0), (28.6, 18.0))
+V('BTN', 28.6, 18.0, 0.5, 0.3)
+R('BTN', 'B', 0.2, (28.6, 18.0), (31.75, 18.0), (31.75, 19.65))
+V('BTN', 31.75, 19.65, 0.5, 0.3)
+R('BTN', 'F', 0.2, (31.75, 19.65), 'SW1.1')
+R('GND', 'F', 0.3, 'SW1.2', (34.4, 18.6))                              # button ground: out the east side (its two pin-1 pads count as joined)
+V('GND', 34.4, 18.6, 0.5, 0.3)
+R('GND', 'F', 0.25, 'U7.2', (26.8, 15.85))                             # USBLC6 ground: via under the chip, between the pin rows
+V('GND', 26.8, 15.85, 0.5, 0.3)
+R('GND', 'F', 0.3, 'C5.2', (12.75, 11.55))                             # EN cap ground, onto TP12 on the back
+V('GND', 12.75, 11.55, 0.5, 0.3)
 
-# ------------------------------------------------------------------ ACC_INT1: past the USB lanes, B.Cu to a via in the middle of the accelerometer
-R('ACC_INT1', 'F', 0.2, 'U1.16', (23.2, 14.6))
-V('ACC_INT1', 23.2, 14.6, 0.5, 0.3)
-R('ACC_INT1', 'B', 0.2, (23.2, 14.6), (23.2, 15.5), (24.8, 17.1), 'TP13.1')
-V('ACC_INT1', 25.6, 17.1, 0.5, 0.3)
-R('ACC_INT1', 'F', 0.2, (25.6, 17.1), (25.51, 17.19), 'U3.5')
-
-# ------------------------------------------------------------------ I2C_SCL to the accelerometer: B.Cu from the SCL test-pad via, so no track threads between row A's pads
-R('I2C_SCL', 'B', 0.2, (30.0826, 17.0), (28.3826, 15.3), (26.0, 15.3))
-V('I2C_SCL', 26.0, 15.3, 0.5, 0.3)
-R('I2C_SCL', 'F', 0.2, (26.0, 15.3), (25.51, 15.79), 'U3.12')
+# ------------------------------------------------------------------ module centre ground pads: vias into the back plane (ground return and heat)
+for x, y in ((18.025, 5.325), (21.975, 5.325), (20.0, 7.3), (18.025, 9.275), (21.975, 9.275)):
+    V('GND', x, y)

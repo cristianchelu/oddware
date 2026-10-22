@@ -9,18 +9,16 @@ Back: the wiring legend (connector names, polarity, LED/button/USB) and the titl
 at fixed positions - the back is nearly empty, so it can carry the readable text.
 """
 
-# J3-J5 get their function name instead (MOT/SPK/BAT below): that's what you look for when plugging in
-FRONT_REFS = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'Q1', 'Q2', 'D1', 'D2', 'Y1',
+# J3 gets its function name instead (BAT below); the motor and speaker JST-SH have no room on the front, their names are on the back
+FRONT_REFS = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'Q1', 'Q2', 'D1', 'D2', 'Y1',
               'J1', 'SW1']
 
 # fixed spots for refs the auto-placer gets wrong: ref -> (x, y, rot)
-REF_AT = {'Q2': (10.365, 12.4, 0), 'U5': (11.2, 17.26, 0), 'D1': (9.65, 13.72, 0)}   # crowded: below Q2, above U5
+REF_AT = {'U1': (13.2, 14.5, 0)}   # below the module's corner: the auto-placer looks right beside the body, which is all pads
 
 # front legends: (text, anchor 'REF.PAD' to auto-place near, or (x, y, rot) fixed, size)
 FRONT_LABELS = [
-    ('MOT', (7.6, 3.8), 0.8),
-    ('SPK', (7.25, 13.5, 0), 0.8),             # fixed: clear of D1's ref
-    ('BAT', (7.6, 18.2), 0.8),
+    ('BAT', 'J3.2', 0.8),
     ('+', 'J3.1', 0.8),
 ]
 
@@ -28,32 +26,26 @@ FRONT_LABELS = [
 # the text is mirrored so it reads correctly from the back.
 BACK_TEXT = [
     # title + paw in the strip a MINI-1's antenna keepout leaves bare (no copper there, silk is fine)
-    ('zigbee toy', 23.9, 0.9, 0, 0.9),
-    ('rev B  2026-10', 23.9, 2.4, 0, 0.8),
-    # connectors: names along the clean strip right of the pins, polarity left of them
-    ('MOTOR', 6.6, 3.8, 270, 0.9),
-    ('SPEAKER', 6.6, 11.0, 270, 0.9),
-    ('BATTERY', 6.6, 18.2, 270, 0.9),
-    ('+', 2.6, 10.0, 0, 1.0), ('-', 2.6, 12.0, 0, 1.0),
-    ('+', 2.6, 17.2, 0, 1.0), ('-', 2.6, 19.2, 0, 1.0),
+    ('zigbee toy', 19.0, 1.15, 0, 0.9),
+    # revision in the bottom-left corner, under the battery legend
+    ('rev B', 2.9, 20.3, 0, 0.8),
+    ('2026-10', 3.6, 21.6, 0, 0.8),
+    # connectors: names along the left edge (the SH plugs are SMD, so the back is clear), battery polarity beside its pins
+    ('MOTOR', 2.3, 4.45, 270, 0.8),
+    ('SPEAKER', 2.3, 9.65, 270, 0.8),
+    ('BATTERY', 2.1, 16.0, 270, 0.8),
+    ('+', 6.6, 14.74, 0, 1.0), ('-', 6.6, 16.74, 0, 1.0),
     # right edge, behind the parts that face the shell
-    ('USB', 37.4, 12.9, 270, 0.8),
-    ('STAT', 36.3, 6.3, 0, 0.8),
-    ('BTN', 38.0, 21.2, 270, 0.8),
+    ('USB', 35.15, 10.1, 270, 0.8),
+    ('STAT', 33.9, 4.45, 0, 0.8),
+    ('BTN', 35.15, 18.6, 270, 0.8),
 ]
 
-# test pads: label = the TP's value, on this side of the pad ('right' or 'below')
+# test pads: label = the TP's value, on this side of the pad ('right', 'left', 'above' or 'below')
 TP_LABEL_SIZE = 0.8
-TP_LABEL_SIDE = {f'TP{n}': 'right' for n in (1, 2, 3, 4, 5, 6, 13, 15, 16, 18, 20)}
-TP_LABEL_SIDE.update({f'TP{n}': 'above' for n in (7, 8, 9)})       # motor block, top row
-TP_LABEL_SIDE.update({f'TP{n}': 'below' for n in (11, 12)})
-TP_LABEL_SIDE['TP21'] = 'left'                                     # EN: below is the IN2 via
-TP_LABEL_SIDE['TP10'] = 'right'
-TP_LABEL_SIDE['TP17'] = 'left'                                     # BOOT
-TP_LABEL_SIDE['TP22'] = 'below'                                    # UART GND
-TP_LABEL_SIDE['TP16'] = 'left'                                     # SCL: right is the nCHG pad
-TP_LABEL_SIDE['TP19'] = 'below'                                    # TX: right is the mounting hole, left the RX pad
-TP_LABEL_SIDE['TP20'] = 'left'                                     # RX: right is the TX pad
+TP_LABEL_SIDE = {f'TP{n}': 'right' for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22)}
+TP_LABEL_SIDE['TP15'] = 'below'                                    # SDA: TP16 to the right, a via to the left
+TP_LABEL_SIDE.update({'TP1': 'above', 'TP19': 'above', 'TP20': 'above', 'TP3': 'left', 'TP5': 'left', 'TP22': 'left'})   # clear of the neighbouring pads and the edge
 CHAR_W = 0.94          # stroke-font advance per character, x text size (for keepout estimates)
 
 
@@ -77,4 +69,4 @@ def text_box(x, y, rot, text, size):
     return (x - w / 2, y - h / 2, x + w / 2, y + h / 2)
 
 # small paw print on the back, beside the title (reads left of it from the back): (cx, cy, size)
-PAW = (29.9, 1.2, 2.0)
+PAW = (25.3, 1.2, 2.0)

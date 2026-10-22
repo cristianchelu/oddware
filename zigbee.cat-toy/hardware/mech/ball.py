@@ -21,6 +21,7 @@ Parts (STEP + STL in build/ball_<cell>/)
 """
 import math
 import os
+import sys
 import traceback
 
 import FreeCAD as App
@@ -29,6 +30,11 @@ import MeshPart
 
 V = App.Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
+import placement  # noqa: E402  (board outline and part positions come from the KiCad generator's placement)
+
+P = placement.PLACE
+PCB_W, PCB_H = placement.BOARD_W, placement.BOARD_H
 CELL_NAME = os.environ.get('BALL_CELL', '803040')
 CHECK = os.environ.get('BALL_CHECK', '') == '1'
 CELLS = {'803040': (8.0, 30.0, 40.0, 20.0)}            # t, w, l, grams
@@ -59,8 +65,8 @@ CORE_HOLE_R = 14.0                                # bottom opening around dome A
 RAIL_X, RAIL_T, RAIL_CLR = 26.0, 1.2, 0.3   # cup rails: two ribs per side, the frame plate (X ±27.5) slides in from the top
 CAP_BOSSES = [(27.5 * math.cos(math.radians(a)), 27.5 * math.sin(math.radians(a))) for a in (40, 340)] + [(-27.5, 3.0)]   # clear of the tray posts and the rails
 USB_WIN = (13.0, 7.0)          # the receptacle face sits 1.7 mm behind the cap face, so the window takes the plug overmould (max 12.35 x 6.5)
-USB_PT = (40.0, -12.9, 1.6 + 3.33 / 2)   # KiCad x, y, z of the receptacle's centre at the board edge
-BTN_PT = (40.0, -21.2, 1.6 + 1.7)        # SW1 plunger axis: 1.7 mm above the board top (from the STEP)
+USB_PT = (PCB_W, -P['J1'][1], 1.6 + 3.33 / 2)   # KiCad x, y, z of the receptacle's centre at the board edge
+BTN_PT = (PCB_W, -P['SW1'][1], 1.6 + 1.7)        # SW1 plunger axis: 1.7 mm above the board top (from the STEP)
 PINHOLE_D = 1.3
 # ---- motor (N20 micro metal gearmotor, 6 V 100 rpm suggested) ------------------------------------
 M_W, M_H = 12.0, 10.0
@@ -75,7 +81,7 @@ Z_MOTOR1 = Z_BOSS + M_GEAR_L + M_MOTOR_L    # +1
 HUB_SOCKET_DEPTH = 5.0
 # ---- chassis ------------------------------------------------------------------------------------
 # Stack (Y): motor on the axis (-5..5) | plate -4..-2 with a window for the motor, cheek ledges carry it at -5 |
-# board back face at -7.5 (J3-J5 THT pins stick 1.8 mm out of it, 0.7 clear of the motor can), components down to -15.5 |
+# board back face at -7.5 (the battery JST-PH's pins stick 1.8 mm out of it, 0.7 clear of the motor can), components down to -15.5 |
 # cell -16.5..-24.5 | tray floor | ballast plate to -28.6 (core inner R 29.9).
 PLATE_Y0, PLATE_Y1 = -4.0, -2.0
 CHEEK_Y0 = -5.5                             # cheeks start 0.5 above the board's back; 1.15 mm ledges carry the motor
@@ -84,10 +90,12 @@ FACE_T = 1.5
 PIN_D, PIN_L, POST_Z = 4.0, 7.5, (17.0, 28.0)
 PIN_Z1 = POST_Z[1] + PIN_L                  # 35.5
 HUB_B_BORE, HUB_B_DEPTH = 4.3, 6.0
-MINI1_ANT = (18.2, 31.4, 3.1)   # MINI-1 antenna past the board's top edge: board x from..to, overhang (placement.py U1)
-BOARD_X_REF, BOARD_Y_BACK, BOARD_Z0 = -15.0, -7.5, -19.1   # KiCad y=0 edge (antenna) at X=-15 so the H2 standoff (X 6.5..10.9) clears the motor;
-                                                          # back face at Y=-6; KiCad x=0 edge at Z=-19 so the USB-C face sits in the cap plate
-BOARD_HOLES = [(37.4, -2.6), (2.6, -23.7)]
+MINI1_ANT = (P['U1'][0] - 6.6, P['U1'][0] + 6.6, 3.1)   # MINI-1 antenna past the board's top edge: board x from..to, overhang
+BOARD_HOLES = [(P[h][0], -P[h][1]) for h in ('H1', 'H2')]
+# KiCad y=0 edge (antenna) at X=BOARD_X_REF, chosen so the H2 standoff (H2 sits beside the motor, not above it) is 0.5 clear of
+# the motor can (X +-6); the USB-C edge stays at Z=20.9 so the receptacle face sits in the cap plate, whatever the board length
+BOARD_X_REF = M_W / 2 + 0.5 + 4.4 / 2 - P['H2'][1]
+BOARD_Y_BACK, BOARD_Z0 = -7.5, 20.9 - PCB_W
 BOSS_D, BOSS_HOLE, STANDOFF = 4.4, 1.7, PLATE_Y0 - BOARD_Y_BACK   # 3.5
 BOARD_COMP_H = 6.44                         # JST housings
 # battery tray
@@ -197,7 +205,7 @@ def board_placement():
 
 
 def board_outline():
-    b = box(0, -26, 0, 40, 0, 1.6)
+    b = box(0, -PCB_H, 0, PCB_W, 0, 1.6)
     b.transformShape(board_placement().toMatrix())
     return b
 
@@ -292,7 +300,7 @@ def core_cap():
     win = win.fuse(cyl_z(h / 2, CORE_Z_TOP - CAP_T - 1, CORE_Z_TOP + 1, x=u.x - w / 2 + h / 2, y=u.y))
     win = win.fuse(cyl_z(h / 2, CORE_Z_TOP - CAP_T - 1, CORE_Z_TOP + 1, x=u.x + w / 2 - h / 2, y=u.y))
     body = body.cut(win)
-    # pinhole over the button plunger (tip at KiCad x = 40.04, i.e. 0.06 behind the cap's inner face)
+    # pinhole over the button plunger (tip just behind the cap's inner face)
     p = board_pt(*BTN_PT)
     body = body.cut(cyl_z(PINHOLE_D / 2, CORE_Z_TOP - CAP_T - 1, CORE_Z_TOP + 1, x=p.x, y=p.y))
     # pin post passes through
@@ -344,7 +352,7 @@ def main():
         print(f'pendulum {label}: {mt:.0f} g, CG {off:.1f} mm below the axis, restoring torque {mt * off / 10:.0f} g*cm')
     print('shell masses (g): ' + ', '.join(f'{n} {P[n].Volume * rho:.0f}' for n in ('dome_a', 'dome_b', 'ring', 'core_cup', 'core_cap', 'frame', 'tray')))
     u, p = board_pt(*USB_PT), board_pt(*BTN_PT)
-    print(f'cap: USB window centre X {u.x:.1f} Y {u.y:.1f}, receptacle face {CORE_Z_TOP - (BOARD_Z0 + 40.0):.1f} mm behind the cap face (cap plate is {CAP_T} thick); pinhole at X {p.x:.1f} Y {p.y:.1f}')
+    print(f'cap: USB window centre X {u.x:.1f} Y {u.y:.1f}, receptacle face {CORE_Z_TOP - (BOARD_Z0 + PCB_W):.1f} mm behind the cap face (cap plate is {CAP_T} thick); pinhole at X {p.x:.1f} Y {p.y:.1f}')
     if CHECK:
         problems = []
         inner_core = core_envelope(CORE_R_IN - 0.25, CORE_SPH_IN - 0.25)

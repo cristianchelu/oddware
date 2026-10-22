@@ -18,93 +18,97 @@ the footprint on the back.
   * Back: labelled test pads in three groups, clear of the module so its underside stays free for routing.
 """
 
-BOARD_W = 40.0
-BOARD_H = 26.0
+BOARD_W = 36.0
+BOARD_H = 23.0
 CORNER_R = 2.0
 EDGE_KEEPOUT = 1.0          # assembled bodies vs the board edge (JLC Economic: 0.3 mm + margin)
-EDGE_PARTS = {'J1', 'SW1'}  # face the shell through the right edge on purpose
+EDGE_PARTS = {'J1': 'right', 'SW1': 'right', 'J4': 'left', 'J5': 'left'}   # face the shell through that edge on purpose
 
 PLACE = {
-    'U1': (24.8, 7.3, 0),
+    'U1': (20.0, 7.3, 0),
 
-    # ---- left edge connectors (side entry, opening to the left)
-    'J4': (4.4, 2.8, 270),       # MOTOR
-    'J5': (4.4, 10.0, 270),      # SPEAKER
-    'J3': (4.4, 17.2, 270),      # BATTERY
+    # ---- left edge: JST-SH motor + speaker (front flush with the edge), JST-PH battery
+    'J4': (3.075, 4.45, 270),     # MOTOR
+    'J5': (3.075, 9.65, 270),     # SPEAKER
+    'J3': (4.4, 14.74, 270),     # BATTERY
 
-    # ---- motor driver, VM caps above it: C3's ground pad sits over the driver's thermal pad
-    'U2': (10.6, 5.05, 0),
-    'C3': (9.9, 2.95, 0),
-    'C2': (13.85, 3.2, 0),
-    'R6': (13.4, 5.9, 90),
+    # ---- motor driver
+    'U2': (8.3, 4.4, 0),
+    'C3': (7.9, 2.5, 0),
+    'C2': (11.3, 1.8, 0),
+    'R6': (10.9, 4.0, 0),
+    'C7': (10.9, 5.05, 0),
+    'C9': (12.5, 6.2, 90),
 
     # ---- speaker
-    'R11': (8.2, 7.1, 0),
-    'D1': (8.4, 10.6, 270),
-    'Q2': (11.6, 10.8, 270),
-    'R7': (14.4, 12.4, 90),
-    'R8': (14.4, 9.4, 90),
+    'R11': (7.0, 6.5, 270),
+    'D1': (7.6, 9.8, 270),
+    'Q2': (10.5, 9.8, 180),
+    'R7': (10.6, 12.0, 180),
+    'R8': (12.55, 12.0, 0),
+    'R9': (12.65, 8.6, 90),
+    'C5': (12.65, 10.5, 270),
 
-    # ---- battery protection + reverse FET, battery divider in the corner pocket
-    'C15': (8.6, 18.4, 270),
-    'U5': (11.2, 19.8, 270),
-    'Q1': (11.4, 14.9, 180),
-    'C1': (14.2, 19.0, 270),
-    'R12': (7.9, 21.3, 0),
-    'R13': (7.9, 22.9, 0),
+    # ---- battery
+    'C15': (8.6, 21.4, 180),
+    'U5': (7.8, 18.25, 90),
+    'Q1': (7.9, 13.9, 180),
+    'C1': (11.4, 14.6, 270),
 
-    # ---- module: 3V3 decoupling and EN delay at its left pins
-    'C9': (16.6, 4.85, 90),
-    'R9': (16.6, 8.45, 270),
-    'C5': (16.6, 11.55, 270),
+    # ---- under the module
+    'Y1': (16.0, 15.0, 180),
+    'C12': (15.0, 16.8, 0),
+    'C13': (17.0, 16.8, 0),
+    'U3': (19.6, 15.05, 0),
+    'C10': (21.35, 16.6, 90),
+    'C11': (19.6, 17.3, 0),
+    'R16': (22.2, 14.85, 90),
+    'R17': (23.15, 14.85, 90),
+    'C6': (14.85, 20.9, 90),
+    'U6': (17.35, 20.9, 90),
+    'C8': (20.15, 20.9, 270),
+    'R12': (21.75, 20.6, 90),
+    'R13': (22.75, 20.6, 270),
+    'C16': (23.75, 20.6, 270),
 
-    # ---- row under the module: crystal, accelerometer, I2C pull-ups
-    'C12': (16.4, 17.0, 90),
-    'Y1': (19.24, 17.0, 180),
-    'C13': (22.08, 17.0, 90),
-    'C11': (23.66, 17.0, 90),
-    'U3': (25.76, 17.0, 0),
-    'C10': (27.86, 17.0, 90),
-    'R16': (29.44, 17.0, 90),
-    'R17': (31.02, 17.0, 90),
+    # ---- right edge: LED, USB-C, button; USB protection, charger
+    'R4': (34.1, 3.7, 0),
+    'D2': (34.1, 2.4, 180),
+    'J1': (33.3, 10.1, 90),      # receptacle face 1.0 mm past the edge: flush with the shell outside
+    'SW1': (33.85, 18.6, 90),
+    'R2': (28.3, 5.6, 0),
+    'R1': (27.5, 10.0, 180),
+    'U7': (27.0, 15.85, 0),
+    'U4': (30.0, 20.6, 90),
+    'R3': (27.7, 20.1, 90),
+    'C4': (30.4, 18.0, 180),
+    'R14': (27.5, 12.55, 180),
+    'R15': (27.45, 13.7, 0),
 
-    # ---- bottom row: regulator, ADC filter, USB detect, charger, CC1
-    'C6': (16.4, 21.4, 90),
-    'U6': (18.95, 21.5, 90),
-    'C8': (21.74, 21.4, 270),
-    'C16': (23.56, 21.4, 90),
-    'R14': (25.14, 21.4, 270),
-    'R15': (26.72, 21.4, 90),
-    'R3': (28.3, 21.4, 90),
-    'U4': (32.1, 21.95, 0),
-    'C4': (35.05, 21.85, 90),
-    'R1': (33.4, 19.35, 0),
-
-    # ---- right edge: CC2 pull-down, status LED, USB-C, button
-    'R2': (33.25, 3.3, 0),
-    'R4': (34.0, 5.9, 270),
-    'D2': (36.3, 6.3, 180),
-    'J1': (37.3, 12.9, 90),      # receptacle face 1.0 mm past the edge: flush with the shell outside
-    'SW1': (38.0, 21.2, 90),
-
-    # ---- test pads, back side ('B'), grouped by where they are probed; label sides in silk.py.
-    # Bottom edge (labels right): power, charger
-    'TP1': (10.4, 23.5, 0, 'B'), 'TP4': (10.4, 25.15, 0, 'B'),     # VBAT  GND
-    'TP2': (15.6, 23.5, 0, 'B'),                                   # 3V3
-    'TP5': (32.14, 21.97, 0, 'B'),                                 # nCHG, on its via under the charger (label right)
-    'TP3': (20.8, 23.5, 0, 'B'), 'TP6': (20.8, 25.15, 0, 'B'),     # VBUS  PROG
-    # Behind the accelerometer, each centred on its signal's via (labels right): SDA INT1 SCL
-    'TP15': (22.4, 15.4, 0, 'B'), 'TP13': (25.6, 17.1, 0, 'B'), 'TP16': (29.65, 22.04, 0, 'B'),
-    # Behind the motor driver and speaker
-    'TP7': (8.7, 6.0, 0, 'B'), 'TP8': (11.4, 6.0, 0, 'B'), 'TP9': (14.7, 6.0, 0, 'B'),     # IN2  IN1  ISNS (labels above)
-    'TP10': (15.6, 7.5, 0, 'B'), 'TP11': (11.7, 9.6, 0, 'B'), 'TP12': (14.7, 11.0, 0, 'B'),  # GAIN (on its via, label right) SPK GND (below)
-    # Behind the module's right pads and the USB-C: UART with its ground, LED data, BOOT, EN
-    'TP19': (33.2, 3.0, 0, 'B'),                                                             # TX, clear of the MINI-1 antenna keepout
-    'TP20': (30.6, 3.85, 0, 'B'), 'TP18': (30.6, 5.85, 0, 'B'),                                # RX LED (labels right)
-    'TP22': (32.8, 10.2, 0, 'B'), 'TP17': (30.6, 9.85, 0, 'B'),                              # GND (label below) BOOT (label left)
-    'TP21': (17.5, 9.55, 0, 'B'),                                                            # EN, on its via beside the EN resistor (label left)
+    # ---- test pads, back side ('B'): placeholder grid, placed properly after routing
+    'TP1': (14.6, 19.4, 0, 'B'),
+    'TP2': (19.0, 18.4, 0, 'B'),
+    'TP3': (33.15, 10.1, 0, 'B'),
+    'TP4': (14.6, 21.6, 0, 'B'),
+    'TP5': (24.0, 21.6, 0, 'B'),
+    'TP6': (24.0, 19.4, 0, 'B'),
+    'TP7': (7.2, 6.0, 0, 'B'),
+    'TP8': (7.2, 8.4, 0, 'B'),
+    'TP9': (7.2, 10.8, 0, 'B'),
+    'TP10': (12.4, 6.0, 0, 'B'),
+    'TP11': (12.4, 8.4, 0, 'B'),
+    'TP12': (12.4, 10.8, 0, 'B'),
+    'TP13': (18.6, 16.85, 0, 'B'),
+    'TP15': (23.22, 11.85, 0, 'B'),
+    'TP16': (25.0, 10.6, 0, 'B'),
+    'TP17': (18.4, 3.4, 0, 'B'),
+    'TP18': (23.4, 3.4, 0, 'B'),
+    'TP19': (31.6, 21.85, 0, 'B'),
+    'TP20': (29.5, 19.4, 0, 'B'),
+    'TP21': (14.8, 3.4, 0, 'B'),
+    'TP22': (29.5, 21.8, 0, 'B'),
 
     # ---- M2 mounting holes, NPTH
-    'H1': (37.4, 2.6, 0),
-    'H2': (2.6, 23.7, 0),
+    'H1': (30.2, 2.6, 0),
+    'H2': (12.0, 20.6, 0),
 }

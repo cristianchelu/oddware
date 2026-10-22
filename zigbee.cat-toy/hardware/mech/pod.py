@@ -25,6 +25,10 @@ import MeshPart
 
 V = App.Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, '..', 'tools'))
+import placement  # noqa: E402  (board outline and part positions come from the KiCad generator's placement)
+
+P = placement.PLACE
 
 # ---- parameters (mm) -------------------------------------------------------------------------
 BATTERY = os.environ.get('POD_BATTERY', '503040')      # set by pod.sh (freecadcmd eats argv)
@@ -33,28 +37,33 @@ assert BATTERY in ('503040', '103450')
 CELL = {'503040': (5.0, 30.0, 40.0), '103450': (10.0, 34.0, 50.0)}[BATTERY]   # t, w, l
 CELL_CLR = (1.0, 1.0, 1.0)            # swelling / slide clearance per axis (t, w, l)
 
-PCB_W, PCB_H, PCB_T, PCB_R = 40.0, 26.0, 1.6, 2.0
-HOLES = [(37.4, -2.6), (2.6, -23.7)]  # M2, board frame (Y up)
+PCB_W, PCB_H, PCB_T, PCB_R = placement.BOARD_W, placement.BOARD_H, 1.6, placement.CORNER_R
+HOLES = [(P[h][0], -P[h][1]) for h in ('H1', 'H2')]   # M2, board frame (Y up)
 PCB_CLR = 0.25                        # board outline clearance to the walls (JLC +-0.2 routing)
 FACE_GAP = 0.15                       # board edge to faceplate inner face
 WALL, FLOOR, FACE = 1.2, 1.2, 1.0     # 3 perimeters, floor, faceplate
-STANDOFF = 2.0                        # board bottom above floor top: JST pins protrude 1.81
-Z_WALL = 7.0                          # JST housing top is 6.44
+STANDOFF = 2.0                        # board bottom above floor top: the battery JST-PH's pins protrude 1.81
+Z_WALL = 7.0                          # JST-PH housing top is 6.44
 LID_T, LIP_H, LIP_W, LIP_CLR = 1.2, 1.4, 0.8, 0.2
-BAY_L = 12.0                          # connector bay beyond the left board edge
 BOSS_D, BOSS_HOLE = 4.4, 1.7          # M2 thread-forming
+# connector bay beyond the left board edge: 12 mm for the plugs, longer when the cell needs it (the
+# battery box hangs under the whole cradle, so the cradle sets its length)
+BAY_L = max(12.0, CELL[2] + CELL_CLR[2] + 2 * WALL + LIP_W + LIP_CLR / 2 + WALL - (PCB_W + FACE_GAP + FACE))
 LEDGE_W = 1.0
-MINI1_ANT = (18.2, 31.4, 3.1)         # MINI-1 antenna past the top edge: board x from..to, overhang (placement.py U1)
-ANT_X = (17.5, 32.0)                  # antenna notch: the 1U's u.FL lead (x 19.9) leaves here; a MINI-1's antenna overhangs here
+U1_X = P['U1'][0]
+MINI1_ANT = (U1_X - 6.6, U1_X + 6.6, 3.1)   # MINI-1 antenna past the top edge: board x from..to, overhang
+ANT_X = (U1_X - 7.3, U1_X + 7.2)            # antenna notch: the 1U's u.FL lead (x U1-4.9) leaves here; a MINI-1's antenna overhangs here
 
-USB_C = (-12.9, PCB_T + 3.33 / 2)     # (Y, z) centre of the receptacle face
+USB_C = (-P['J1'][1], PCB_T + 3.33 / 2)     # (Y, z) centre of the receptacle face
 USB_SLOT = (10.0, 4.6)                # w x h, full-round ends
-LED_WIN = ((-6.3, PCB_T + 0.7), (3.0, 1.6))
-BTN = (-21.2, PCB_T + 1.7)            # plunger axis (Y, z), tip at x=40.04
+LED_WIN = ((-P['D2'][1], PCB_T + 0.7), (3.0, 1.6))
+BTN = (-P['SW1'][1], PCB_T + 1.7)           # plunger axis (Y, z)
+BTN_TIP_X = P['SW1'][0] + 2.04              # plunger tip, from the STEP
 TAB_W, TAB_L, TAB_T, TAB_SLOT = 5.0, 7.0, 0.6, 0.6
 TAB_NUB_D, TAB_BUMP_D, TAB_BUMP_H = 2.5, 3.0, 0.6
-WIRE_NOTCH = [(-4.0, 3.2), (-11.0, 3.2)]   # (Y centre, width) in the bay end wall: motor, speaker
-LEAD_SLOT = (-8.0, -2.0, -20.0, -17.0)     # x0,x1,Y0,Y1 through the floor for the battery lead
+WIRE_NOTCH = [(-P['J4'][1], 3.2), (-P['J5'][1], 3.2)]   # (Y centre, width) in the bay end wall: motor, speaker
+J3_Y = P['J3'][1]                                       # battery JST-PH pin 1 (pin 2 is 2 mm further down)
+LEAD_SLOT = (-8.0, -2.0, -(J3_Y + 2.8), -(J3_Y - 0.2))  # x0,x1,Y0,Y1 through the floor for the battery lead
 
 # derived
 Z_FLOOR_TOP = -STANDOFF
@@ -134,7 +143,8 @@ def cradle():
         body = body.cut(box(X_IN1 - 1, y0, tab_z0 - TAB_SLOT, X_OUT1 + 1, y1, tab_z1))
     body = body.cut(box(X_IN1 - 1, tab_y0 - TAB_SLOT, tab_z0 - TAB_SLOT, X_OUT1 + 1, tab_y1 + TAB_SLOT, tab_z0))
     body = body.cut(box(X_IN1 - 1, tab_y0, tab_z0, X_OUT1 - TAB_T, tab_y1, tab_z1))        # thin the tab
-    body = body.fuse(Part.makeCylinder(TAB_NUB_D / 2, (X_OUT1 - TAB_T) - X_IN1, V(X_IN1, yb, zb), V(1, 0, 0)))
+    nub_x0 = min(X_IN1, BTN_TIP_X + 0.05)                                                   # reaches to just short of the plunger tip
+    body = body.fuse(Part.makeCylinder(TAB_NUB_D / 2, (X_OUT1 - TAB_T) - nub_x0, V(nub_x0, yb, zb), V(1, 0, 0)))
     body = body.fuse(Part.makeCylinder(TAB_BUMP_D / 2, TAB_BUMP_H, V(X_OUT1, yb, zb), V(1, 0, 0)))
     return body
 
@@ -144,8 +154,6 @@ def lid():
     lip = box(X_IN0 + LIP_CLR, Y_IN0 + LIP_CLR, Z_WALL - LIP_H, X_IN1 - LIP_CLR, Y_IN1 - LIP_CLR, Z_WALL)
     lip = lip.cut(box(X_IN0 + LIP_CLR + LIP_W, Y_IN0 + LIP_CLR + LIP_W, Z_WALL - LIP_H - 1,
                       X_IN1 - LIP_CLR - LIP_W, Y_IN1 - LIP_CLR - LIP_W, Z_WALL + 1))
-    # the motor JST housing (J4) reaches Y=-0.85 and z=6.44: no lip beside it
-    lip = lip.cut(box(-3.0, Y_IN1 - LIP_CLR - LIP_W - 0.1, Z_WALL - LIP_H - 1, 7.0, Y_IN1 + 1, Z_WALL - 0.01))
     return plate.fuse(lip)
 
 

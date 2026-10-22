@@ -15,24 +15,27 @@ Output: `build/pod_<cell>/{cradle,lid,battery_box}.{step,stl}`. Previews: `opens
 Frame: the board's STEP frame. X along the board's long edge, Y up (= minus the KiCad board y), Z up,
 board bottom at z = 0, board top at z = 1.6, origin at the board's top-left corner.
 
+The board outline, its holes and the USB-C, LED, button and connector positions come from
+`hardware/tools/placement.py`, so both scripts follow a board change; run `--check` again after one.
+
 ### Parts
 
 | Part | What | Print |
 |---|---|---|
-| `cradle` | Board carrier. Floor plate 2 mm under the board (JST pins protrude 1.8), two M2 bosses at the board holes, 1 mm ledges under both long edges, 1.2 mm walls to z = 7 (JST housings are 6.4 tall). Open connector bay 12 mm beyond the left edge for the three JST plugs, with two wire notches in its end wall. Notch in the top wall and floor at x 17.5…32 for the antenna lead, or a MINI-1's antenna. 1 mm faceplate on the USB-C edge with: USB-C slot 10 × 4.6, LED window 3 × 1.6, and a 0.6 mm thick flexure tab (5 × 7) hinged at its top over the side button, with a nub inside that reaches the plunger and a dome outside. | floor down, no supports |
-| `lid` | 1.2 mm plate with an inner lip, friction fit. Lip relieved beside the motor JST. For a bench unit; toys may not need it. | flat side down |
+| `cradle` | Board carrier. Floor plate 2 mm under the board (the battery JST-PH's pins protrude 1.8), two M2 bosses at the board holes, 1 mm ledges under both long edges, 1.2 mm walls to z = 7 (the JST-PH housing is 6.4 tall). Open connector bay beyond the left edge for the three plugs, with two wire notches in its end wall: 12 mm, longer when the cell needs it (19.6 mm for the 103450). Notch in the top wall and floor at x 12.7…27.2 for the antenna lead, or a MINI-1's antenna. 1 mm faceplate on the USB-C edge with: USB-C slot 10 × 4.6, LED window 3 × 1.6, and a 0.6 mm thick flexure tab (5 × 7) hinged at its top over the side button, with a nub inside that reaches the plunger and a dome outside. | floor down, no supports |
+| `lid` | 1.2 mm plate with an inner lip, friction fit. For a bench unit; toys may not need it. | flat side down |
 | `battery_box` | Open-top box with a rim that takes the cradle's floor plate like a lid. Cavity = cell + 1 mm each way, with a stop rib so the cell sits under the board and the lead loops up through the slot in the cradle floor. `503040` (5 × 30 × 40, 500 mAh) or `103450` (10 × 34 × 50, 1000 mAh). | floor down |
 
 Screws: M2 × 5 button head (ISO 7380) through the board into the bosses (1.7 mm thread-forming holes).
 
 ### Numbers the toy bodies need
 
-- **Faceplate window:** 28.9 (Y) × 11.4 (Z) mm, Y −27.45…1.45, z −3.2…8.2, outer face at x = 41.15. The toy body gets this rectangular opening and the faceplate shows through it; the USB-C face sits 0.2 mm behind the faceplate's outer face.
-- **Cradle envelope:** 54.95 × 31.6 (503040) or 35.6 (103450) × 11.4 mm, x −13.2…41.75 (the 0.6 mm button dome is the +x extreme).
+- **Faceplate window:** 25.9 (Y) × 11.4 (Z) mm, Y −24.45…1.45, z −3.2…8.2, outer face at x = 37.15. The toy body gets this rectangular opening and the faceplate shows through it; the USB-C face sits 0.2 mm behind the faceplate's outer face.
+- **Cradle envelope:** 50.95 × 31.6 × 11.4 mm, x −13.2…37.75 (503040), or 57.3 × 35.6 × 11.4 mm, x −19.55…37.75 (103450). The 0.6 mm button dome is the +x extreme.
 - **Stack with battery box:** 18.6 mm (503040) or 23.6 mm (103450) from box bottom to lid top.
-- **Antenna:** the FPC antenna on the u.FL lead (x 19.9, Y −2.6) leaves through the notch at x 17.5…32. Stick it to the toy's inside wall, away from the motor and the battery. With a MINI-1 instead, its antenna overhangs the top edge by 3.1 mm into the same notch; keep plastic a few mm away from it.
-- **LED:** the status LED (0603) sits 2.9 mm in from the USB-C edge and lights upward, so the faceplate window shows only its spill. A light pipe or a lid window above it (x 35.5…37.1, Y −5.9…−6.7) shows it properly.
-- **Wires:** motor and speaker leave the bay through the notches at Y −4 and Y −11 (3.2 wide, from z 2 up); the battery lead comes up through the floor slot at x −8…−2, Y −20…−17.
+- **Antenna:** the FPC antenna on the u.FL lead (x 15.1, Y −2.6) leaves through the notch at x 12.7…27.2. Stick it to the toy's inside wall, away from the motor and the battery. With a MINI-1 instead, its antenna overhangs the top edge by 3.1 mm into the same notch; keep plastic a few mm away from it.
+- **LED:** the status LED (0603) sits 1.9 mm in from the USB-C edge, above the receptacle, and lights upward, so the faceplate window shows only its spill. A light pipe or a lid window above it (x 33.3…34.9, Y −2.0…−2.8) shows it properly.
+- **Wires:** motor and speaker leave the bay through the notches at Y −4.45 and Y −9.65 (3.2 wide, from z 2 up); the battery lead comes up through the floor slot at x −8…−2, Y −17.5…−14.5.
 
 ### Checks
 
@@ -64,7 +67,7 @@ The N20 gearmotor lies on the pole axis and is the axle: its 3 mm D shaft is pre
 | `frame` | 2 mm plate (Y −4…−2) spanning the cup, motor window with cheeks whose 1.15 mm ledges carry the can, 1.5 mm face plate with the Ø4.3 boss hole and two Ø1.8 holes 9 mm apart (M1.6), post with the Ø3.9 pin bore at the +Z end, two M2 standoffs for the board (3.5 mm), two clearance holes for the tray screws. | plate down |
 | `tray` | Battery tray under the board: 1.2 mm walls and floor, open toward +Z and on the long sides, two posts on the +X side screwed up into the plate, 14 × 30 pocket under the floor for a 2.5 mm steel ballast plate. | floor down |
 
-Not printed: N20 gearmotor (6 V winding, ~100 rpm), Ø4 × 7.5 mm steel pin (dowel or a cut M4 shank), two M2 × 5 for the board, two M2 × 6 for the tray, three M2 × 6 for the cap (1.7 mm holes, thread-forming), two M1.6 × 4 for the motor face, an 803040 cell (8 × 30 × 40, 1000 mAh) with a JST-PH lead, a 14 × 30 × 2.5 steel plate (8 g, optional), a motor pigtail to J4.
+Not printed: N20 gearmotor (6 V winding, ~100 rpm), Ø4 × 7.5 mm steel pin (dowel or a cut M4 shank), two M2 × 5 for the board, two M2 × 6 for the tray, three M2 × 6 for the cap (1.7 mm holes, thread-forming), two M1.6 × 4 for the motor face, an 803040 cell (8 × 30 × 40, 1000 mAh) with a JST-PH lead, a 14 × 30 × 2.5 steel plate (8 g, optional), a JST-SH motor pigtail to J4.
 
 ### Sizes
 
@@ -76,7 +79,7 @@ Not printed: N20 gearmotor (6 V winding, ~100 rpm), Ø4 × 7.5 mm steel pin (dow
 
 ### Assembly
 
-1. Press the pin into the frame post. Screw the board to the standoffs (from the component side), plug the motor pigtail into J4 and the cell into J3. Trim J3–J5's pins short: they sit 0.7 mm above the motor can.
+1. Press the pin into the frame post. Screw the board to the standoffs (from the component side), plug the motor pigtail into J4 and the cell into J3. Trim J3's pins short: they sit 0.7 mm above the motor can.
 2. Drop the cell into the tray, slide the ballast plate into its pocket, screw the tray up into the plate.
 3. Seat the motor on the cheek ledges with its boss in the face-plate hole; two M1.6 screws through the face plate.
 4. Slide the chassis into the cup along the rails, plate edges in the channels, until it bottoms. Fit the cap over the post (USB window over J1) and drive the three M2 screws.
